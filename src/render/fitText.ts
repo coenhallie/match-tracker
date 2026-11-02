@@ -1,8 +1,21 @@
 /**
  * The smallest a piece of canvas text is drawn, as a share of its size: below
- * this it stops reading as a title, so text still too long overflows instead.
+ * this it stops reading as a title, so text still too long overflows instead,
+ * or, drawn through fitText, is cut short.
  */
 export const MIN_FIT = 0.6
+
+/** The ellipsis fitText ends cut-short text with. */
+export const ELLIPSIS = '…'
+
+/** How wide `text` is in `font`. The context's font is left as it was. */
+export function measureWidth(ctx: CanvasRenderingContext2D, text: string, font: string): number {
+  const before = ctx.font
+  ctx.font = font
+  const width = ctx.measureText(text).width
+  ctx.font = before
+  return width
+}
 
 /**
  * The font size to draw `text` at so it is at most `maxWidth` wide: `basePx`
@@ -21,10 +34,37 @@ export function fitFontPx(
   basePx: number,
   maxWidth: number,
 ): number {
-  const before = ctx.font
-  ctx.font = font(basePx)
-  const width = ctx.measureText(text).width
-  ctx.font = before
+  const width = measureWidth(ctx, text, font(basePx))
   if (!(width > maxWidth)) return basePx
   return Math.max(basePx * MIN_FIT, basePx * (maxWidth / width))
+}
+
+/**
+ * The size and the text to draw so it is at most `maxWidth` wide: shrunk as
+ * fitFontPx shrinks it, and if it is still too wide at the smallest size, cut
+ * to the longest start of it that fits with a trailing ELLIPSIS. Characters
+ * are taken whole, by code point, and spaces before the ellipsis dropped.
+ * The context's font is left as it was.
+ */
+export function fitText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  font: (px: number) => string,
+  basePx: number,
+  maxWidth: number,
+): { px: number; text: string } {
+  const px = fitFontPx(ctx, text, font, basePx, maxWidth)
+  const shorthand = font(px)
+  if (!(measureWidth(ctx, text, shorthand) > maxWidth)) return { px, text }
+  const chars = Array.from(text)
+  const cut = (n: number) => `${chars.slice(0, n).join('').trimEnd()}${ELLIPSIS}`
+  // The longest start that fits: wider the more of it there is.
+  let lo = 0
+  let hi = chars.length - 1
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2)
+    if (measureWidth(ctx, cut(mid), shorthand) > maxWidth) hi = mid - 1
+    else lo = mid
+  }
+  return { px, text: cut(lo) }
 }

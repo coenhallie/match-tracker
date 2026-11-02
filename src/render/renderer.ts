@@ -14,10 +14,14 @@
 //     the reference draws, in the bundled faces' private family names
 //     ("MatchTracker Montserrat", "MatchTracker Inter") with a CJK fallback
 //     after each. Every card title, the attack's word and the team's name
-//     shrink to fit their card (fitFontPx), from the same place, to no less
-//     than 60% of their size. At the reference's sizes every English word
-//     fits, so nothing shrinks; a team name is shrunk as the reference shrinks
-//     it, except that the reference has no 60% floor.
+//     shrink to fit their card (fitFontPx), to no less than 60% of their
+//     size. At the reference's sizes every English word fits, so nothing
+//     shrinks. A team name is shrunk as the reference shrinks it, but where
+//     the reference has no floor, a name still too long at 60% is cut short
+//     with a trailing "…" (fitText). A card's title is drawn exactly where the
+//     reference draws it when it is the design's English word; any other
+//     title, a translation or an override, is centred on the middle of that
+//     word, as the design centres it (TitleLayout, eventBanner.ts).
 //  - the unused FRAME_W import was dropped, because it lints as an error here.
 //  - draw2DOverlay no longer draws the frame-count label. It is drawn onto the
 //    canvas bitmap, which is zoomed and panned, so the label slid off-screen

@@ -116,6 +116,7 @@ export function playMoved(prev: Frame, next: Frame): boolean {
  */
 const ICON_SLOT_PX = 219
 const FREE_KICK_CARD = {
+  designTitle: DEFAULT_THEME.text.freeKick,
   titleLeftPx: CARD_MIDDLE_PX - 232,
   iconBox: {
     left: 265 + ICON_SLOT_PX * 0.1406,

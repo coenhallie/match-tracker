@@ -1,7 +1,7 @@
 import type { Frame, PitchDimensions, Transform2D } from '../model/types'
 import { frameHasAction } from '../analysis/actionLabels'
 import { designUnit, resolvePitchDimensions, worldToPx } from './pitchGeometry'
-import { drawEventBand, drawEventTitle, INTER_ASCENT } from './eventBanner'
+import { drawEventBand, drawEventTitle, INTER_ASCENT, type TitleLayout } from './eventBanner'
 import { FRAME_W } from './constants'
 import { DEFAULT_THEME, type RenderTheme } from './theme'
 
@@ -59,10 +59,17 @@ const TITLE_TOP_PX = 16
 const TITLE_BASELINE_PX = TITLE_TOP_PX + 64 * INTER_ASCENT
 const TITLE_FONT_PX = 64
 /**
- * The title fits inside the band, keeping the clearance it has above it from
- * the band's right edge. "THROW IN" fits at its full size.
+ * The design centres "THROW IN" on the band. Another title is centred there
+ * too, and every title keeps the clearance it has above it from the band's
+ * sides; "THROW IN" fits at its full size (TitleLayout).
  */
-const TITLE_MAX_WIDTH_PX = BAND_WIDTH_PX - TITLE_TOP_PX - TITLE_LEFT_PX
+const TITLE_LAYOUT: TitleLayout = {
+  word: DEFAULT_THEME.text.throwIn,
+  leftPx: TITLE_LEFT_PX,
+  centrePx: BAND_WIDTH_PX / 2,
+  bandWidthPx: BAND_WIDTH_PX,
+  insetPx: TITLE_TOP_PX,
+}
 
 const clamp01 = (k: number) => Math.min(1, Math.max(0, k))
 const easeOutCubic = (k: number) => 1 - (1 - k) ** 3
@@ -97,11 +104,11 @@ export function drawThrowInIndicator(
     ctx,
     t,
     theme.text.throwIn,
-    left + TITLE_LEFT_PX * u,
+    left,
     top + TITLE_BASELINE_PX * u,
     TITLE_FONT_PX,
+    TITLE_LAYOUT,
     theme.fonts.title,
-    TITLE_MAX_WIDTH_PX,
   )
   ctx.restore()
 }

@@ -25,7 +25,7 @@
   },
   "scripts": {
     "dev": "echo 'dev: the demo page arrives with Task 14' >&2 && exit 1",
-    "build": "vite build && tsc -p tsconfig.build.json",
+    "build": "vite build && tsc -p tsconfig.build.json && node scripts/check-dist.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint --deny-warnings",
     "test": "vitest run",

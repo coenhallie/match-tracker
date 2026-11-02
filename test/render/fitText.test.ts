@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { fitFontPx } from '../../src/render/fitText'
+import { ELLIPSIS, fitFontPx, fitText } from '../../src/render/fitText'
 import { createRenderer, type FrameLayers } from '../../src/render/renderer'
 import { DEFAULT_THEME, type RenderTheme } from '../../src/render/theme'
 import { build2DTransform, designUnit, worldToPx } from '../../src/render/pitchGeometry'
@@ -40,6 +40,36 @@ describe('fitFontPx', () => {
   })
 })
 
+describe('fitText', () => {
+  it('gives the text whole, at the size fitFontPx gives, when that fits', () => {
+    expect(fitText(ctx(), 'ABCDEFGHIJ', font, 20, 500)).toEqual({ px: 20, text: 'ABCDEFGHIJ' })
+    const shrunk = fitFontPx(ctx(), 'ABCDEFGHIJ', font, 20, 96)
+    expect(fitText(ctx(), 'ABCDEFGHIJ', font, 20, 96)).toEqual({ px: shrunk, text: 'ABCDEFGHIJ' })
+  })
+
+  it('cuts text still too wide at 60% to the longest start that fits, with an ellipsis', () => {
+    // At 12 px each character is 7.2 wide: seven and the ellipsis make 57.6.
+    const fitted = fitText(ctx(), 'ABCDEFGHIJ', font, 20, 60)
+    expect(fitted).toEqual({ px: 12, text: `ABCDEFG${ELLIPSIS}` })
+  })
+
+  it('drops the spaces before the ellipsis', () => {
+    // Four characters and the ellipsis fit in 36, but the fourth is a space.
+    expect(fitText(ctx(), 'ABC DEFGHIJKL', font, 20, 36).text).toBe(`ABC${ELLIPSIS}`)
+  })
+
+  it('never cuts a character in two', () => {
+    expect(fitText(ctx(), '𝔸'.repeat(20), font, 20, 60).text).toBe(`𝔸𝔸𝔸${ELLIPSIS}`)
+  })
+
+  it('leaves the context as it found it', () => {
+    const c = ctx()
+    c.font = 'bold 9px sans-serif'
+    fitText(c, 'ABCDEFGHIJ', font, 20, 60)
+    expect(c.font).toBe('bold 9px sans-serif')
+  })
+})
+
 describe('canvas text fits its card', () => {
   const PITCH = { length: 105, width: 68 }
   const FRAME = {
@@ -49,9 +79,17 @@ describe('canvas text fits its card', () => {
   } as unknown as Frame
   const T = build2DTransform(PITCH)
   const u = designUnit(T)
-  const [CX, CY] = worldToPx(0, 0, T)
-  const width = (op: Op) => String(op.args[0]).length * 0.6 * Number(/([\d.]+)px/.exec(op.font)![1])
+  const [CX] = worldToPx(0, 0, T)
+  /** Measured as the recording context measures: 0.6 of the size a character. */
+  const width = (op: Op) => {
+    const { ctx } = recordingCtx()
+    ctx.font = op.font
+    return (ctx as unknown as CanvasRenderingContext2D).measureText(String(op.args[0])).width
+  }
   const sizePx = (op: Op) => Number(/([\d.]+)px/.exec(op.font)![1]) / u
+  const leftOf = (op: Op) => Number(op.args[1])
+  const rightOf = (op: Op) => leftOf(op) + width(op)
+  const centreOf = (op: Op) => leftOf(op) + width(op) / 2
 
   let offscreen: ReturnType<typeof stubOffscreenCanvas>
   beforeEach(() => {
@@ -69,67 +107,110 @@ describe('canvas text fits its card', () => {
     return ops.filter((o) => o.op === 'fillText')
   }
 
-  // The centre card is 736 design px wide; its title keeps the clearance it
-  // has above it (13 px) from the card's right edge.
+  // The centre card is 736 design px wide and centred on the pitch; a title
+  // keeps the clearance it has above it (13 px) from its sides.
   const cardLeft = CX - 368 * u
+  const cardInnerLeft = cardLeft + 13 * u
   const cardInnerRight = cardLeft + (736 - 13) * u
   const freeKick: FrameLayers = { freeKick: { intensity: 1, playersFade: 0 } }
+  const goal: FrameLayers = { goalBanner: { intensity: 1 } }
+  const throwIn: FrameLayers = { throwIn: { intensity: 1, slide: 1, side: null } }
+  // The throw-in band is 501 design px wide, centred, with 16 px kept clear.
+  const bandInnerLeft = CX - (501 / 2 - 16) * u
+  const bandInnerRight = CX + (501 / 2 - 16) * u
+
+  it('draws the English titles exactly where the reference does', () => {
+    const [freeKickTitle] = textAt(1280, {}, freeKick)
+    const [goalTitle] = textAt(1280, {}, goal)
+    const [throwInTitle] = textAt(1280, {}, throwIn)
+    expect(leftOf(freeKickTitle!)).toBe(cardLeft + (368 - 232) * u)
+    expect(leftOf(goalTitle!)).toBe(cardLeft + (368 - 133) * u)
+    expect(leftOf(throwInTitle!)).toBe(CX - (501 / 2) * u + (501 / 2 - 165.5) * u)
+    for (const title of [freeKickTitle!, goalTitle!]) expect(sizePx(title)).toBe(92)
+    expect(sizePx(throwInTitle!)).toBe(64)
+  })
+
+  it('centres the Chinese titles where the design centres its words', () => {
+    for (const [text, layers] of [
+      [{ freeKick: '任意球' }, freeKick],
+      [{ goal: '进球' }, goal],
+      [{ throwIn: '界外球' }, throwIn],
+    ] as const) {
+      const [title] = textAt(1280, text, layers)
+      expect(title!.args[0]).toBe(Object.values(text)[0])
+      expect(Math.abs(centreOf(title!) - CX) / u).toBeLessThan(1)
+    }
+  })
+
+  it('keeps the baseline and the size of a Chinese title that fits', () => {
+    const [english] = textAt(1280, {}, freeKick)
+    const [chinese] = textAt(1280, { freeKick: '任意球' }, freeKick)
+    expect(chinese!.args[2]).toBe(english!.args[2])
+    expect(sizePx(chinese!)).toBeCloseTo(92, 6)
+  })
 
   it('draws the free kick title in Chinese at full size, within the card, in a 320 px box', () => {
     const [title] = textAt(320, { freeKick: '任意球' }, freeKick)
-    expect(title!.args[0]).toBe('任意球')
     expect(sizePx(title!)).toBeCloseTo(92, 6)
-    expect(Number(title!.args[1])).toBeGreaterThanOrEqual(cardLeft)
-    expect(Number(title!.args[1]) + width(title!)).toBeLessThanOrEqual(cardInnerRight + 1e-6)
+    expect(leftOf(title!)).toBeGreaterThanOrEqual(cardInnerLeft)
+    expect(rightOf(title!)).toBeLessThanOrEqual(cardInnerRight + 1e-6)
   })
 
-  it('shrinks a title too long for the card until it fits', () => {
-    // 12 characters at 92 px: 662 design px, against the 587 from its left edge.
-    const [title] = textAt(320, { freeKick: 'TIRO LIBRE!!' }, freeKick)
+  it('shrinks a title too long for the card until it fills it, centred', () => {
+    // 14 characters at 92 px: 773 design px, against the 710 inside the card.
+    const [title] = textAt(320, { freeKick: 'FREISTOSS-TOR!' }, freeKick)
     expect(sizePx(title!)).toBeLessThan(92)
     expect(sizePx(title!)).toBeGreaterThan(92 * 0.6)
-    expect(Number(title!.args[1]) + width(title!)).toBeCloseTo(cardInnerRight, 6)
+    expect(leftOf(title!)).toBeCloseTo(cardInnerLeft, 6)
+    expect(rightOf(title!)).toBeCloseTo(cardInnerRight, 6)
   })
 
-  it('stops shrinking at 60% of the size', () => {
-    const [title] = textAt(320, { freeKick: 'CALCIO DI PUNIZIONE' }, freeKick)
+  it('stops shrinking a title at 60% of the size', () => {
+    const [title] = textAt(320, { freeKick: 'CALCIO DI PUNIZIONE DIRETTO' }, freeKick)
     expect(sizePx(title!)).toBeCloseTo(92 * 0.6, 6)
-  })
-
-  it("keeps the title's place and the card's baseline when it shrinks", () => {
-    const [english] = textAt(1280, {}, freeKick)
-    const [shrunk] = textAt(1280, { freeKick: 'TIRO LIBRE!!' }, freeKick)
-    expect(shrunk!.args[1]).toBe(english!.args[1])
-    expect(shrunk!.args[2]).toBe(english!.args[2])
-    expect(Number(english!.args[2])).toBeGreaterThan(CY - (373 / 2) * u)
+    expect(Math.abs(centreOf(title!) - CX) / u).toBeLessThan(1)
   })
 
   it('shrinks a goal title too long for the card', () => {
-    const [title] = textAt(320, { goal: 'GOOOOOOOAL!' }, { goalBanner: { intensity: 1 } })
+    const [title] = textAt(320, { goal: 'GOOOOOOOOOOOAL!' }, goal)
     expect(sizePx(title!)).toBeLessThan(92)
-    expect(Number(title!.args[1]) + width(title!)).toBeCloseTo(cardInnerRight, 6)
+    expect(leftOf(title!)).toBeCloseTo(cardInnerLeft, 6)
+    expect(rightOf(title!)).toBeCloseTo(cardInnerRight, 6)
   })
 
   it('shrinks a throw-in title too long for its band', () => {
-    // The band is 501 design px wide, centred, with the title 85 px in and
-    // 16 px of clearance kept at its right edge.
-    const [title] = textAt(320, { throwIn: 'SAQUE DE BANDA' }, { throwIn: { intensity: 1, slide: 1, side: null } })
+    const [title] = textAt(320, { throwIn: 'SAQUE DE BANDA' }, throwIn)
     expect(sizePx(title!)).toBeLessThan(64)
-    const bandRight = CX + (501 / 2) * u
-    expect(Number(title!.args[1]) + width(title!)).toBeCloseTo(bandRight - 16 * u, 6)
+    expect(leftOf(title!)).toBeCloseTo(bandInnerLeft, 6)
+    expect(rightOf(title!)).toBeCloseTo(bandInnerRight, 6)
+  })
+
+  const attack = (name: string) => ({
+    attack: { team: 0 as const, color: '#e51a1a', name, direction: 1 as const, intensity: 1 },
   })
 
   it("shrinks the attack's word to the label's width", () => {
-    const attack = {
-      team: 0 as const,
-      color: '#e51a1a',
-      name: 'Home',
-      direction: 1 as const,
-      intensity: 1,
-    }
-    const [, word] = textAt(320, { attack: 'Counter-attacking move' }, { attack })
+    const [, word] = textAt(320, { attack: 'Counter-attacking move' }, attack('Home'))
     expect(word!.args[0]).toBe('Counter-attacking move')
     expect(sizePx(word!)).toBeLessThan(54)
     expect(width(word!)).toBeCloseTo(560 * u, 6)
+  })
+
+  it('cuts a 60-character team name short with an ellipsis, within the label', () => {
+    const long = 'Club Atlético Deportivo y Cultural de la Ciudad de San Martín'.slice(0, 60)
+    expect(long).toHaveLength(60)
+    const [name] = textAt(320, {}, attack(long))
+    const text = String(name!.args[0])
+    expect(text.endsWith(ELLIPSIS)).toBe(true)
+    expect(long.startsWith(text.slice(0, -1))).toBe(true)
+    expect(sizePx(name!)).toBeCloseTo(40 * 0.6, 6)
+    expect(width(name!)).toBeLessThanOrEqual(560 * u + 1e-6)
+  })
+
+  it('leaves a team name that fits at 60% whole', () => {
+    const name = 'B'.repeat(30)
+    const [drawn] = textAt(320, {}, attack(name))
+    expect(drawn!.args[0]).toBe(name)
+    expect(width(drawn!)).toBeLessThanOrEqual(560 * u + 1e-6)
   })
 })

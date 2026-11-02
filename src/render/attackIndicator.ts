@@ -1,6 +1,6 @@
 import type { PitchDimensions, Transform2D } from '../model/types'
 import { designUnit, resolvePitchDimensions, tracePlayingArea, worldToPx } from './pitchGeometry'
-import { fitFontPx } from './fitText'
+import { fitFontPx, fitText } from './fitText'
 import { DEFAULT_THEME, type RenderTheme } from './theme'
 
 /**
@@ -80,8 +80,10 @@ const BAR_WIDTH_PX = 5
 const TEXT_GAP_PX = 25
 const BAR_LEAD_PX = 170
 /**
- * A longer name is drawn smaller, to fit, and so is a longer word than
- * "Attack" under it (fitText.ts). The label's font is the theme's fonts.label.
+ * A longer name is drawn smaller, to fit, and one still too long at the
+ * smallest size is cut short with an ellipsis. A longer word than "Attack"
+ * under it is drawn smaller too (fitText.ts). The label's font is the
+ * theme's fonts.label.
  */
 const NAME_MAX_WIDTH_PX = 560
 /** The name's colour in the design, whichever team it is: it reads on the grass, as red and blue do not. */
@@ -209,7 +211,7 @@ function drawLabel(
   // Measured in the name's full size, which stays set until the name is
   // written, as in the reference.
   ctx.font = nameFont(NAME_FONT_PX * u)
-  const nameSize = fitFontPx(ctx, ind.name, nameFont, NAME_FONT_PX * u, NAME_MAX_WIDTH_PX * u)
+  const name = fitText(ctx, ind.name, nameFont, NAME_FONT_PX * u, NAME_MAX_WIDTH_PX * u)
   const word = theme.text.attack
   const wordSize = fitFontPx(ctx, word, wordFont, ATTACK_FONT_PX * u, NAME_MAX_WIDTH_PX * u)
 
@@ -223,9 +225,9 @@ function drawLabel(
 
   ctx.textAlign = dir === 1 ? 'right' : 'left'
   ctx.textBaseline = 'alphabetic'
-  ctx.font = nameFont(nameSize)
+  ctx.font = nameFont(name.px)
   ctx.fillStyle = ATTACK_NAME_COLOR
-  ctx.fillText(ind.name, textEdge, cy + NAME_BASELINE_PX * u)
+  ctx.fillText(name.text, textEdge, cy + NAME_BASELINE_PX * u)
   ctx.font = wordFont(wordSize)
   ctx.fillStyle = '#ffffff'
   ctx.fillText(word, textEdge, cy + ATTACK_BASELINE_PX * u)

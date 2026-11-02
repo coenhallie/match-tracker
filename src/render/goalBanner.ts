@@ -41,6 +41,7 @@ const INNER = {
 }
 /** "GOAL" is the theme's text.goal. */
 const GOAL_CARD = {
+  designTitle: DEFAULT_THEME.text.goal,
   titleLeftPx: CARD_MIDDLE_PX - 133,
   iconBox: {
     left: INNER.left - INNER.width * BLEED.left,
