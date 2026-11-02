@@ -69,8 +69,10 @@ import { PhaseRow, ZoomBadge } from './hud'
 import { LayersMenu } from './layersMenu'
 import { FrameLoop } from './loop'
 import {
+  canonicalLayers,
   directorOptions,
   initialLayers,
+  layersMenuOn,
   resolveOptions,
   storeLayers,
   themeFor,
@@ -258,7 +260,8 @@ class Tracker implements MatchTracker {
     this.hud = dom.hud
     this.layersMenu = new LayersMenu(this.shadow, this.onLayerToggle)
     this.zoomBadge = new ZoomBadge(this.hud)
-    this.hud.append(this.phaseRow.box, this.layersMenu.el)
+    this.hud.append(this.phaseRow.box)
+    this.layersMenu.setShown(this.hud, layersMenuOn(this.options))
     this.layersMenu.setText(this.resolved.text)
     this.layersMenu.setLayers(this.layers)
     this.renderHud()
@@ -348,18 +351,32 @@ class Tracker implements MatchTracker {
     if (this.destroyed) return
     // The mode is fixed at mount; a caller passing it anyway is ignored.
     const { mode: _mode, ...rest } = options as Partial<MatchTrackerOptions>
+    const menuWas = layersMenuOn(this.options)
     this.options = { ...this.options, ...rest }
     this.resolved = resolveOptions(this.options)
     this.renderer?.setTheme(themeFor(this.resolved, this.icons))
     this.director.setOptions(directorOptions(this.resolved))
     this.layersMenu.setText(this.resolved.text)
+    this.layersMenu.setShown(this.hud, layersMenuOn(this.options))
     this.renderHud()
-    const layers = rest.layers ? { ...this.layers, ...rest.layers } : this.layers
+    const layers = this.layersAfter(rest, menuWas)
     if (Object.entries(layers).some(([key, on]) => this.layers[key as keyof ReplayLayers] !== on)) {
       this.applyLayers(layers, false)
     } else {
       this.repaint()
     }
+  }
+
+  /**
+   * The layers in force after `changed` went into the options. Without the
+   * menu they are always the canonical ones. Switching the menu on reads the
+   * kept choice as at mount; otherwise new `layers` go over the ones in force.
+   */
+  private layersAfter(changed: Partial<MutableOptions>, menuWas: boolean): ReplayLayers {
+    const menuIs = layersMenuOn(this.options)
+    if (menuIs !== menuWas) return initialLayers(this.options)
+    if (!menuIs) return canonicalLayers(this.options)
+    return changed.layers ? { ...this.layers, ...changed.layers } : this.layers
   }
 
   on<K extends keyof TrackerEvents>(event: K, listener: (value: TrackerEvents[K]) => void): () => void {
