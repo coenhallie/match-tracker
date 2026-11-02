@@ -37,10 +37,15 @@ export default defineConfig({
   },
   build: {
     target: 'es2022',
-    // Only the framework-free entry is built for now. The ./vue entry arrives with its own task.
     lib: {
-      entry: { index: 'src/index.ts' },
+      // The framework-free widget, and the Vue component over it, which imports it from ./index.js.
+      entry: { index: 'src/index.ts', vue: 'src/vue.ts' },
       formats: ['es'],
+    },
+    rolldownOptions: {
+      // Vue is the host's, an optional peer: only dist/vue.js imports it (scripts/check-dist.mjs).
+      external: ['vue'],
+      preserveEntrySignatures: 'allow-extension',
     },
   },
   test: {
