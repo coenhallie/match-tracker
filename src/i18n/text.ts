@@ -25,6 +25,16 @@ export interface TrackerText {
   versus: string
   /** The phase row's tooltip: how the states are worked out. */
   phaseTooltip: string
+  /**
+   * The phase row's ARIA label, read out in place of the row: one part per
+   * team, `{team}` for its name, joined by `phaseAria`. A team with no state
+   * is read out by its name alone. Templates, so each language puts the
+   * words in its own order (formatText).
+   */
+  phaseAttackingAria: string
+  phaseDefendingAria: string
+  /** The whole label, with `{home}` and `{away}` for the two teams' parts. */
+  phaseAria: string
   /** The teams' names when the host gives none: the colours they are drawn in. */
   red: string
   blue: string
@@ -34,7 +44,9 @@ export interface TrackerText {
   layersTooltip: string
   /** The layers menu's ARIA label. */
   layersMenuLabel: string
-  /** The zoom badge's tooltip: how to go back to the whole pitch. */
+  /** The zoom badge's text, with `{zoom}` for the zoom to one decimal. */
+  zoomLevel: string
+  /** The tooltip on the pitch while it is zoomed in: how to go back to the whole of it. */
   zoomReset: string
   /** Each layer's name and hint in the layers menu, listed in REPLAY_LAYERS order. */
   layers: Record<ReplayLayerKey, { label: string; hint: string }>
@@ -52,4 +64,13 @@ const BUILT_IN: Record<TrackerLocale, TrackerText> = { en, zh }
 export function resolveText(locale: TrackerLocale, overrides: Partial<TrackerText> = {}): TrackerText {
   const base = structuredClone(BUILT_IN[locale])
   return { ...base, ...overrides, layers: { ...base.layers, ...overrides.layers } }
+}
+
+/**
+ * `template` with each `{name}` in it replaced by `values[name]`, as it is: a
+ * value's own text is never read as a pattern. A placeholder with no value
+ * is left as it is.
+ */
+export function formatText(template: string, values: Readonly<Record<string, string>>): string {
+  return template.replace(/\{(\w+)\}/g, (match, name: string) => (Object.hasOwn(values, name) ? values[name]! : match))
 }

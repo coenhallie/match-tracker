@@ -4,8 +4,10 @@ import type { TrackerText } from './text'
  * video-annotation's English at 6f14d1f, word for word: the canvas words
  * (goalBanner.ts, freeKick.ts, throwIn.ts, attackIndicator.ts), the HUD's
  * (PipelineOutputSurface.vue's template, PHASE_TEAMS and STATE_TEXT) and the
- * layers menu's (replayLayers.ts). zoomReset is the widget's own: the
- * reference's zoom badge has no tooltip.
+ * layers menu's (replayLayers.ts). The phase row's ARIA templates give the
+ * reference's `phaseDescription` ("Red attacking, Blue defending"), which
+ * lowercases the state words into it. zoomReset is the widget's own: the
+ * reference has no tooltip for the zoom.
  */
 export const en: TrackerText = {
   goal: 'GOAL',
@@ -17,11 +19,15 @@ export const en: TrackerText = {
   versus: 'vs',
   phaseTooltip:
     'Worked out from the tracking data: a team is attacking once it has kept the ball for 3 seconds, and the other team is then defending.',
+  phaseAttackingAria: '{team} attacking',
+  phaseDefendingAria: '{team} defending',
+  phaseAria: '{home}, {away}',
   red: 'Red',
   blue: 'Blue',
   layersButton: 'Layers',
   layersTooltip: 'Show or hide what is drawn over the data',
   layersMenuLabel: 'Layers',
+  zoomLevel: '{zoom}x',
   zoomReset: 'Double-click to reset the zoom',
   layers: {
     goal: { label: 'Goal animation', hint: 'A shot into the net on a goal label' },

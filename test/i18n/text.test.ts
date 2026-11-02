@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolveText } from '../../src/i18n/text'
+import { formatText, resolveText } from '../../src/i18n/text'
 import { en } from '../../src/i18n/en'
 import { zh } from '../../src/i18n/zh'
 import { REPLAY_LAYERS } from '../../src/model/replayLayers'
@@ -40,6 +40,21 @@ describe('resolveText', () => {
   })
 })
 
+describe('formatText', () => {
+  it('puts each value in its place, once or many times', () => {
+    expect(formatText('{team} attacking', { team: 'Red' })).toBe('Red attacking')
+    expect(formatText('{a}, {b}, {a}', { a: '1', b: '2' })).toBe('1, 2, 1')
+  })
+
+  it('takes a value as it is, with no replacement patterns read in it', () => {
+    expect(formatText('{team} attacking', { team: "$& $' $1" })).toBe("$& $' $1 attacking")
+  })
+
+  it('leaves a placeholder it has no value for', () => {
+    expect(formatText('{team} {state}', { team: 'Red' })).toBe('Red {state}')
+  })
+})
+
 describe('the built-in text', () => {
   it('has every English key in Chinese, and no other', () => {
     expect(keyPaths(zh)).toEqual(keyPaths(en))
@@ -77,6 +92,13 @@ describe('the built-in text', () => {
       phaseTooltip:
         'Worked out from the tracking data: a team is attacking once it has kept the ball for 3 seconds, and the other team is then defending.',
     })
+    // The phase row's ARIA label, "Red attacking, Blue defending": the reference
+    // lowercases the state into it (phaseDescription), which a template keeps.
+    expect(formatText(en.phaseAria, {
+      home: formatText(en.phaseAttackingAria, { team: 'Red' }),
+      away: formatText(en.phaseDefendingAria, { team: 'Blue' }),
+    })).toBe('Red attacking, Blue defending')
+    expect(formatText(en.zoomLevel, { zoom: '2.5' })).toBe('2.5x')
     expect(en.layers).toEqual({
       goal: { label: 'Goal animation', hint: 'A shot into the net on a goal label' },
       attack: { label: 'Attack', hint: 'Worked out from possession: shade and team name' },
@@ -102,5 +124,23 @@ describe('the built-in text', () => {
       red: '红队',
       blue: '蓝队',
     })
+  })
+
+  it('reads the phase row out in Chinese without English words', () => {
+    const label = formatText(zh.phaseAria, {
+      home: formatText(zh.phaseAttackingAria, { team: zh.red }),
+      away: formatText(zh.phaseDefendingAria, { team: zh.blue }),
+    })
+    expect(label).toBe('红队进攻中，蓝队防守中')
+  })
+
+  it('has a place for the team in each state of the ARIA label, and for both teams in the whole', () => {
+    for (const text of [en, zh]) {
+      expect(text.phaseAttackingAria).toContain('{team}')
+      expect(text.phaseDefendingAria).toContain('{team}')
+      expect(text.phaseAria).toContain('{home}')
+      expect(text.phaseAria).toContain('{away}')
+      expect(text.zoomLevel).toContain('{zoom}')
+    }
   })
 })

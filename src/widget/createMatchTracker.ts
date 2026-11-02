@@ -30,6 +30,12 @@
  * While the tab is hidden or the widget is out of view nothing is updated or
  * drawn; `push` still records. Coming back is a seek in live mode, so nothing
  * stale plays on.
+ *
+ * ## The HUD
+ *
+ * Over the pitch box: the attacking/defending row above it, the layers menu
+ * top right and the zoom badge bottom right (hud.ts, layersMenu.ts). The row
+ * follows the phase of each update; all of it follows the options, in place.
  */
 import { deriveAt, windowAt } from '../analysis/derive'
 import type { BallTrail } from '../analysis/ballTrail'
@@ -48,7 +54,7 @@ import {
 import { nextPlayback } from '../director/playback'
 import { LiveHistory } from '../history/liveHistory'
 import { parseRecord } from '../model/parseRecord'
-import type { ReplayLayers, ReplayMoment } from '../model/replayLayers'
+import type { ReplayLayerKey, ReplayLayers, ReplayMoment } from '../model/replayLayers'
 import type { TrackerRecord } from '../model/types'
 import { createRenderer } from '../render/renderer'
 import type { RenderTheme } from '../render/theme'
@@ -56,6 +62,8 @@ import type { FrameBox } from '../render/viewTransform'
 import { MATCH_TRACKER_VERSION } from '../version'
 import { Emitter, MomentWatch, type TrackerEvents } from './events'
 import { measureBox, pixelRatio, place, sameBox, sizeBitmap } from './layout'
+import { PhaseRow, ZoomBadge } from './hud'
+import { LayersMenu } from './layersMenu'
 import { FrameLoop } from './loop'
 import {
   directorOptions,
@@ -150,10 +158,6 @@ function build(shadow: ShadowRoot) {
   viewport.append(canvas, overlayLayer)
   const hudLayer = div('mt-hud-layer')
   const hud = div('mt-hud')
-  // Where the phase row and layers menu (Task 11) and the zoom badge (Task 12) mount.
-  const slots = { phase: div('mt-slot'), layers: div('mt-slot'), zoom: div('mt-slot') }
-  for (const [name, slot] of Object.entries(slots)) slot.dataset.slot = name
-  hud.append(slots.phase, slots.layers, slots.zoom)
   hudLayer.append(hud)
   root.append(viewport, hudLayer)
   const nodes: Node[] = [root]
@@ -163,7 +167,7 @@ function build(shadow: ShadowRoot) {
     nodes.unshift(style)
   }
   shadow.replaceChildren(...nodes)
-  return { root, viewport, canvas, overlay, hud, slots }
+  return { root, viewport, canvas, overlay, hud }
 }
 
 function rendererFor(canvas: HTMLCanvasElement, theme: RenderTheme): Renderer | null {
@@ -191,6 +195,11 @@ class Tracker implements MatchTracker {
   private readonly viewport: HTMLElement
   private readonly canvas: HTMLCanvasElement
   private readonly hud: HTMLElement
+  private readonly phaseRow = new PhaseRow()
+  private readonly layersMenu: LayersMenu
+  private readonly zoomBadge: ZoomBadge
+  /** The phase of the last update, which the HUD's row shows. */
+  private phase: TeamPhase | null = null
   private readonly renderer: Renderer | null
   private readonly director: Director
   private readonly emitter = new Emitter<TrackerEvents>()
@@ -242,6 +251,11 @@ class Tracker implements MatchTracker {
     this.canvas = dom.canvas
     this.overlay = dom.overlay
     this.hud = dom.hud
+    this.layersMenu = new LayersMenu(this.shadow, this.onLayerToggle)
+    this.zoomBadge = new ZoomBadge(this.hud)
+    this.hud.append(this.phaseRow.box, this.layersMenu.el)
+    this.layersMenu.setText(this.resolved.text)
+    this.layersMenu.setLayers(this.layers)
 
     this.renderer = rendererFor(this.canvas, themeFor(this.resolved, this.icons))
     // Frame size is a sane bitmap until the box arrives, as in the reference.
@@ -327,6 +341,8 @@ class Tracker implements MatchTracker {
     this.resolved = resolveOptions(this.options)
     this.renderer?.setTheme(themeFor(this.resolved, this.icons))
     this.director.setOptions(directorOptions(this.resolved))
+    this.layersMenu.setText(this.resolved.text)
+    this.renderHud()
     const layers = rest.layers ? { ...this.layers, ...rest.layers } : this.layers
     if (Object.entries(layers).some(([key, on]) => this.layers[key as keyof ReplayLayers] !== on)) {
       this.applyLayers(layers, false)
@@ -350,6 +366,7 @@ class Tracker implements MatchTracker {
     this.dprQuery = null
     this.doc.removeEventListener('visibilitychange', this.onVisibilityChange)
     this.overlay.removeEventListener('pointerdown', this.onOverlayPointerDown, { capture: true })
+    this.layersMenu.destroy()
     this.emitter.clear()
     this.history.clear()
     this.presented = null
@@ -365,8 +382,22 @@ class Tracker implements MatchTracker {
   private applyLayers(layers: ReplayLayers, keep: boolean): void {
     this.layers = { ...layers }
     if (keep) storeLayers(this.options, this.layers)
+    this.layersMenu.setLayers(this.layers)
+    this.renderHud()
     this.show(this.director.setLayers(this.layers))
     this.emitter.emit('layers', { ...this.layers })
+  }
+
+  /** A layer switched in the menu: the user's own choice, so it is kept. */
+  private readonly onLayerToggle = (key: ReplayLayerKey): void => {
+    if (this.destroyed) return
+    this.applyLayers({ ...this.layers, [key]: !this.layers[key] }, true)
+  }
+
+  /** The HUD as the phase, the layers, the view and the options are now. */
+  private renderHud(): void {
+    this.phaseRow.update(this.phase, this.layers.phaseLabels, this.resolved)
+    this.zoomBadge.update(this.view.zoom, this.resolved.text)
   }
 
   // ── The loop ──────────────────────────────────────────────────────────────
@@ -377,6 +408,9 @@ class Tracker implements MatchTracker {
     if (!input) return
     this.lastInput = input
     this.show(this.director.update(input, this.directorView()))
+    if (this.destroyed) return
+    this.phase = input.phase
+    this.renderHud()
     if (this.stale) this.repaint()
   }
 
@@ -472,6 +506,7 @@ class Tracker implements MatchTracker {
   private adoptCamera(camera: DirectorCamera): void {
     const { zoom } = this.view
     this.view = { zoom: camera.zoom, panX: camera.panX, panY: camera.panY }
+    this.zoomBadge.update(this.view.zoom, this.resolved.text)
     if (camera.zoom !== zoom) this.emitter.emit('zoom', { zoom: camera.zoom })
   }
 
@@ -485,6 +520,7 @@ class Tracker implements MatchTracker {
     const moved = !sameBox(next, this.box)
     this.box = next
     for (const el of [this.canvas, this.overlay, this.hud]) place(el, next)
+    this.layersMenu.setBox(next)
     const cleared = this.renderer ? sizeBitmap(this.canvas, next) : false
     // A new width changes how a pan in screen pixels lands, so it goes in as
     // a view change, which pushes the view and paints.
