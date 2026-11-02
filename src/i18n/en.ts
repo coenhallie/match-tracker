@@ -1,4 +1,4 @@
-import type { TrackerText } from './text'
+import type { TrackerText } from './text.js'
 
 /**
  * video-annotation's English at 6f14d1f, word for word: the canvas words

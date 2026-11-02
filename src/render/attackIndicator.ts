@@ -1,7 +1,7 @@
-import type { PitchDimensions, Transform2D } from '../model/types'
-import { designUnit, resolvePitchDimensions, tracePlayingArea, worldToPx } from './pitchGeometry'
-import { fitFontPx, fitText } from './fitText'
-import { DEFAULT_THEME, type RenderTheme } from './theme'
+import type { PitchDimensions, Transform2D } from '../model/types.js'
+import { designUnit, resolvePitchDimensions, tracePlayingArea, worldToPx } from './pitchGeometry.js'
+import { fitFontPx, fitText } from './fitText.js'
+import { DEFAULT_THEME, type RenderTheme } from './theme.js'
 
 /**
  * The attack, as the match-summary design shows it: the pitch darkened from

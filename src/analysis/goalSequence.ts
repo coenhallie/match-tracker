@@ -1,7 +1,7 @@
-import type { Frame, PitchDimensions } from '../model/types'
-import { build2DTransform, resolvePitchDimensions, worldToPx, DESIGN_PITCH_LENGTH_PX } from '../render/pitchGeometry'
-import { FRAME_W, FRAME_H } from '../render/constants'
-import { frameHasAction } from './actionLabels'
+import type { Frame, PitchDimensions } from '../model/types.js'
+import { build2DTransform, resolvePitchDimensions, worldToPx, DESIGN_PITCH_LENGTH_PX } from '../render/pitchGeometry.js'
+import { FRAME_W, FRAME_H } from '../render/constants.js'
+import { frameHasAction } from './actionLabels.js'
 
 /**
  * The goal sequence: when the pipeline labels a frame GOAL, the replay shows a

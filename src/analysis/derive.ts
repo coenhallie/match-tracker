@@ -1,6 +1,6 @@
-import type { TrackerRecord } from '../model/types'
-import { PHASE_LOOKBACK_S, teamPhaseAt, type TeamPhase } from './teamPhase'
-import { TRAIL_LOOKBACK_S, ballTrailAt, type BallTrail } from './ballTrail'
+import type { TrackerRecord } from '../model/types.js'
+import { PHASE_LOOKBACK_S, teamPhaseAt, type TeamPhase } from './teamPhase.js'
+import { TRAIL_LOOKBACK_S, ballTrailAt, type BallTrail } from './ballTrail.js'
 
 /** How far back from a record the phase and the trail read, the longer of their two lookbacks. */
 export const HISTORY_S = Math.max(PHASE_LOOKBACK_S, TRAIL_LOOKBACK_S)

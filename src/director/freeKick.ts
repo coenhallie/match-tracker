@@ -19,7 +19,7 @@
  * step lands in is not shown when play then carries on. Played by hand, it is
  * on screen for FREE_KICK_DEMO_MS whatever play does.
  */
-import type { Frame } from '../model/types'
+import type { Frame } from '../model/types.js'
 import {
   FREE_KICK_DEMO_MS,
   FREE_KICK_IN_MS,
@@ -31,9 +31,9 @@ import {
   isFreeKickFrame,
   playMoved,
   type FreeKickBanner,
-} from '../render/freeKick'
-import { shownBall } from './ballRoll'
-import type { Moment, MomentContext, MomentStep } from './moment'
+} from '../render/freeKick.js'
+import { shownBall } from './ballRoll.js'
+import type { Moment, MomentContext, MomentStep } from './moment.js'
 
 interface Showing {
   startedMs: number | null

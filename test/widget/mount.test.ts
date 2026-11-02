@@ -138,3 +138,12 @@ function latestResolutionQuery(): FakeMediaQuery {
   if (!query) throw new Error('no resolution query')
   return query
 }
+
+describe('the shadow root CSS', () => {
+  it('sizes nothing in rem, which would follow the host page’s root font size into the widget', async () => {
+    const { STYLES } = await import('../../src/widget/styles')
+    // The comments keep the reference's Tailwind classes, rem and all.
+    const rules = STYLES.replace(/\/\*[\s\S]*?\*\//g, '')
+    expect(rules.match(/\d(?:\.\d+)?rem\b/g) ?? []).toEqual([])
+  })
+})

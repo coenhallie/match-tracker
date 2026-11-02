@@ -4,12 +4,12 @@
  * director lends each moment to read and act through. See "The moments" in
  * director.ts.
  */
-import type { BallTrail } from '../analysis/ballTrail'
-import type { Spin } from '../analysis/football'
-import type { TeamId, TeamPhase } from '../analysis/teamPhase'
-import type { ReplayLayers } from '../model/replayLayers'
-import type { TrackerRecord } from '../model/types'
-import type { Camera, PipelineView } from '../render/viewTransform'
+import type { BallTrail } from '../analysis/ballTrail.js'
+import type { Spin } from '../analysis/football.js'
+import type { TeamId, TeamPhase } from '../analysis/teamPhase.js'
+import type { ReplayLayers } from '../model/replayLayers.js'
+import type { TrackerRecord } from '../model/types.js'
+import type { Camera, PipelineView } from '../render/viewTransform.js'
 
 /** What a moment's animation frame did: painted and wants another frame, or is over. */
 export type MomentStep = 'paint' | 'stop'

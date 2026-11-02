@@ -19,9 +19,9 @@
  * which does not fade with ring fades switched off. Anywhere else, and under
  * reduced motion, nobody is drawn over the ball.
  */
-import type { Frame } from '../model/types'
-import { POSSESSION_FADE_IN_S, RECEIVE_FADE_S, RECEIVE_SHOW_S, RING_FADE_S } from '../render/constants'
-import { nearbyTrackIds, possessionTrackIds, type TrackId } from '../render/renderer'
+import type { Frame } from '../model/types.js'
+import { POSSESSION_FADE_IN_S, RECEIVE_FADE_S, RECEIVE_SHOW_S, RING_FADE_S } from '../render/constants.js'
+import { nearbyTrackIds, possessionTrackIds, type TrackId } from '../render/renderer.js'
 
 /**
  * Fade `rings` toward `target` by `dt` seconds, or set them to it at once.

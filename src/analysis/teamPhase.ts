@@ -1,4 +1,4 @@
-import type { Frame } from '../model/types'
+import type { Frame } from '../model/types.js'
 
 /**
  * Who is attacking and who is defending, worked out from the pipeline's own

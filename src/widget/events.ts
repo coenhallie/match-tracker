@@ -2,8 +2,8 @@
  * The widget's events, and how it tells a moment starting or ending from the
  * director's paints.
  */
-import type { ReplayLayers, ReplayMoment } from '../model/replayLayers'
-import type { FrameLayers } from '../render/renderer'
+import type { ReplayLayers, ReplayMoment } from '../model/replayLayers.js'
+import type { FrameLayers } from '../render/renderer.js'
 
 export interface TrackerEvents {
   /** The view's zoom changed: by the user, or by a sequence's camera. */

@@ -6,7 +6,12 @@
     "emitDeclarationOnly": true,
     "outDir": "dist",
     "rootDir": "src",
-    "types": []
+    "types": [],
+    // The declarations are read by hosts on any resolution, node16 included,
+    // which needs every relative import to name its file: NodeNext here
+    // rejects one that does not, so the build fails before such a .d.ts ships.
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext"
   },
   "include": ["src"]
 }

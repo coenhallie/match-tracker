@@ -1,5 +1,5 @@
-import type { Frame } from '../model/types'
-import type { PhaseRecord } from './teamPhase'
+import type { Frame } from '../model/types.js'
+import type { PhaseRecord } from './teamPhase.js'
 
 /**
  * The ball's trail: the path the tracked ball took over the last

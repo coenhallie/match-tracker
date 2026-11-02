@@ -1,5 +1,5 @@
-import { HISTORY_S, windowAt } from '../analysis/derive'
-import type { TrackerRecord } from '../model/types'
+import { HISTORY_S, windowAt } from '../analysis/derive.js'
+import type { TrackerRecord } from '../model/types.js'
 
 /**
  * The records a live stream has delivered lately, enough for the phase and trail at the newest

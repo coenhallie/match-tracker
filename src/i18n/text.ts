@@ -1,6 +1,6 @@
-import type { ReplayLayerKey } from '../model/replayLayers'
-import { en } from './en'
-import { zh } from './zh'
+import type { ReplayLayerKey } from '../model/replayLayers.js'
+import { en } from './en.js'
+import { zh } from './zh.js'
 
 /**
  * Everything the widget writes, on the canvas and in its HUD. The English is

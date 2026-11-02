@@ -1,4 +1,4 @@
-import type { Frame } from '../model/types'
+import type { Frame } from '../model/types.js'
 
 /**
  * A pipeline action label reduced to its bare name, so the same label matches

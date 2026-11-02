@@ -15,8 +15,8 @@
  * Pans are in CSS px from the centre of the stage, as in the reference, which
  * measures the cursor against the stage (here the viewport, which fills it).
  */
-import { MIN_ZOOM, takesCamera } from '../director/camera'
-import type { DirectorCamera } from '../director/director'
+import { MIN_ZOOM, takesCamera } from '../director/camera.js'
+import type { DirectorCamera } from '../director/director.js'
 
 export const MAX_ZOOM = 6
 export const ZOOM_STEP = 0.15

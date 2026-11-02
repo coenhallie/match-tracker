@@ -1,4 +1,4 @@
-import type { TrackerText } from './text'
+import type { TrackerText } from './text.js'
 
 /**
  * Simplified Chinese. The canvas words, the phase row's words and the team

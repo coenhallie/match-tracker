@@ -1,7 +1,7 @@
-import type { Transform2D } from '../model/types'
-import { CARD_MIDDLE_PX, drawCentreCard } from './eventBanner'
-import { DEFAULT_THEME, type RenderTheme } from './theme'
-import { GOAL_SEQUENCE_MS, type GoalPlan } from '../analysis/goalSequence'
+import type { Transform2D } from '../model/types.js'
+import { CARD_MIDDLE_PX, drawCentreCard } from './eventBanner.js'
+import { DEFAULT_THEME, type RenderTheme } from './theme.js'
+import { GOAL_SEQUENCE_MS, type GoalPlan } from '../analysis/goalSequence.js'
 
 /**
  * The goal's card, as the match-summary design shows it (vp-pitch-1, node

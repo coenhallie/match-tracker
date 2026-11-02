@@ -7,8 +7,8 @@
  * The row is kept and changed in place, as Vue patches the reference's keyed
  * labels, so a label filling with its team's colour fades as it does there.
  */
-import type { TeamId, TeamPhase, TeamState } from '../analysis/teamPhase'
-import { formatText, type TrackerText } from '../i18n/text'
+import type { TeamId, TeamPhase, TeamState } from '../analysis/teamPhase.js'
+import { formatText, type TrackerText } from '../i18n/text.js'
 
 /** What the row says the teams are, and how it draws them. */
 export interface PhaseLook {

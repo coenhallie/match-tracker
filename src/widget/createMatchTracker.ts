@@ -40,11 +40,11 @@
  * top right and the zoom badge bottom right (hud.ts, layersMenu.ts). The row
  * follows the phase of each update; all of it follows the options, in place.
  */
-import { deriveAt, windowAt } from '../analysis/derive'
-import type { BallTrail } from '../analysis/ballTrail'
-import type { TeamId, TeamPhase } from '../analysis/teamPhase'
-import { ensureFonts } from '../assets/fonts'
-import { loadIcons } from '../assets/icons'
+import { deriveAt, windowAt } from '../analysis/derive.js'
+import type { BallTrail } from '../analysis/ballTrail.js'
+import type { TeamId, TeamPhase } from '../analysis/teamPhase.js'
+import { ensureFonts } from '../assets/fonts.js'
+import { loadIcons } from '../assets/icons.js'
 import {
   Director,
   type DirectorCamera,
@@ -53,21 +53,21 @@ import {
   type DirectorPaint,
   type DirectorView,
   type MomentAvailability,
-} from '../director/director'
-import { nextPlayback } from '../director/playback'
-import { LiveHistory } from '../history/liveHistory'
-import { parseRecord } from '../model/parseRecord'
-import type { ReplayLayerKey, ReplayLayers, ReplayMoment } from '../model/replayLayers'
-import type { TrackerRecord } from '../model/types'
-import { createRenderer } from '../render/renderer'
-import type { RenderTheme } from '../render/theme'
-import type { FrameBox } from '../render/viewTransform'
-import { MATCH_TRACKER_VERSION } from '../version'
-import { Emitter, MomentWatch, type TrackerEvents } from './events'
-import { measureBox, pixelRatio, place, sameBox, sizeBitmap } from './layout'
-import { PhaseRow, ZoomBadge } from './hud'
-import { LayersMenu } from './layersMenu'
-import { FrameLoop } from './loop'
+} from '../director/director.js'
+import { nextPlayback } from '../director/playback.js'
+import { LiveHistory } from '../history/liveHistory.js'
+import { parseRecord } from '../model/parseRecord.js'
+import type { ReplayLayerKey, ReplayLayers, ReplayMoment } from '../model/replayLayers.js'
+import type { TrackerRecord } from '../model/types.js'
+import { createRenderer } from '../render/renderer.js'
+import type { RenderTheme } from '../render/theme.js'
+import type { FrameBox } from '../render/viewTransform.js'
+import { MATCH_TRACKER_VERSION } from '../version.js'
+import { Emitter, MomentWatch, type TrackerEvents } from './events.js'
+import { measureBox, pixelRatio, place, sameBox, sizeBitmap } from './layout.js'
+import { PhaseRow, ZoomBadge } from './hud.js'
+import { LayersMenu } from './layersMenu.js'
+import { FrameLoop } from './loop.js'
 import {
   directorOptions,
   initialLayers,
@@ -77,9 +77,9 @@ import {
   type MatchTrackerOptions,
   type MutableOptions,
   type Resolved,
-} from './options'
-import { STYLES } from './styles'
-import { ZoomPan } from './zoomPan'
+} from './options.js'
+import { STYLES } from './styles.js'
+import { ZoomPan } from './zoomPan.js'
 
 /** What a replay host hands over on each tick of its clock. */
 export interface ReplayState {

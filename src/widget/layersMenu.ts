@@ -10,8 +10,8 @@
  *    listener is on the shadow root, never on the document.
  *  - The menu keeps inside the pitch box, scrolling past it (`setBox`).
  */
-import type { TrackerText } from '../i18n/text'
-import { REPLAY_LAYERS, type ReplayLayerKey, type ReplayLayers } from '../model/replayLayers'
+import type { TrackerText } from '../i18n/text.js'
+import { REPLAY_LAYERS, type ReplayLayerKey, type ReplayLayers } from '../model/replayLayers.js'
 
 const SVG = 'http://www.w3.org/2000/svg'
 

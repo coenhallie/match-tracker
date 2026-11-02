@@ -10,9 +10,11 @@
  *  - `--mt-hud-text`: the HUD's text. Default white.
  *  - `--mt-font`: the HUD's font. Default the bundled Montserrat, then the CJK fallbacks.
  *
- * Nothing is written to the host page.
+ * Nothing is written to the host page. Lengths are in px, the reference's
+ * rem at its 16 px: a rem is the host page's root font size, which reaches
+ * into a shadow root.
  */
-import { LABEL_FAMILY, familyList } from '../assets/fontFamilies'
+import { LABEL_FAMILY, familyList } from '../assets/fontFamilies.js'
 
 export const STYLES = `
 :host {
@@ -122,11 +124,11 @@ svg {
   display: grid;
   width: max-content;
   /* "max-w-full", less the HUD's 8 px inset either side, so a row of long names stops short of the edges. */
-  max-width: calc(100% - 1rem);
-  margin: 0 auto 0.375rem;
+  max-width: calc(100% - 16px);
+  margin: 0 auto 6px;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  gap: 0.5rem;
+  gap: 8px;
 }
 /* "text-[10px] font-semibold uppercase tracking-widest text-white/60" */
 .mt-phase-vs {
@@ -145,14 +147,14 @@ svg {
  */
 .mt-phase-team {
   display: flex;
-  min-width: 9.5rem;
+  min-width: 152px;
   align-items: center;
-  gap: 0.75rem;
+  gap: 12px;
   white-space: nowrap;
-  border-radius: 0.375rem;
+  border-radius: 6px;
   border-width: 2px;
   border-style: solid;
-  padding: 0.25rem 0.625rem;
+  padding: 4px 10px;
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
@@ -195,13 +197,13 @@ svg {
  */
 @container (width < 360px) {
   .mt-phase {
-    gap: 0.25rem;
+    gap: 4px;
   }
   .mt-phase-team {
     min-width: 0;
-    gap: 0.375rem;
-    padding-left: 0.375rem;
-    padding-right: 0.375rem;
+    gap: 6px;
+    padding-left: 6px;
+    padding-right: 6px;
   }
 }
 
@@ -209,8 +211,8 @@ svg {
 .mt-layers {
   pointer-events: auto;
   position: absolute;
-  right: 0.5rem;
-  top: 0.5rem;
+  right: 8px;
+  top: 8px;
 }
 /*
  * "flex h-7 items-center gap-1.5 rounded-full bg-black/60 px-2.5 text-[10px]
@@ -220,12 +222,12 @@ svg {
  */
 .mt-layers-toggle {
   display: flex;
-  height: 1.75rem;
+  height: 28px;
   align-items: center;
-  gap: 0.375rem;
+  gap: 6px;
   border-radius: 9999px;
   background-color: var(--mt-hud-bg, rgb(0 0 0 / 0.6));
-  padding: 0 0.625rem;
+  padding: 0 10px;
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
@@ -253,8 +255,8 @@ svg {
 }
 /* "h-3.5 w-3.5" */
 .mt-layers-icon {
-  width: 0.875rem;
-  height: 0.875rem;
+  width: 14px;
+  height: 14px;
 }
 /* "fixed inset-0 z-40": a click anywhere outside the menu closes it. */
 .mt-layers-backdrop {
@@ -273,16 +275,16 @@ svg {
   right: 0;
   top: 100%;
   z-index: 50;
-  margin-top: 0.5rem;
-  width: 16rem;
+  margin-top: 8px;
+  width: 256px;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
-  border-radius: 0.375rem;
+  border-radius: 6px;
   border: 1px solid rgb(255 255 255 / 0.1);
   background-color: rgb(16 24 40 / 0.95);
   background-color: oklch(21% 0.034 264.665 / 0.95);
-  padding: 0.25rem 0;
+  padding: 4px 0;
   color: var(--mt-hud-text, #fff);
   box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 }
@@ -294,8 +296,8 @@ svg {
   display: flex;
   width: 100%;
   align-items: flex-start;
-  gap: 0.625rem;
-  padding: 0.375rem 0.75rem;
+  gap: 10px;
+  padding: 6px 12px;
   text-align: left;
   transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
@@ -316,19 +318,19 @@ svg {
  * "border-white/40" when off, with the tick ("h-3 w-3") only when on.
  */
 .mt-layer-check {
-  margin-top: 0.125rem;
+  margin-top: 2px;
   display: flex;
-  height: 0.875rem;
-  width: 0.875rem;
+  height: 14px;
+  width: 14px;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  border-radius: 0.25rem;
+  border-radius: 4px;
   border: 1px solid rgb(255 255 255 / 0.4);
 }
 .mt-layer-check svg {
-  width: 0.75rem;
-  height: 0.75rem;
+  width: 12px;
+  height: 12px;
 }
 .mt-layer-option[aria-checked="true"] .mt-layer-check {
   border-color: #fff;
@@ -358,11 +360,11 @@ svg {
 /* The zoom badge: "absolute bottom-2 right-2 rounded bg-black/50 px-1.5 py-0.5 font-mono text-[10px] text-white". */
 .mt-zoom {
   position: absolute;
-  bottom: 0.5rem;
-  right: 0.5rem;
-  border-radius: 0.25rem;
+  bottom: 8px;
+  right: 8px;
+  border-radius: 4px;
   background-color: rgb(0 0 0 / 0.5);
-  padding: 0.125rem 0.375rem;
+  padding: 2px 6px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 10px;
   color: var(--mt-hud-text, #fff);

@@ -15,7 +15,7 @@
  * plays during playback, anything that means someone wants the real frame
  * stops it, and a free kick or a goal takes over from it.
  */
-import type { Frame } from '../model/types'
+import type { Frame } from '../model/types.js'
 import {
   THROW_IN_IN_MS,
   THROW_IN_OUT_MS,
@@ -23,9 +23,9 @@ import {
   THROW_IN_SHOW_MS,
   isThrowInFrame,
   type ThrowInIndicator,
-} from '../render/throwIn'
-import { shownBall } from './ballRoll'
-import type { Moment, MomentContext, MomentStep } from './moment'
+} from '../render/throwIn.js'
+import { shownBall } from './ballRoll.js'
+import type { Moment, MomentContext, MomentStep } from './moment.js'
 
 /** How long, in seconds of replay time, the last tracked ball says which half play is in. */
 export const BALL_MEMORY_S = 5

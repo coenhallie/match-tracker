@@ -5,8 +5,8 @@
  * bitmap is sized to that box in device pixels; see fitFrameBox for why CSS
  * could do neither.
  */
-import { FRAME_H, FRAME_W } from '../render/constants'
-import { fitFrameBox, type FrameBox } from '../render/viewTransform'
+import { FRAME_H, FRAME_W } from '../render/constants.js'
+import { fitFrameBox, type FrameBox } from '../render/viewTransform.js'
 
 /**
  * A row kept clear above the pitch for the team phase labels, so they never

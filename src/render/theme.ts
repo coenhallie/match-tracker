@@ -1,5 +1,5 @@
-import { PERSON_COLORS, type PersonColors } from './constants'
-import { LABEL_FAMILY, TITLE_FAMILY, familyList } from '../assets/fontFamilies'
+import { PERSON_COLORS, type PersonColors } from './constants.js'
+import { LABEL_FAMILY, TITLE_FAMILY, familyList } from '../assets/fontFamilies.js'
 
 /** Who a person on the pitch is drawn as. Team 0 is home, team 1 away. */
 export type PersonRole = 'home' | 'away' | 'goalkeeper' | 'official' | 'unknown'
@@ -25,15 +25,27 @@ export interface RenderTheme {
   formatAction: (actionType: string) => string
 }
 
+/** PERSON_COLORS, copied role by role and frozen, so the default theme shares no object with the constants. */
+function frozenColors(): Readonly<Record<PersonRole, Readonly<PersonColors>>> {
+  const colors = {} as Record<PersonRole, PersonColors>
+  for (const role of Object.keys(PERSON_COLORS) as PersonRole[]) {
+    colors[role] = Object.freeze({ ...PERSON_COLORS[role] })
+  }
+  return Object.freeze(colors)
+}
+
 /**
  * video-annotation's look, exactly: its colours (PERSON_COLORS), its English,
  * the action types as the export writes them, and its fonts, under the
  * bundled faces' private names with a CJK fallback after each.
+ *
+ * Frozen all the way down: every renderer without a theme of its own reads
+ * this one object, so nothing may change it in place.
  */
-export const DEFAULT_THEME: RenderTheme = {
-  colors: PERSON_COLORS,
-  text: { goal: 'GOAL', freeKick: 'FREE KICK', throwIn: 'THROW IN', attack: 'Attack' },
-  fonts: { label: familyList(LABEL_FAMILY), title: familyList(TITLE_FAMILY) },
-  icons: { freeKick: null, goal: null },
-  formatAction: (actionType) => actionType,
-}
+export const DEFAULT_THEME: Readonly<RenderTheme> = Object.freeze({
+  colors: frozenColors(),
+  text: Object.freeze({ goal: 'GOAL', freeKick: 'FREE KICK', throwIn: 'THROW IN', attack: 'Attack' }),
+  fonts: Object.freeze({ label: familyList(LABEL_FAMILY), title: familyList(TITLE_FAMILY) }),
+  icons: Object.freeze({ freeKick: null, goal: null }),
+  formatAction: (actionType: string) => actionType,
+})

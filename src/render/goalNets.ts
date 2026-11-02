@@ -1,6 +1,6 @@
-import type { PitchDimensions, Transform2D } from '../model/types'
-import { DESIGN_LINE_PX, PITCH_LINE_ALPHA, designUnit, resolvePitchDimensions, worldToPx } from './pitchGeometry'
-import { NET_DEPTH_METRES } from '../analysis/goalSequence'
+import type { PitchDimensions, Transform2D } from '../model/types.js'
+import { DESIGN_LINE_PX, PITCH_LINE_ALPHA, designUnit, resolvePitchDimensions, worldToPx } from './pitchGeometry.js'
+import { NET_DEPTH_METRES } from '../analysis/goalSequence.js'
 
 /** Struck net: which goal, where along it, and how far it bows out, in metres. */
 export interface NetBulge {

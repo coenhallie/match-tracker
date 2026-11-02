@@ -22,13 +22,13 @@ import {
   planGoal,
   type GoalPlan,
   type GoalState,
-} from '../analysis/goalSequence'
-import type { Frame } from '../model/types'
-import { goalBannerIntensity, type GoalBanner } from '../render/goalBanner'
-import type { GoalOverlay } from '../render/renderer'
-import { cameraFromView, type Camera } from '../render/viewTransform'
-import { blendCamera } from './camera'
-import type { Moment, MomentContext, MomentStep } from './moment'
+} from '../analysis/goalSequence.js'
+import type { Frame } from '../model/types.js'
+import { goalBannerIntensity, type GoalBanner } from '../render/goalBanner.js'
+import type { GoalOverlay } from '../render/renderer.js'
+import { cameraFromView, type Camera } from '../render/viewTransform.js'
+import { blendCamera } from './camera.js'
+import type { Moment, MomentContext, MomentStep } from './moment.js'
 
 interface Running {
   plan: GoalPlan

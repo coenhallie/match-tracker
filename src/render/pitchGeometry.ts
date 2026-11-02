@@ -29,8 +29,8 @@
 // original index.html (lines 475-550).
 // ---------------------------------------------------------------------------
 
-import type { PitchDimensions, Transform2D } from '../model/types'
-import { FRAME_W, FRAME_H, PITCH_MARGIN, LINE_COLOR } from './constants'
+import type { PitchDimensions, Transform2D } from '../model/types.js'
+import { FRAME_W, FRAME_H, PITCH_MARGIN, LINE_COLOR } from './constants.js'
 
 // ── Default pitch metric values (FIFA standard) ────────────────────────────
 const DEFAULT_LENGTH = 105

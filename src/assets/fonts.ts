@@ -1,4 +1,4 @@
-import { LABEL_FAMILY, TITLE_FAMILY } from './fontFamilies'
+import { LABEL_FAMILY, TITLE_FAMILY } from './fontFamilies.js'
 
 /**
  * The faces the widget draws and lays out its text in, bundled as woff2 files

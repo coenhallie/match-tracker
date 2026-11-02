@@ -1,7 +1,7 @@
-import type { Frame, Transform2D } from '../model/types'
-import { frameHasAction } from '../analysis/actionLabels'
-import { CARD_MIDDLE_PX, drawCentreCard } from './eventBanner'
-import { DEFAULT_THEME, type RenderTheme } from './theme'
+import type { Frame, Transform2D } from '../model/types.js'
+import { frameHasAction } from '../analysis/actionLabels.js'
+import { CARD_MIDDLE_PX, drawCentreCard } from './eventBanner.js'
+import { DEFAULT_THEME, type RenderTheme } from './theme.js'
 
 /**
  * The free kick, as the match-summary design shows it: "FREE KICK" and the

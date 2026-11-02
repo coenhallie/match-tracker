@@ -111,22 +111,22 @@
  *  - Label and ball memory that a seek forgets lives in `memory`, so step 1
  *    can clear it without knowing the modules.
  */
-import { sameTrail, type BallTrail } from '../analysis/ballTrail'
-import { samePhase, type TeamId, type TeamPhase } from '../analysis/teamPhase'
-import type { ReplayLayers, ReplayMoment } from '../model/replayLayers'
-import type { Frame, TrackerRecord } from '../model/types'
-import { planGoal } from '../analysis/goalSequence'
-import type { FrameLayers } from '../render/renderer'
-import { viewFromCamera, type Camera } from '../render/viewTransform'
-import { Attack } from './attack'
-import { BallRoll, shownBall } from './ballRoll'
-import { FreeKick } from './freeKick'
-import { Goal } from './goal'
-import type { Moment, MomentContext, MomentMemory, ShownReplay } from './moment'
-import { ThrowIn } from './throwIn'
-import { Rings } from './rings'
+import { sameTrail, type BallTrail } from '../analysis/ballTrail.js'
+import { samePhase, type TeamId, type TeamPhase } from '../analysis/teamPhase.js'
+import type { ReplayLayers, ReplayMoment } from '../model/replayLayers.js'
+import type { Frame, TrackerRecord } from '../model/types.js'
+import { planGoal } from '../analysis/goalSequence.js'
+import type { FrameLayers } from '../render/renderer.js'
+import { viewFromCamera, type Camera } from '../render/viewTransform.js'
+import { Attack } from './attack.js'
+import { BallRoll, shownBall } from './ballRoll.js'
+import { FreeKick } from './freeKick.js'
+import { Goal } from './goal.js'
+import type { Moment, MomentContext, MomentMemory, ShownReplay } from './moment.js'
+import { ThrowIn } from './throwIn.js'
+import { Rings } from './rings.js'
 
-export type { Moment, MomentContext, MomentMemory, MomentStep } from './moment'
+export type { Moment, MomentContext, MomentMemory, MomentStep } from './moment.js'
 
 export interface DirectorInput {
   /** The animation frame's timestamp, in ms: what moments time themselves by. */

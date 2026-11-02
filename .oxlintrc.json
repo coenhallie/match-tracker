@@ -41,8 +41,23 @@
   "overrides": [
     {
       "files": [
-        "src/analysis/**",
-        "src/render/**",
+        "src/render/**"
+      ],
+      "rules": {
+        "unicorn/consistent-function-scoping": "off",
+        "unicorn/no-array-sort": "off"
+      }
+    },
+    {
+      "files": [
+        "src/analysis/**"
+      ],
+      "rules": {
+        "unicorn/no-array-sort": "off"
+      }
+    },
+    {
+      "files": [
         "test/**"
       ],
       "rules": {

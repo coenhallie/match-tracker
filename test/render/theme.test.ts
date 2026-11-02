@@ -80,6 +80,22 @@ describe('DEFAULT_THEME', () => {
     expect(DEFAULT_THEME.formatAction('EventType.FREE_KICK')).toBe('EventType.FREE_KICK')
   })
 
+  it('is frozen, with colours of its own, so no host or instance can change what the next one reads', () => {
+    expect(DEFAULT_THEME.colors).not.toBe(PERSON_COLORS)
+    expect(Object.isFrozen(DEFAULT_THEME)).toBe(true)
+    for (const part of [DEFAULT_THEME.colors, DEFAULT_THEME.text, DEFAULT_THEME.fonts, DEFAULT_THEME.icons]) {
+      expect(Object.isFrozen(part)).toBe(true)
+    }
+    for (const role of Object.keys(PERSON_COLORS) as Array<keyof typeof PERSON_COLORS>) {
+      expect(DEFAULT_THEME.colors[role]).not.toBe(PERSON_COLORS[role])
+      expect(Object.isFrozen(DEFAULT_THEME.colors[role])).toBe(true)
+    }
+    expect(() => {
+      DEFAULT_THEME.colors.home.fill = '#00ff00'
+    }).toThrow(TypeError)
+    expect(PERSON_COLORS.home.fill).toBe('#e51a1a')
+  })
+
   it('names the bundled families, each followed by the CJK fallback', () => {
     const fallback = '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif'
     expect(DEFAULT_THEME.fonts.label).toBe(`"MatchTracker Montserrat", ${fallback}`)

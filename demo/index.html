@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Match tracker demo</title>
+    <link rel="icon" href="data:," />
+    <style>
+      body {
+        margin: 0;
+        padding: 16px 24px 48px;
+        font: 14px/1.4 system-ui, sans-serif;
+        color: #111;
+        background: #f4f4f5;
+      }
+      h1 {
+        font-size: 18px;
+        margin: 0 0 8px;
+      }
+      h2 {
+        font-size: 15px;
+        margin: 0 0 8px;
+      }
+      .controls {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 16px;
+        align-items: center;
+        padding: 8px 0;
+        background: #f4f4f5;
+        border-bottom: 1px solid #d4d4d8;
+      }
+      section {
+        margin-top: 24px;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+        margin: 8px 0;
+      }
+      .tracker {
+        /* No padding or border, so the hostile CSS check compares like with like. */
+        width: 768px;
+        height: 472px;
+      }
+      .status {
+        font: 12px/1.4 ui-monospace, monospace;
+        color: #3f3f46;
+        white-space: pre-wrap;
+      }
+      .spacer {
+        height: 140vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #71717a;
+      }
+      input[type='range'] {
+        width: 320px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Match tracker demo</h1>
+    <div class="controls">
+      <label>
+        Data
+        <select id="source">
+          <option value="goal">Golden goal (synthetic)</option>
+          <option value="excerpt">Match excerpt</option>
+        </select>
+      </label>
+      <label>
+        Width
+        <select id="width">
+          <option>320</option>
+          <option>375</option>
+          <option selected>768</option>
+          <option>1280</option>
+        </select>
+      </label>
+      <button id="locale" type="button">Locale: en</button>
+      <label><input id="hostile" type="checkbox" /> Hostile CSS</label>
+      <span id="draws" class="status"></span>
+    </div>
+
+    <section>
+      <h2>Live: records pushed on a timer, as the socket sends them</h2>
+      <div id="live" class="tracker"></div>
+      <div class="row" id="live-triggers"></div>
+      <div class="status" id="live-status"></div>
+    </section>
+
+    <div class="spacer">Scroll on for the replay widget. The live widget stops drawing while out of view.</div>
+
+    <section>
+      <h2>Replay: the page's own clock, with play, pause and seek</h2>
+      <div id="replay" class="tracker"></div>
+      <div class="row">
+        <button id="play" type="button">Pause</button>
+        <input id="seek" type="range" min="0" max="1" step="0.01" value="0" />
+        <span id="clock" class="status"></span>
+      </div>
+      <div class="row" id="replay-triggers"></div>
+      <div class="status" id="replay-status"></div>
+    </section>
+
+    <div class="spacer">End of page.</div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

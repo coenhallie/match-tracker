@@ -69,7 +69,7 @@
 //   const { renderFrame, invalidateCache } = createRenderer(canvas)
 // ---------------------------------------------------------------------------
 
-import type { Player, Ball, Frame, Transform2D } from '../model/types'
+import type { Player, Ball, Frame, Transform2D } from '../model/types.js'
 import {
   FRAME_W,
   FRAME_H,
@@ -80,9 +80,9 @@ import {
   FOCUS_METRES,
   NEARBY_OUTLINE,
   NEARBY_METRES,
-} from './constants'
-import { build2DTransform, worldToPx, buildPitchCache, fillGrass, PITCH_LINE_ALPHA } from './pitchGeometry'
-import { drawGoalNets, type NetBulge } from './goalNets'
+} from './constants.js'
+import { build2DTransform, worldToPx, buildPitchCache, fillGrass, PITCH_LINE_ALPHA } from './pitchGeometry.js'
+import { drawGoalNets, type NetBulge } from './goalNets.js'
 import {
   ballRingAlpha,
   drawAttackIndicator,
@@ -93,14 +93,14 @@ import {
   BALL_RING_PX,
   BALL_RING_SWELL_PX,
   type AttackIndicator,
-} from './attackIndicator'
-import { trailOpacity, type BallTrail, type TrailPoint } from '../analysis/ballTrail'
-import { drawFreeKickBanner, type FreeKickBanner } from './freeKick'
-import { drawThrowInIndicator, type ThrowInIndicator } from './throwIn'
-import { drawGoalBanner, type GoalBanner } from './goalBanner'
-import { footballPatches, UPRIGHT, type Spin } from '../analysis/football'
-import { computeViewMatrix, IDENTITY_VIEW, type PipelineView, type ViewMatrix } from './viewTransform'
-import { DEFAULT_THEME, type RenderTheme } from './theme'
+} from './attackIndicator.js'
+import { trailOpacity, type BallTrail, type TrailPoint } from '../analysis/ballTrail.js'
+import { drawFreeKickBanner, type FreeKickBanner } from './freeKick.js'
+import { drawThrowInIndicator, type ThrowInIndicator } from './throwIn.js'
+import { drawGoalBanner, type GoalBanner } from './goalBanner.js'
+import { footballPatches, UPRIGHT, type Spin } from '../analysis/football.js'
+import { computeViewMatrix, IDENTITY_VIEW, type PipelineView, type ViewMatrix } from './viewTransform.js'
+import { DEFAULT_THEME, type RenderTheme } from './theme.js'
 
 /**
  * What the goal sequence draws over a frame: its own ball, where that ball just

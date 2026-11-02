@@ -1,4 +1,4 @@
-import { FRAME_W, FRAME_H } from './constants'
+import { FRAME_W, FRAME_H } from './constants.js'
 
 export interface PipelineView {
   /** 1 = fit, >1 zoomed in. */

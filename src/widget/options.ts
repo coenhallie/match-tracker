@@ -2,18 +2,18 @@
  * What a host can ask of the widget, and what that comes to for the
  * renderer, the director and the layers.
  */
-import type { TeamId } from '../analysis/teamPhase'
-import type { DirectorOptions } from '../director/director'
-import { resolveText, type TrackerLocale, type TrackerText } from '../i18n/text'
+import type { TeamId } from '../analysis/teamPhase.js'
+import type { DirectorOptions } from '../director/director.js'
+import { resolveText, type TrackerLocale, type TrackerText } from '../i18n/text.js'
 import {
   DEFAULT_REPLAY_LAYERS,
   readReplayLayers,
   writeReplayLayers,
   type ReplayLayerKey,
   type ReplayLayers,
-} from '../model/replayLayers'
-import { PERSON_COLORS, type PersonColors } from '../render/constants'
-import { DEFAULT_THEME, type PersonRole, type RenderTheme } from '../render/theme'
+} from '../model/replayLayers.js'
+import { PERSON_COLORS, type PersonColors } from '../render/constants.js'
+import { DEFAULT_THEME, type PersonRole, type RenderTheme } from '../render/theme.js'
 
 export interface TeamOptions {
   /** The team's name, in the attack's label and the phase row. Default: the colour it is drawn in ("Red", "Blue"). */

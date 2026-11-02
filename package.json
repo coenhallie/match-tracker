@@ -24,12 +24,12 @@
     "registry": "https://npm.pkg.github.com"
   },
   "scripts": {
-    "dev": "echo 'dev: the demo page arrives with Task 14' >&2 && exit 1",
+    "dev": "vite",
     "build": "vite build && tsc -p tsconfig.build.json && node scripts/check-dist.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint --deny-warnings",
     "test": "vitest run",
-    "size": "echo 'size: the bundle size check arrives with Task 14' >&2 && exit 1",
+    "size": "node scripts/size.mjs",
     "copy-fonts": "node scripts/copy-fonts.mjs"
   },
   "peerDependencies": {

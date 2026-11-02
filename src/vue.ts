@@ -28,9 +28,9 @@ import {
   type ReplayState,
   type TeamId,
   type TrackerEvents,
-} from './index'
+} from './index.js'
 
-export type * from './index'
+export type * from './index.js'
 
 /** What the component's ref exposes: the tracker's input, and its overlay once mounted. */
 export interface MatchTrackerHandle {

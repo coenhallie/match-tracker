@@ -4,7 +4,7 @@
  * the view over from it (`releaseSequenceCamera`, :546-548, as the surface's
  * wheel, press and double-click handlers call it, :307-368).
  */
-import type { Camera } from '../render/viewTransform'
+import type { Camera } from '../render/viewTransform.js'
 
 /** The zoom the view is at when it is not zoomed in: the whole pitch. */
 export const MIN_ZOOM = 1

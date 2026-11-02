@@ -15,19 +15,19 @@
  * wants the real frame stops it at once, and an attack a seek or a step lands
  * in the middle of is not shown when play then carries on.
  */
-import type { BallTrail } from '../analysis/ballTrail'
-import type { Spin } from '../analysis/football'
-import type { TeamId } from '../analysis/teamPhase'
-import type { Frame } from '../model/types'
+import type { BallTrail } from '../analysis/ballTrail.js'
+import type { Spin } from '../analysis/football.js'
+import type { TeamId } from '../analysis/teamPhase.js'
+import type { Frame } from '../model/types.js'
 import {
   ATTACK_IN_MS,
   ATTACK_OUT_MS,
   ATTACK_PULSE_MS,
   ATTACK_SHOW_MS,
   type AttackIndicator,
-} from '../render/attackIndicator'
-import { shownBall } from './ballRoll'
-import type { Moment, MomentContext, MomentStep } from './moment'
+} from '../render/attackIndicator.js'
+import { shownBall } from './ballRoll.js'
+import type { Moment, MomentContext, MomentStep } from './moment.js'
 
 /** An attack under way: which team, which way, and in what colour. */
 export interface AttackTarget {

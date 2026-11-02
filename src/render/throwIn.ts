@@ -1,9 +1,9 @@
-import type { Frame, PitchDimensions, Transform2D } from '../model/types'
-import { frameHasAction } from '../analysis/actionLabels'
-import { designUnit, resolvePitchDimensions, worldToPx } from './pitchGeometry'
-import { drawEventBand, drawEventTitle, INTER_ASCENT, type TitleLayout } from './eventBanner'
-import { FRAME_W } from './constants'
-import { DEFAULT_THEME, type RenderTheme } from './theme'
+import type { Frame, PitchDimensions, Transform2D } from '../model/types.js'
+import { frameHasAction } from '../analysis/actionLabels.js'
+import { designUnit, resolvePitchDimensions, worldToPx } from './pitchGeometry.js'
+import { drawEventBand, drawEventTitle, INTER_ASCENT, type TitleLayout } from './eventBanner.js'
+import { FRAME_W } from './constants.js'
+import { DEFAULT_THEME, type RenderTheme } from './theme.js'
 
 /**
  * The throw-in, as the match-summary design shows it (Figma vp-pitch-2): a
