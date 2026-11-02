@@ -3,6 +3,7 @@ import { frameHasAction } from '../analysis/actionLabels'
 import { designUnit, resolvePitchDimensions, worldToPx } from './pitchGeometry'
 import { drawEventBand, drawEventTitle, INTER_ASCENT } from './eventBanner'
 import { FRAME_W } from './constants'
+import { DEFAULT_THEME, type RenderTheme } from './theme'
 
 /**
  * The throw-in, as the match-summary design shows it (Figma vp-pitch-2): a
@@ -52,24 +53,31 @@ export function isThrowInFrame(frame: Frame): boolean {
 const BAND_WIDTH_PX = 501
 const BAND_HEIGHT_PX = 109
 const BAND_TOP_ABOVE_TOUCHLINE_PX = 90
-/** "THROW IN": its left edge, its baseline and its size. */
+/** "THROW IN" (the theme's text.throwIn): its left edge, its baseline and its size. */
 const TITLE_LEFT_PX = BAND_WIDTH_PX / 2 - 165.5
-const TITLE_BASELINE_PX = 16 + 64 * INTER_ASCENT
+const TITLE_TOP_PX = 16
+const TITLE_BASELINE_PX = TITLE_TOP_PX + 64 * INTER_ASCENT
 const TITLE_FONT_PX = 64
+/**
+ * The title fits inside the band, keeping the clearance it has above it from
+ * the band's right edge. "THROW IN" fits at its full size.
+ */
+const TITLE_MAX_WIDTH_PX = BAND_WIDTH_PX - TITLE_TOP_PX - TITLE_LEFT_PX
 
 const clamp01 = (k: number) => Math.min(1, Math.max(0, k))
 const easeOutCubic = (k: number) => 1 - (1 - k) ** 3
 
 /**
  * Draw the throw-in indicator over everything else on the pitch, in frame
- * units through the context's current transform. Sliding, it starts wholly
- * past the frame's edge on its side.
+ * units through the context's current transform, in the theme's words and
+ * font. Sliding, it starts wholly past the frame's edge on its side.
  */
 export function drawThrowInIndicator(
   ctx: CanvasRenderingContext2D,
   pd: Partial<PitchDimensions> | undefined,
   t: Transform2D,
   ind: ThrowInIndicator,
+  theme: RenderTheme = DEFAULT_THEME,
 ): void {
   const alpha = clamp01(ind.intensity)
   if (alpha <= 0) return
@@ -85,6 +93,15 @@ export function drawThrowInIndicator(
   ctx.save()
   ctx.globalAlpha = alpha
   drawEventBand(ctx, left, top, width, BAND_HEIGHT_PX * u)
-  drawEventTitle(ctx, t, 'THROW IN', left + TITLE_LEFT_PX * u, top + TITLE_BASELINE_PX * u, TITLE_FONT_PX)
+  drawEventTitle(
+    ctx,
+    t,
+    theme.text.throwIn,
+    left + TITLE_LEFT_PX * u,
+    top + TITLE_BASELINE_PX * u,
+    TITLE_FONT_PX,
+    theme.fonts.title,
+    TITLE_MAX_WIDTH_PX,
+  )
   ctx.restore()
 }

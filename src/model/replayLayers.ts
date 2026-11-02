@@ -26,47 +26,22 @@ export type ReplayLayers = Record<ReplayLayerKey, boolean>
  */
 export type ReplayMoment = 'goal' | 'attack' | 'freeKick' | 'throwIn'
 
-/** In the order the menu lists them. */
-export const REPLAY_LAYERS: ReadonlyArray<{ key: ReplayLayerKey; label: string; hint: string }> = [
-  { key: 'goal', label: 'Goal animation', hint: 'A shot into the net on a goal label' },
-  {
-    key: 'attack',
-    label: 'Attack',
-    hint: 'Worked out from possession: shade and team name',
-  },
-  {
-    key: 'freeKick',
-    label: 'Free kick',
-    hint: 'A banner on a free kick label, held while play is stopped',
-  },
-  {
-    // Not "throwIn": that was the removed throw-in zoom's key, and a browser
-    // that switched it off would hide this without anyone choosing to.
-    key: 'throwInBanner',
-    label: 'Throw-in',
-    hint: "A banner on a throw-in label, sliding in from the ball's half",
-  },
-  { key: 'ballTrail', label: 'Ball trail', hint: "The ball's path, with a dot at each turn" },
-  {
-    key: 'phaseLabels',
-    label: 'Attacking / defending',
-    hint: 'Team labels above the pitch',
-  },
-  {
-    key: 'nearbyRings',
-    label: 'Players near the ball',
-    hint: 'White rings within 15 m of the ball carrier',
-  },
-  {
-    key: 'farFade',
-    label: 'Fade distant players',
-    hint: 'Players over 15 m from the ball drawn faint',
-  },
-  {
-    key: 'ringFades',
-    label: 'Smooth ring changes',
-    hint: 'Rings fade in and out instead of snapping',
-  },
+/**
+ * In the order the menu lists them. Each layer's name and hint are text, in
+ * every locale (TrackerText.layers, src/i18n).
+ */
+export const REPLAY_LAYERS: ReadonlyArray<{ key: ReplayLayerKey }> = [
+  { key: 'goal' },
+  { key: 'attack' },
+  { key: 'freeKick' },
+  // Not "throwIn": that was the removed throw-in zoom's key, and a browser
+  // that switched it off would hide this without anyone choosing to.
+  { key: 'throwInBanner' },
+  { key: 'ballTrail' },
+  { key: 'phaseLabels' },
+  { key: 'nearbyRings' },
+  { key: 'farFade' },
+  { key: 'ringFades' },
 ]
 
 export const DEFAULT_REPLAY_LAYERS: ReplayLayers = {

@@ -5,6 +5,7 @@ import { createRenderer } from '../../src/render/renderer'
 import { BALL_RADIUS } from '../../src/render/constants'
 import type { Frame } from '../../src/model/types'
 import { fakeCanvas, recordingCtx, stubOffscreenCanvas, type Op } from '../helpers/recordingCtx'
+import { normalizeCalls } from '../helpers/normalize'
 
 const PITCH = { length: 105, width: 68 }
 const T = build2DTransform(PITCH)
@@ -104,7 +105,8 @@ describe('free kick banner', () => {
     const text = title(draw().ops)!
     const top = CY - (373 / 2) * u
     expect(text.args[0]).toBe('FREE KICK')
-    expect(text.font).toBe(`italic 900 ${92 * u}px Inter, sans-serif`)
+    // The bundled face's private name and CJK fallback, read as the reference's family (theme.ts).
+    expect((normalizeCalls([text])[0] as Op).font).toBe(`italic 900 ${92 * u}px Inter, sans-serif`)
     expect(text.fillStyle).toBe('#ffffff')
     expect(text.textAlign).toBe('left')
     expect(text.args[1]).toBeCloseTo(CX - 232 * u, 6)

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { en } from '../../src/i18n/en'
 import {
   DEFAULT_REPLAY_LAYERS,
   REPLAY_LAYERS,
@@ -22,8 +23,8 @@ describe('replay layers', () => {
     expect(new Set(keys).size).toBe(keys.length)
     expect(keys.sort()).toEqual(Object.keys(DEFAULT_REPLAY_LAYERS).sort())
     for (const layer of REPLAY_LAYERS) {
-      expect(layer.label.length).toBeGreaterThan(0)
-      expect(layer.hint.length).toBeGreaterThan(0)
+      expect(en.layers[layer.key].label.length).toBeGreaterThan(0)
+      expect(en.layers[layer.key].hint.length).toBeGreaterThan(0)
     }
   })
 

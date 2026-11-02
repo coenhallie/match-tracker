@@ -1,5 +1,7 @@
 import type { PitchDimensions, Transform2D } from '../model/types'
 import { designUnit, resolvePitchDimensions, tracePlayingArea, worldToPx } from './pitchGeometry'
+import { fitFontPx } from './fitText'
+import { DEFAULT_THEME, type RenderTheme } from './theme'
 
 /**
  * The attack, as the match-summary design shows it: the pitch darkened from
@@ -77,9 +79,11 @@ const BAR_WIDTH_PX = 5
 /** Between the text and the bar, and from the bar to the back of the edge's teeth. */
 const TEXT_GAP_PX = 25
 const BAR_LEAD_PX = 170
-/** A longer name is drawn smaller, to fit. */
+/**
+ * A longer name is drawn smaller, to fit, and so is a longer word than
+ * "Attack" under it (fitText.ts). The label's font is the theme's fonts.label.
+ */
 const NAME_MAX_WIDTH_PX = 560
-const LABEL_FONT = 'Montserrat, sans-serif'
 /** The name's colour in the design, whichever team it is: it reads on the grass, as red and blue do not. */
 export const ATTACK_NAME_COLOR = '#70dfa7'
 
@@ -119,7 +123,8 @@ function edgeMiddle(ind: AttackIndicator, half: number): number {
 /**
  * Draw the attack's shade and label. Drawn in frame units through the
  * context's current transform, over the markings, as the design darkens them
- * with the grass, and under the goals and the players.
+ * with the grass, and under the goals and the players. The label is in the
+ * theme's words and font.
  *
  * Which team is attacking, and which way, is worked out by the app
  * (teamPhase.ts), not reported by the pipeline.
@@ -129,10 +134,11 @@ export function drawAttackIndicator(
   pd: Partial<PitchDimensions> | undefined,
   t: Transform2D,
   ind: AttackIndicator,
+  theme: RenderTheme = DEFAULT_THEME,
 ): void {
   if (ind.intensity <= 0) return
   drawShade(ctx, pd, t, ind)
-  drawLabel(ctx, pd, t, ind)
+  drawLabel(ctx, pd, t, ind, theme)
 }
 
 function drawShade(
@@ -184,6 +190,7 @@ function drawLabel(
   pd: Partial<PitchDimensions> | undefined,
   t: Transform2D,
   ind: AttackIndicator,
+  theme: RenderTheme,
 ): void {
   const k = clamp01(ind.intensity)
   const alpha = ind.leaving ? k : clamp01((k - 0.5) / 0.5)
@@ -196,12 +203,15 @@ function drawLabel(
   const [troughPx, cy] = worldToPx(edgeAt(dir, half) - (dir * EDGE_DEPTH_METRES) / 2, 0, t)
 
   ctx.save()
-  let nameFont = NAME_FONT_PX * u
-  ctx.font = `600 ${nameFont}px ${LABEL_FONT}`
-  const fullName = ctx.measureText(ind.name).width
-  if (fullName > NAME_MAX_WIDTH_PX * u) {
-    nameFont *= (NAME_MAX_WIDTH_PX * u) / fullName
-  }
+  const family = theme.fonts.label
+  const nameFont = (px: number) => `600 ${px}px ${family}`
+  const wordFont = (px: number) => `700 ${px}px ${family}`
+  // Measured in the name's full size, which stays set until the name is
+  // written, as in the reference.
+  ctx.font = nameFont(NAME_FONT_PX * u)
+  const nameSize = fitFontPx(ctx, ind.name, nameFont, NAME_FONT_PX * u, NAME_MAX_WIDTH_PX * u)
+  const word = theme.text.attack
+  const wordSize = fitFontPx(ctx, word, wordFont, ATTACK_FONT_PX * u, NAME_MAX_WIDTH_PX * u)
 
   // The bar's middle, and the side of the text nearest it.
   const barX = troughPx - dir * BAR_LEAD_PX * u
@@ -213,12 +223,12 @@ function drawLabel(
 
   ctx.textAlign = dir === 1 ? 'right' : 'left'
   ctx.textBaseline = 'alphabetic'
-  ctx.font = `600 ${nameFont}px ${LABEL_FONT}`
+  ctx.font = nameFont(nameSize)
   ctx.fillStyle = ATTACK_NAME_COLOR
   ctx.fillText(ind.name, textEdge, cy + NAME_BASELINE_PX * u)
-  ctx.font = `700 ${ATTACK_FONT_PX * u}px ${LABEL_FONT}`
+  ctx.font = wordFont(wordSize)
   ctx.fillStyle = '#ffffff'
-  ctx.fillText('Attack', textEdge, cy + ATTACK_BASELINE_PX * u)
+  ctx.fillText(word, textEdge, cy + ATTACK_BASELINE_PX * u)
   ctx.restore()
 }
 

@@ -6,6 +6,9 @@ import { defineConfig } from 'vite'
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }
 
 export default defineConfig({
+  // Relative, so the bundled fonts resolve next to dist/index.js wherever the
+  // package is installed, rather than from the root of the host's site.
+  base: './',
   define: {
     __MATCH_TRACKER_VERSION__: JSON.stringify(pkg.version),
   },

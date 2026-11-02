@@ -6,6 +6,18 @@
 //     The differences below are that file's own, from datalabelling-frontend.
 //  2. The unused frameCount parameter of draw2DOverlay is named _frameCount, because
 //     noUnusedParameters is on here. The signature and the call are unchanged.
+//  3. Theming and text fitting (theme.ts, fitText.ts). createRenderer takes a
+//     RenderTheme, and setTheme swaps it: the people's colours, the words on
+//     the canvas ("GOAL", "FREE KICK", "THROW IN", "Attack"), the fonts they
+//     are written in, the cards' icons when a layer brings none, and
+//     formatAction for the bottom-left action text. DEFAULT_THEME draws what
+//     the reference draws, in the bundled faces' private family names
+//     ("MatchTracker Montserrat", "MatchTracker Inter") with a CJK fallback
+//     after each. Every card title, the attack's word and the team's name
+//     shrink to fit their card (fitFontPx), from the same place, to no less
+//     than 60% of their size. At the reference's sizes every English word
+//     fits, so nothing shrinks; a team name is shrunk as the reference shrinks
+//     it, except that the reference has no 60% floor.
 //  - the unused FRAME_W import was dropped, because it lints as an error here.
 //  - draw2DOverlay no longer draws the frame-count label. It is drawn onto the
 //    canvas bitmap, which is zoomed and panned, so the label slid off-screen
@@ -60,7 +72,6 @@ import {
   PLAYER_RADIUS,
   CARRIER_GROWTH,
   BALL_RADIUS,
-  PERSON_COLORS,
   DIMMED_PLAYER_ALPHA,
   FOCUS_METRES,
   NEARBY_OUTLINE,
@@ -85,6 +96,7 @@ import { drawThrowInIndicator, type ThrowInIndicator } from './throwIn'
 import { drawGoalBanner, type GoalBanner } from './goalBanner'
 import { footballPatches, UPRIGHT, type Spin } from '../analysis/football'
 import { computeViewMatrix, IDENTITY_VIEW, type PipelineView, type ViewMatrix } from './viewTransform'
+import { DEFAULT_THEME, type RenderTheme } from './theme'
 
 /**
  * What the goal sequence draws over a frame: its own ball, where that ball just
@@ -215,16 +227,23 @@ const TRAIL_DOT_PX = 2.5
 const TRAIL_ALPHA_STEPS = 40
 
 /**
- * Create a 2D renderer bound to a specific canvas element.
+ * Create a 2D renderer bound to a specific canvas element, drawing in `theme`
+ * (theme.ts).
  *
  * Returns:
  *  - `renderFrame(frame, layers)` — draws the given Frame, with any layers
  *     drawn over or under it (FrameLayers).
  *  - `invalidateCache()` — clears the cached pitch image and transform so
  *     they are rebuilt on the next render (call when switching back from 3D).
+ *  - `setView(view)` - the zoom and pan for every later frame.
+ *  - `setTheme(theme)` - the theme for every later frame.
  */
-export function createRenderer(canvas: HTMLCanvasElement) {
+export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTheme = DEFAULT_THEME) {
   const ctx = canvas.getContext('2d')!
+
+  // Colours, words, fonts and icons. The pitch cache uses none of them, so
+  // changing the theme leaves it as it is.
+  let theme = initialTheme
 
   // Zoom and pan live here rather than as a CSS transform on the canvas
   // element. The element has to stay unscaled so a drawing layer can sit over it
@@ -299,7 +318,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
 
     // The attack's shade darkens the markings with the grass, as the design
     // does, and its label goes under everything that moves.
-    if (attack) drawAttackIndicator(ctx as CanvasRenderingContext2D, pd, transform2d, attack)
+    if (attack) drawAttackIndicator(ctx as CanvasRenderingContext2D, pd, transform2d, attack, theme)
 
     // Goals, on every frame; a struck net bows out while it is hit.
     drawGoalNets(ctx as CanvasRenderingContext2D, pd, transform2d, overlay?.net)
@@ -398,13 +417,13 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       ctx.globalAlpha = 1
     }
 
-    if (layers.throwIn) drawThrowInIndicator(ctx as CanvasRenderingContext2D, pd, transform2d, layers.throwIn)
-    if (layers.freeKick) drawFreeKickBanner(ctx as CanvasRenderingContext2D, transform2d, layers.freeKick)
+    if (layers.throwIn) drawThrowInIndicator(ctx as CanvasRenderingContext2D, pd, transform2d, layers.throwIn, theme)
+    if (layers.freeKick) drawFreeKickBanner(ctx as CanvasRenderingContext2D, transform2d, layers.freeKick, theme)
     if (layers.goalBanner) {
       // Fixed to the frame: the goal sequence zooms the view in on the net
       // behind it, and at that scale the card would cover the screen.
       ctx.setTransform(sx, 0, 0, sy, 0, 0)
-      drawGoalBanner(ctx as CanvasRenderingContext2D, transform2d, layers.goalBanner)
+      drawGoalBanner(ctx as CanvasRenderingContext2D, transform2d, layers.goalBanner, theme)
       ctx.setTransform(...matrix)
     }
 
@@ -461,22 +480,23 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   }
 
   /**
-   * A person's colours and outline. Fixed by role; see PERSON_COLORS. Team 0
-   * is home, team 1 away.
+   * A person's colours and outline. Fixed by role, from the theme; by default
+   * PERSON_COLORS. Team 0 is home, team 1 away.
    */
   function personStyle(player: Player, teamId: number) {
     const pt = String(player.person_type ?? '').toUpperCase()
-    const team = teamId === 0 ? PERSON_COLORS.home : teamId === 1 ? PERSON_COLORS.away : null
-    let colors = team ?? PERSON_COLORS.unknown
+    const palette = theme.colors
+    const team = teamId === 0 ? palette.home : teamId === 1 ? palette.away : null
+    let colors = team ?? palette.unknown
     let outline = colors.outline
     let outlineWidth = 2
     if (pt.includes('GOALKEEPER')) {
-      colors = PERSON_COLORS.goalkeeper
+      colors = palette.goalkeeper
       // Ringed in their team's colour, so which team they keep for still shows.
       outline = team?.fill ?? colors.outline
       outlineWidth = 3
     } else if (pt.includes('OFFICIAL') || teamId === -1) {
-      colors = PERSON_COLORS.official
+      colors = palette.official
       outline = colors.outline
     }
     return { colors, outline, outlineWidth }
@@ -687,7 +707,8 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   }
 
   /**
-   * Draw the action-type text (bottom-left).
+   * Draw the action-type text (bottom-left), each action as the theme's
+   * formatAction writes it.
    *
    * The frame-count label used to be drawn here too (top-left), but that put
    * it inside the canvas bitmap, which the surface's zoom/pan is a CSS
@@ -704,7 +725,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
 
     const at = actions
       .filter((a) => a.action_type)
-      .map((a) => String(a.action_type).trim())
+      .map((a) => theme.formatAction(String(a.action_type).trim()))
       .join(', ')
 
     if (at) {
@@ -722,5 +743,13 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     view = computeViewMatrix(next)
   }
 
-  return { renderFrame, invalidateCache, setView }
+  /**
+   * Draw every later frame in `next`. Only colours, words, fonts and icons
+   * change, none of which the pitch cache holds, so nothing is invalidated.
+   */
+  function setTheme(next: RenderTheme): void {
+    theme = next
+  }
+
+  return { renderFrame, invalidateCache, setView, setTheme }
 }

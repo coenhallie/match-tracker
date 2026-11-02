@@ -1,5 +1,6 @@
 import type { Transform2D } from '../model/types'
 import { CARD_MIDDLE_PX, drawCentreCard } from './eventBanner'
+import { DEFAULT_THEME, type RenderTheme } from './theme'
 import { GOAL_SEQUENCE_MS, type GoalPlan } from '../analysis/goalSequence'
 
 /**
@@ -15,7 +16,7 @@ import { GOAL_SEQUENCE_MS, type GoalPlan } from '../analysis/goalSequence'
 export interface GoalBanner {
   /** 0 to 1: how far it has faded in, or out. */
   intensity: number
-  /** The goal icon, once it has loaded. Until then the card is drawn without it. */
+  /** The goal icon, once it has loaded. Until then the card is drawn without it. Default the theme's. */
   icon?: CanvasImageSource | null
 }
 
@@ -38,8 +39,8 @@ const INNER = {
   width: SLOT_PX * (1 - INSET.left - INSET.right),
   height: SLOT_PX * (1 - INSET.top - INSET.bottom),
 }
+/** "GOAL" is the theme's text.goal. */
 const GOAL_CARD = {
-  title: 'GOAL',
   titleLeftPx: CARD_MIDDLE_PX - 133,
   iconBox: {
     left: INNER.left - INNER.width * BLEED.left,
@@ -61,8 +62,14 @@ export function goalBannerIntensity(plan: GoalPlan, elapsedMs: number): number {
 /**
  * Draw the goal's card, in frame units through the context's current
  * transform: the caller sets one without the view, so it stays put while the
- * pitch zooms behind it.
+ * pitch zooms behind it. In the theme's words, font and icon.
  */
-export function drawGoalBanner(ctx: CanvasRenderingContext2D, t: Transform2D, banner: GoalBanner): void {
-  drawCentreCard(ctx, t, { ...GOAL_CARD, icon: banner.icon }, clamp01(banner.intensity))
+export function drawGoalBanner(
+  ctx: CanvasRenderingContext2D,
+  t: Transform2D,
+  banner: GoalBanner,
+  theme: RenderTheme = DEFAULT_THEME,
+): void {
+  const card = { ...GOAL_CARD, title: theme.text.goal, font: theme.fonts.title, icon: banner.icon ?? theme.icons.goal }
+  drawCentreCard(ctx, t, card, clamp01(banner.intensity))
 }

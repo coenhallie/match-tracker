@@ -1,6 +1,7 @@
 import type { Frame, Transform2D } from '../model/types'
 import { frameHasAction } from '../analysis/actionLabels'
 import { CARD_MIDDLE_PX, drawCentreCard } from './eventBanner'
+import { DEFAULT_THEME, type RenderTheme } from './theme'
 
 /**
  * The free kick, as the match-summary design shows it: "FREE KICK" and the
@@ -17,7 +18,10 @@ export interface FreeKickBanner {
   intensity: number
   /** 0 to 1: how far everyone on the pitch has faded out. */
   playersFade: number
-  /** The free kick icon, once it has loaded. Until then the banner is drawn without it. */
+  /**
+   * The free kick icon, once it has loaded. Until then the banner is drawn
+   * without it. Default the theme's.
+   */
   icon?: CanvasImageSource | null
 }
 
@@ -106,12 +110,12 @@ export function playMoved(prev: Frame, next: Frame): boolean {
 }
 
 /**
- * The free kick's card (vp-pitch-1, node 5:22): "FREE KICK", and the free
- * kick icon inset in its 219 px slot at (265, 124) as the design places it.
+ * The free kick's card (vp-pitch-1, node 5:22): "FREE KICK" (the theme's
+ * text.freeKick), and the free kick icon inset in its 219 px slot at
+ * (265, 124) as the design places it.
  */
 const ICON_SLOT_PX = 219
 const FREE_KICK_CARD = {
-  title: 'FREE KICK',
   titleLeftPx: CARD_MIDDLE_PX - 232,
   iconBox: {
     left: 265 + ICON_SLOT_PX * 0.1406,
@@ -125,8 +129,19 @@ const clamp01 = (k: number) => Math.min(1, Math.max(0, k))
 
 /**
  * Draw the free kick banner over everything else on the pitch, in frame units
- * through the context's current transform.
+ * through the context's current transform, in the theme's words, font and icon.
  */
-export function drawFreeKickBanner(ctx: CanvasRenderingContext2D, t: Transform2D, banner: FreeKickBanner): void {
-  drawCentreCard(ctx, t, { ...FREE_KICK_CARD, icon: banner.icon }, clamp01(banner.intensity))
+export function drawFreeKickBanner(
+  ctx: CanvasRenderingContext2D,
+  t: Transform2D,
+  banner: FreeKickBanner,
+  theme: RenderTheme = DEFAULT_THEME,
+): void {
+  const card = {
+    ...FREE_KICK_CARD,
+    title: theme.text.freeKick,
+    font: theme.fonts.title,
+    icon: banner.icon ?? theme.icons.freeKick,
+  }
+  drawCentreCard(ctx, t, card, clamp01(banner.intensity))
 }

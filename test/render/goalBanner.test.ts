@@ -11,6 +11,7 @@ import { build2DTransform, designUnit, worldToPx } from '../../src/render/pitchG
 import { createRenderer } from '../../src/render/renderer'
 import type { Frame } from '../../src/model/types'
 import { fakeCanvas, recordingCtx, stubOffscreenCanvas, type Op } from '../helpers/recordingCtx'
+import { normalizeCalls } from '../helpers/normalize'
 
 const PITCH = { length: 105, width: 68 }
 const T = build2DTransform(PITCH)
@@ -62,7 +63,8 @@ describe('goal card', () => {
   it('writes GOAL where the design has it', () => {
     const text = draw().find((o) => o.op === 'fillText')!
     expect(text.args[0]).toBe('GOAL')
-    expect(text.font).toBe(`italic 900 ${92 * u}px Inter, sans-serif`)
+    // The bundled face's private name and CJK fallback, read as the reference's family (theme.ts).
+    expect((normalizeCalls([text])[0] as Op).font).toBe(`italic 900 ${92 * u}px Inter, sans-serif`)
     expect(text.args[1]).toBeCloseTo(CX - 133 * u, 6)
   })
 

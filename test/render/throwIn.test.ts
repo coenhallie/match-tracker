@@ -5,6 +5,7 @@ import { createRenderer } from '../../src/render/renderer'
 import { FRAME_W } from '../../src/render/constants'
 import type { Frame } from '../../src/model/types'
 import { fakeCanvas, recordingCtx, stubOffscreenCanvas, type Op } from '../helpers/recordingCtx'
+import { normalizeCalls } from '../helpers/normalize'
 
 const PITCH = { length: 105, width: 68 }
 const T = build2DTransform(PITCH)
@@ -72,7 +73,8 @@ describe('throw-in indicator', () => {
     const text = title(ops)!
     const [x, y] = band(ops)
     expect(text.args[0]).toBe('THROW IN')
-    expect(text.font).toBe(`italic 900 ${64 * u}px Inter, sans-serif`)
+    // The bundled face's private name and CJK fallback, read as the reference's family (theme.ts).
+    expect((normalizeCalls([text])[0] as Op).font).toBe(`italic 900 ${64 * u}px Inter, sans-serif`)
     expect(text.fillStyle).toBe('#ffffff')
     expect(text.args[1]).toBeCloseTo(x + (501 / 2 - 165.5) * u, 6)
     expect(text.args[2]).toBeCloseTo(y + (16 + 64 * 0.96875) * u, 6)

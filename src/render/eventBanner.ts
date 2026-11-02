@@ -1,5 +1,7 @@
 import type { Transform2D } from '../model/types'
 import { designUnit, worldToPx } from './pitchGeometry'
+import { fitFontPx } from './fitText'
+import { DEFAULT_THEME } from './theme'
 
 /**
  * What the match-summary design's event banners share (Figma "Game Animation
@@ -15,7 +17,8 @@ const BAND_RGB = '12, 63, 47'
 const BAND_SOLID_FROM = 0.25
 const BAND_SOLID_TO = 0.75481
 
-export const EVENT_TITLE_FONT = 'Inter, sans-serif'
+/** The titles' family list unless a theme gives another: Inter, bundled (theme.ts). */
+export const EVENT_TITLE_FONT = DEFAULT_THEME.fonts.title
 /** Inter's ascent as a share of its size: the baseline below the top of a line box. */
 export const INTER_ASCENT = 0.96875
 /** The title's shadow: 0 4px 24px, black at 15%. */
@@ -42,7 +45,9 @@ export function drawEventBand(
 
 /**
  * Write an event's name, `sizePx` design pixels high, its left edge at `x`
- * and its baseline at `baseline`, in frame units.
+ * and its baseline at `baseline`, in frame units, in the family list `font`.
+ * Text wider than `maxWidthPx` design pixels is drawn smaller to fit
+ * (fitText.ts), from the same left edge and baseline.
  */
 export function drawEventTitle(
   ctx: CanvasRenderingContext2D,
@@ -51,15 +56,19 @@ export function drawEventTitle(
   x: number,
   baseline: number,
   sizePx: number,
+  font: string = EVENT_TITLE_FONT,
+  maxWidthPx = Infinity,
 ): void {
   const u = designUnit(t)
+  const fontAt = (px: number) => `italic 900 ${px * u}px ${font}`
+  const px = fitFontPx(ctx, text, fontAt, sizePx, maxWidthPx * u)
   // A shadow is drawn in the bitmap's pixels, whatever the transform.
   const scale = ctx.getTransform().a * u
   ctx.shadowColor = TITLE_SHADOW_COLOR
   ctx.shadowBlur = TITLE_SHADOW_BLUR_PX * scale
   ctx.shadowOffsetX = 0
   ctx.shadowOffsetY = TITLE_SHADOW_Y_PX * scale
-  ctx.font = `italic 900 ${sizePx * u}px ${EVENT_TITLE_FONT}`
+  ctx.font = fontAt(px)
   ctx.textAlign = 'left'
   ctx.textBaseline = 'alphabetic'
   ctx.fillStyle = '#ffffff'
@@ -78,6 +87,8 @@ export interface CardBox {
 /** What a centred event card shows: its title, and its icon once loaded. */
 export interface CentreCard {
   title: string
+  /** The title's family list. Default EVENT_TITLE_FONT. */
+  font?: string | undefined
   /** The title's left edge, in design pixels from the card's. */
   titleLeftPx: number
   icon?: CanvasImageSource | null | undefined
@@ -92,7 +103,13 @@ export interface CentreCard {
 const CARD_WIDTH_PX = 736
 const CARD_HEIGHT_PX = 373
 const CARD_TITLE_PX = 92
-const CARD_TITLE_BASELINE_PX = 13 + CARD_TITLE_PX * INTER_ASCENT
+const CARD_TITLE_TOP_PX = 13
+const CARD_TITLE_BASELINE_PX = CARD_TITLE_TOP_PX + CARD_TITLE_PX * INTER_ASCENT
+/**
+ * The title fits inside the card, keeping the clearance it has above it from
+ * the card's right edge. Every English title fits at its full size.
+ */
+const CARD_TITLE_RIGHT_PX = CARD_WIDTH_PX - CARD_TITLE_TOP_PX
 /** The card's middle, in design pixels from its left edge, for laying titles out from. */
 export const CARD_MIDDLE_PX = CARD_WIDTH_PX / 2
 
@@ -110,7 +127,16 @@ export function drawCentreCard(ctx: CanvasRenderingContext2D, t: Transform2D, ca
   ctx.save()
   ctx.globalAlpha = alpha
   drawEventBand(ctx, left, top, CARD_WIDTH_PX * u, CARD_HEIGHT_PX * u)
-  drawEventTitle(ctx, t, card.title, left + card.titleLeftPx * u, top + CARD_TITLE_BASELINE_PX * u, CARD_TITLE_PX)
+  drawEventTitle(
+    ctx,
+    t,
+    card.title,
+    left + card.titleLeftPx * u,
+    top + CARD_TITLE_BASELINE_PX * u,
+    CARD_TITLE_PX,
+    card.font,
+    CARD_TITLE_RIGHT_PX - card.titleLeftPx,
+  )
   if (card.icon) {
     const box = card.iconBox
     ctx.drawImage(card.icon, left + box.left * u, top + box.top * u, box.width * u, box.height * u)
