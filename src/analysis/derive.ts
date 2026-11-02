@@ -21,7 +21,8 @@ export function windowAt(records: readonly TrackerRecord[], at: TrackerRecord): 
   for (const r of records) {
     if (r.frameCount !== at.frameCount && r.t >= from && r.t <= at.t) byFrame.set(r.frameCount, r)
   }
-  return [...byFrame.values()].toSorted((a, b) => a.t - b.t)
+  // sort() on a fresh array rather than toSorted(): toSorted needs ES2023 (Safari 16), the widget targets ES2022.
+  return [...byFrame.values()].sort((a, b) => a.t - b.t)
 }
 
 /** The phase and the ball trail at `at`, from a window of records that holds it, in time order. */
