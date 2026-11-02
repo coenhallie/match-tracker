@@ -59,15 +59,20 @@ describe('Director', () => {
     })
 
     // Reference :496, 'attaches the renderer and draws when state flips to ready'. The director has no
-    // replay state: the first record it is given stands for the replay becoming ready, which paints once
-    // in the frame watcher and again in the ready watcher (:1311-1319).
-    it('draws the first record it is given, as the frame and ready watchers both do', () => {
+    // replay state: the first record it is given stands for the replay becoming ready. The frame watcher
+    // attaches the renderer on it, which pushes the view and paints before the rings have settled on the
+    // record (ensureRenderer, :1239-1255; golden step 0 of every fixture), then paints itself, and the ready
+    // watcher (:1311-1319) paints once more.
+    it('draws the first record it is given, as the renderer attaching and the frame and ready watchers do', () => {
       const replay = new FakeReplay()
       const output = replay.ready(frameWith())
       expect(output.paint).toBe(true)
-      expect(output.paints).toHaveLength(2)
-      expect(output.paints[0]).toEqual(output.paints[1])
-      expect(output.layers).toBe(output.paints[1])
+      expect(output.paints).toHaveLength(3)
+      // The carrier has no ring yet as the renderer attaches.
+      expect(output.paints[0]!.layers.rings?.possession).toEqual(new Map())
+      expect(output.paints[1]!.layers.rings?.possession).toEqual(new Map([[1, 1]]))
+      expect(output.paints[1]).toEqual(output.paints[2])
+      expect(output.layers).toBe(output.paints[2]!.layers)
     })
 
     it('draws the layers as paint() does', () => {
@@ -312,7 +317,7 @@ describe('Director', () => {
         },
         VIEW,
       )
-      expect(again.paints).toHaveLength(2)
+      expect(again.paints).toHaveLength(3)
       expect(again.layers).toEqual(fresh.ready(frameWith(30, 1)).layers)
     })
   })

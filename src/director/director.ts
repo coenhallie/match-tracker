@@ -3,8 +3,9 @@
  * PipelineOutputSurface.vue (video-annotation 6f14d1f) with no framework
  * under it. Given what is on screen, the playback clock and whether play is
  * running, it decides what is drawn over the data: the moments (goal, attack,
- * free kick, throw-in), the rings and the "received" covers, and how the ball
- * is turned. It owns no DOM and no clock; its caller drives it.
+ * free kick, throw-in), the rings and the "received" covers, how the ball is
+ * turned, and where the view is while a goal moves it. It owns no DOM and no
+ * clock; its caller drives it.
  *
  * ## One update is one flush of the reference's watchers
  *
@@ -16,19 +17,27 @@
  *     stops and the label and ball memory is forgotten. A stop paints, and it
  *     paints with the record, phase and trail of the update before: the
  *     reference's sync watcher runs while the old record is still on screen.
- *  2. Pause (`:583-594`). When `playing` went from true to false: every
- *     moment stops, the rings settle, and it paints, with the new record.
- *  3. The frame watcher (`:1268-1309`). When the record, phase, time or
- *     trail changed and there is a record: on a new record, label detection
- *     (in the reference's order: goal, free kick, throw-in, attack); then the
- *     rings and covers move on by `dt = time - previous time` on a playback
- *     step while playing without reduced motion, or settle; then it paints if
- *     the record, phase or trail changed, or a fade was or is running.
- *  4. Ready (`:1311-1319`). The director has no loading state: the first
- *     record it is given stands for the replay becoming ready, and paints
- *     once more, as the reference's ready watcher does after its frame
- *     watcher.
- *  5. The moments' animation frames (`goalStep` and the like): see below.
+ *  2. Pause (`:583-594`, flush pre). When `playing` went from true to false:
+ *     every moment stops, the rings settle, and it paints, with the new record.
+ *  3. The view (`:213`, flush post, the first post watcher): when the zoom and
+ *     pan moved (a goal's stop puts the user's view back), the renderer is
+ *     given the new view and it paints.
+ *  4. The frame watcher (`:1268-1309`, flush post). When the record, phase,
+ *     time or trail changed and there is a record: on a new record, label
+ *     detection (in the reference's order: goal, free kick, throw-in, attack);
+ *     then the rings and covers move on by `dt = time - previous time` on a
+ *     playback step while playing without reduced motion, or settle; then it
+ *     paints if the record, phase or trail changed, or a fade was or is
+ *     running.
+ *  5. Ready (`:1311-1319`, flush post). The director has no loading state:
+ *     the first record it is given stands for the replay becoming ready. On
+ *     that record the frame watcher first attaches the renderer, which pushes
+ *     the view and paints before anything else (`ensureRenderer`,
+ *     `:1239-1255`), and the ready watcher paints once more after it.
+ *  6. The moments' animation frames, when this update is a new animation
+ *     frame: see "The moments" below. Each is a callback of its own, and the
+ *     view (3) is flushed after each, as a goal frame moves the camera: its
+ *     own paint still has the old view, and the view's push paints again.
  *
  * Identity decides "changed", as for Vue refs. A caller hands over the same
  * record object while it stands. Phase and trail may come fresh on every
@@ -38,64 +47,86 @@
  * Every reference `paint()` is a paint here (`paint` below): it turns the
  * ball (ballRoll.ts), which is why a paint has to happen exactly where the
  * reference's does and nowhere else, and it takes a copy of everything it
- * draws. `DirectorOutput.paints` lists an update's paints in order, `paint`
- * says whether there was one, and `layers` is the last paint ever made: what
- * the canvas shows. An update that paints nothing must draw nothing, as the
- * golden steps with no calls are clock ticks that drew nothing.
+ * draws. `DirectorOutput.paints` lists a call's paints in order, each with
+ * the frame it drew and the view the renderer had for it; `paint` says
+ * whether there was one, and `layers` is the last paint ever made: what the
+ * canvas shows. A call that paints nothing must draw nothing, as the golden
+ * steps with no calls are clock ticks that drew nothing.
  *
- * ## Golden steps and updates
+ * ## The view
+ *
+ * The reference keeps the user's zoom and pan in refs, which its gestures
+ * and the goal's camera both write, and hands them to the renderer when they
+ * change. The director keeps the same two things: the user's view (`view`)
+ * and the view each paint is drawn in (`DirectorPaint.view`).
+ *
+ *  - The caller's own changes (a wheel, a pan, a double click, a resize) go
+ *    in through `setView`, which pushes and paints, as the reference's
+ *    gesture handlers and `applyBitmapSize` do. Before a gesture that takes
+ *    the view over from a goal (camera.ts, `takesCamera`), call
+ *    `releaseCamera`.
+ *  - The view passed to `update` and `trigger` is the caller's view as it
+ *    holds it. It is taken as a change, and pushed as `setView` would, only
+ *    when it differs both from the view the director has and from the view
+ *    last passed to `update` or `trigger`. So a caller that adopts `camera`,
+ *    and one that passes the same view throughout and makes its changes
+ *    through `setView`, both work.
+ *  - `camera` in an output is the view a sequence moved to since the last
+ *    output. The director has already drawn in it; a caller that keeps its
+ *    own zoom and pan takes it as theirs.
+ *
+ * ## Golden steps and calls
  *
  * The golden recordings (video-annotation's goldens, Task 1) have one step
  * per reference paint, and a flush can paint several times. In
  * `seek-mid-goal`, steps 172 to 174 are one seek: 172 is the stop-paint at
  * the new time with the old record (and the goal's view), 173 the view
- * pushed back with the new record, 174 the frame watcher. Steps 64 to 66 of
- * the same file are one animation frame in three callbacks: the replay's
- * tick, `goalStep`, and the view `goalStep` set reaching the renderer. A
- * harness replaying the goldens therefore has to group steps into flushes
- * and callbacks, and compare `paints` in order, rather than treat every step
- * as an update.
+ * pushed back (3 above) with the new record, 174 the frame watcher. Steps 64
+ * to 66 of the same file are one animation frame: the replay's tick, the
+ * goal's frame with the old view, and its view's push. The parity test
+ * (test/parity/goldens.test.ts) groups steps into calls and compares
+ * `paints` in order.
  *
- * ## The moment seam
+ * ## The moments
  *
- * Each moment is a module of its own (`goal.ts` in Task 8; `attack.ts`,
- * `freeKick.ts`, `throwIn.ts` in Task 9) behind the narrow interfaces below,
- * and the director holds one of each in a slot. In this task every slot is
- * idle: nothing shows and nothing starts.
+ * Each moment is a module of its own (`goal.ts`, `attack.ts`, `freeKick.ts`,
+ * `throwIn.ts`) behind the narrow interface in moment.ts, reading and acting
+ * through the `MomentContext` the director lends it. The director holds one
+ * of each, and does what crosses between them: which takes over from which,
+ * and every paint.
  *
- *  - `active` is the reference's `x !== null || xRaf !== null`.
- *  - `step(nowMs)` is the moment's animation frame callback. It says whether
- *    it painted ('paint'), is over ('stop': the director stops it, which
- *    paints, as `stopX` does) or had no frame due ('wait'). The director
- *    steps active moments after the watchers, in `order`: the order their
- *    animation frames were requested, which is the order they started. A
- *    moment's `startedMs` is the first frame after its start, so a moment
- *    should not step at the `nowMs` it was started at.
+ *  - An animation frame is an update whose `nowMs` is later than the last
+ *    one's. The moments due in it are those requested before it began, in
+ *    request order, as the browser runs rAF callbacks: a moment started
+ *    during a frame gets its first frame at the next one, and a moment's
+ *    `startedMs` is that first frame. The replay's clock is taken as the
+ *    frame's first callback, as it is in the reference whenever play runs.
+ *  - `step(nowMs)` is the moment's callback: it painted and goes on
+ *    ('paint', requested again), or it is over ('stop': the director stops
+ *    it, which paints, as `stopX` does).
  *  - `stop()` ends it at once and says whether it was active; the director
- *    then paints, as `stopX` does. The goal's stop also hands back the view
- *    it started from (`camera`), which the director must output before that
- *    paint.
- *  - What each draws is read at paint time: `overlay`/`banner` for the goal,
- *    `value` for the others, and the attack's `moment()`, whose trail and
- *    spin replace the replay's while it is showing (`:184-212`).
- *  - Starting is each module's own, from the director's label detection in
- *    step 3 and from `trigger`. Starting a moment must push it onto `order`;
- *    `stopMoment` takes it off.
+ *    then paints and cancels its request. The goal's stop puts the user's
+ *    view back first, which reaches the renderer at the next view flush.
+ *  - What each draws is read at paint time.
  *  - Label and ball memory that a seek forgets lives in `memory`, so step 1
  *    can clear it without knowing the modules.
  */
 import { sameTrail, type BallTrail } from '../analysis/ballTrail'
-import type { Spin } from '../analysis/football'
 import { samePhase, type TeamId, type TeamPhase } from '../analysis/teamPhase'
 import type { ReplayLayers, ReplayMoment } from '../model/replayLayers'
-import type { TrackerRecord } from '../model/types'
+import type { Frame, TrackerRecord } from '../model/types'
 import type { AttackIndicator } from '../render/attackIndicator'
 import type { FreeKickBanner } from '../render/freeKick'
-import type { GoalBanner } from '../render/goalBanner'
-import type { FrameLayers, GoalOverlay } from '../render/renderer'
+import type { FrameLayers } from '../render/renderer'
 import type { ThrowInIndicator } from '../render/throwIn'
+import { viewFromCamera, type Camera } from '../render/viewTransform'
+import type { Spin } from '../analysis/football'
 import { BallRoll } from './ballRoll'
+import { Goal } from './goal'
+import type { Moment, MomentContext, MomentMemory, MomentStep, ShownReplay } from './moment'
 import { Rings } from './rings'
+
+export type { Moment, MomentContext, MomentMemory, MomentStep } from './moment'
 
 export interface DirectorInput {
   /** The animation frame's timestamp, in ms: what moments time themselves by. */
@@ -118,11 +149,19 @@ export interface DirectorView {
   renderedWidth: number
 }
 
-/** A view the director sets while a sequence drives it. */
+/** The user's zoom and pan, as a sequence sets them. */
 export interface DirectorCamera {
   zoom: number
   panX: number
   panY: number
+}
+
+/** One reference `paint()`: what the renderer is given to draw. */
+export interface DirectorPaint {
+  frame: Frame
+  layers: FrameLayers
+  /** The view the renderer has for this paint. */
+  view: DirectorView
 }
 
 export interface DirectorOutput {
@@ -131,8 +170,8 @@ export interface DirectorOutput {
   /** Whether this call painted: the canvas is drawn only then. */
   paint: boolean
   /** This call's paints, in order. `layers` is the last of them when there are any. */
-  paints: readonly FrameLayers[]
-  /** Set while a sequence drives the view. */
+  paints: readonly DirectorPaint[]
+  /** The user's view as a sequence moved it since the last output, or null when none did. */
   camera: DirectorCamera | null
   /** True while any moment or fade needs another tick. */
   animating: boolean
@@ -144,23 +183,6 @@ export interface DirectorOptions {
   reducedMotion: () => boolean
   teamName: (team: TeamId) => string
   teamColor: (team: TeamId) => string
-}
-
-/** What a moment's animation frame did. */
-export type MomentStep = 'paint' | 'stop' | 'wait'
-
-/** A moment, as the director drives it. See "The moment seam" above. */
-export interface Moment {
-  readonly active: boolean
-  step(nowMs: number): MomentStep
-  stop(): boolean
-}
-
-export interface GoalMoment extends Moment {
-  overlay(): GoalOverlay | undefined
-  banner(): GoalBanner | undefined
-  camera(): DirectorCamera | null
-  releaseCamera(): void
 }
 
 export interface AttackMoment extends Moment {
@@ -177,148 +199,142 @@ export interface ThrowInMoment extends Moment {
   value(): ThrowInIndicator | undefined
 }
 
-/** What a seek forgets (`:574-579`), shared by the free kick and throw-in modules. */
-export interface MomentMemory {
-  /** The replay time the free kick label was last seen at, or null. */
-  freeKickLabelAt: number | null
-  /** The replay time the throw-in label was last seen at, or null. */
-  throwInLabelAt: number | null
-  /** Where along the pitch the ball was last tracked, in metres, and when. */
-  lastBall: { x: number; at: number } | null
-  /** The replay time anyone on the pitch, or the ball, last moved at. */
-  playMovedAt: number
-}
-
-/** What the replay's watchers last saw. */
-interface Seen {
-  time: number
-  playing: boolean
-  record: TrackerRecord | null
-  phase: TeamPhase | null
-  trail: BallTrail | null
-}
-
 /** The reference's refs as the surface mounts: the clock at 0, paused, nothing on screen. */
-const NOTHING_SEEN: Seen = { time: 0, playing: false, record: null, phase: null, trail: null }
+const NOTHING_SEEN: ShownReplay = { time: 0, playing: false, record: null, phase: null, trail: null }
 
-const IDLE = { active: false, step: (): MomentStep => 'wait', stop: () => false } as const
+const IDLE = { active: false, step: (): MomentStep => 'stop', stop: () => false, reset: () => {} } as const
 
-// The slots until Tasks 8 and 9 fill them: nothing shows, and nothing starts.
-const idleGoal = (): GoalMoment => ({
-  ...IDLE,
-  overlay: () => undefined,
-  banner: () => undefined,
-  camera: () => null,
-  releaseCamera: () => {},
-})
+// The slots until Task 9 fills them: nothing shows, and nothing starts.
 const idleAttack = (): AttackMoment => ({ ...IDLE, value: () => undefined, moment: () => null })
 const idleFreeKick = (): FreeKickMoment => ({ ...IDLE, value: () => undefined })
 const idleThrowIn = (): ThrowInMoment => ({ ...IDLE, value: () => undefined })
 
 const freshMemory = (): MomentMemory => ({ freeKickLabelAt: null, throwInLabelAt: null, lastBall: null, playMovedAt: 0 })
 
+/** The zoom and pan the surface mounts with: the whole pitch. */
+const WHOLE_PITCH: DirectorCamera = { zoom: 1, panX: 0, panY: 0 }
+
+/** As the view watcher compares its sources, each with Object.is. */
+const sameCamera = (a: DirectorCamera, b: DirectorCamera) =>
+  Object.is(a.zoom, b.zoom) && Object.is(a.panX, b.panX) && Object.is(a.panY, b.panY)
+const sameView = (a: DirectorView, b: DirectorView) => sameCamera(a, b) && Object.is(a.renderedWidth, b.renderedWidth)
+const cameraOf = (view: DirectorCamera): DirectorCamera => ({ zoom: view.zoom, panX: view.panX, panY: view.panY })
+
+/** A moment's request for the next animation frame. Cancelled when it stops. */
+interface FrameRequest {
+  moment: Moment
+  live: boolean
+}
+
 export class Director {
   private options: DirectorOptions
   private layers: ReplayLayers
   private readonly rings = new Rings()
   private readonly roll = new BallRoll()
-  private readonly goal: GoalMoment = idleGoal()
+  private readonly context: MomentContext
+  private readonly goal: Goal
   private readonly attack: AttackMoment = idleAttack()
   private readonly freeKick: FreeKickMoment = idleFreeKick()
   private readonly throwIn: ThrowInMoment = idleThrowIn()
-  /** The active moments, in the order their animation frames were requested. */
-  private readonly order: Moment[] = []
+  /** The moments' requests for the next animation frame, in the order they were made. */
+  private requests: FrameRequest[] = []
+  /** The requests the frame now running is calling, so a stop can cancel one not yet called. */
+  private due: FrameRequest[] = []
+  /** The last animation frame's timestamp. */
+  private frameMs = -Infinity
   private memory: MomentMemory = freshMemory()
   /** The input of the update before. */
-  private seen: Seen = NOTHING_SEEN
+  private seen: ShownReplay = NOTHING_SEEN
   /** The replay's refs as the watchers running now read them. */
-  private shown: Seen = NOTHING_SEEN
+  private shown: ShownReplay = NOTHING_SEEN
   private lastStepWasPlayback = false
   /** Whether the first record has been drawn: the stand-in for the replay's ready state. */
   private ready = false
   private painted: FrameLayers | null = null
-  private paints: FrameLayers[] = []
-  private lastView: DirectorView | null = null
+  private paints: DirectorPaint[] = []
+  /** The user's zoom and pan: the reference's refs. */
+  private userView: DirectorCamera = WHOLE_PITCH
+  /** The width the frame is drawn at, in CSS px: the reference's `renderedWidth()`. */
+  private renderedWidth = 0
+  /** The zoom and pan as the view watcher last saw them. */
+  private flushedView: DirectorCamera = WHOLE_PITCH
+  /** The view the renderer was last given. */
+  private rendered: DirectorView = { ...WHOLE_PITCH, renderedWidth: 0 }
+  /** The view the caller last passed, or null before it passed one. */
+  private passedView: DirectorView | null = null
+  /** The view a sequence moved to since the last output. */
+  private movedTo: DirectorCamera | null = null
 
   constructor(options: DirectorOptions) {
     this.options = { ...options }
     this.layers = { ...options.layers }
+    this.context = {
+      shown: () => this.shown,
+      playback: () => this.lastStepWasPlayback,
+      layers: () => this.layers,
+      memory: () => this.memory,
+      spin: () => this.roll.spin,
+      view: () => this.view,
+      reducedMotion: () => this.options.reducedMotion(),
+      teamName: (team) => this.options.teamName(team),
+      teamColor: (team) => this.options.teamColor(team),
+      showCamera: (camera) => this.showCamera(camera),
+    }
+    this.goal = new Goal(this.context)
   }
 
-  /** The view the caller last gave, which a sequence's camera starts from. */
-  get view(): DirectorView | null {
-    return this.lastView
+  /** The user's view: their zoom and pan, or where a sequence has put them, and the width drawn at. */
+  get view(): DirectorView {
+    return { ...this.userView, renderedWidth: this.renderedWidth }
   }
 
-  /** Take in one flush of the replay: see "One update is one flush" above. */
+  /** Take in one flush of the replay, and one animation frame when `nowMs` is a new one: see the top. */
   update(input: DirectorInput, view: DirectorView): DirectorOutput {
     this.paints = []
-    this.lastView = view
-    const before = this.seen
-    const next: Seen = {
-      time: input.time,
-      playing: input.playing,
-      record: input.record,
-      // A phase and a trail are worked out afresh for every record, but hold
-      // for many: as setHistory does (usePipelineReplay.ts:485-499), an equal
-      // one keeps the one already seen, so it is not taken for a change.
-      phase:
-        before.phase && input.phase && samePhase(before.phase, input.phase) ? before.phase : input.phase,
-      trail: sameTrail(before.trail, input.trail) ? before.trail : input.trail,
-    }
-    this.seen = next
-    // 1. The clock, before the record it brought in: still showing the old one.
-    this.shown = { ...before, time: next.time, playing: next.playing }
-    if (next.time !== before.time) this.clockMoved(input.playback)
-    this.shown = next
-    // 2. Pause.
-    if (before.playing && !next.playing) {
-      this.stopSequences()
-      this.rings.settle(next.record?.frame ?? null)
-      this.paint()
-    }
-    // 3. The frame watcher.
-    if (
-      next.record !== before.record ||
-      next.phase !== before.phase ||
-      next.time !== before.time ||
-      next.trail !== before.trail
-    ) {
-      this.frameChanged(before)
-    }
-    // 4. Ready.
-    if (!this.ready && next.record) {
-      this.ready = true
-      this.paint()
-    }
-    // 5. The moments' animation frames.
-    this.stepMoments(input.nowMs)
+    this.takeView(view)
+    const due = this.beginFrame(input.nowMs)
+    this.flush(input)
+    this.runFrame(due, input.nowMs)
     return this.output()
   }
 
   /**
-   * Play `moment` now; for an attack, `team`'s. False when it cannot be
-   * played here. Task 9 ports triggerMoment (`:1038-1063`); until then no
-   * moment can be played.
+   * The caller's own view changed: a wheel, a pan, a double click or a
+   * resize. It is pushed to the renderer and the frame is drawn again, as the
+   * reference's view watcher and `applyBitmapSize` do.
    */
-  trigger(_moment: ReplayMoment, _team: TeamId, input: DirectorInput, view: DirectorView): boolean {
-    this.lastView = view
-    // The reference plays nothing without a frame on screen.
-    if (!input.record) return false
-    return false
+  setView(view: DirectorView): DirectorOutput {
+    this.paints = []
+    this.applyView(view)
+    return this.output()
+  }
+
+  /**
+   * Play `moment` now; for an attack, `team`'s. Task 9 ports triggerMoment
+   * (`:1038-1063`); until then no moment can be played. Null when there is no
+   * record on screen, as the reference plays nothing without a frame.
+   */
+  trigger(_moment: ReplayMoment, _team: TeamId, input: DirectorInput, view: DirectorView): DirectorOutput | null {
+    this.paints = []
+    this.takeView(view)
+    this.flush(input)
+    if (!this.shown.record) return null
+    return this.output()
   }
 
   /** Someone wants the real frame and their own view: end every sequence (`stopSequences`). */
   stopAll(): DirectorOutput {
     this.paints = []
     this.stopSequences()
+    this.flushView()
     return this.output()
   }
 
   /**
    * The layers in force, as the layers menu switches them (`toggleLayer`,
-   * `:108-118`): a moment switched off mid-way ends now, rings whose fades are
-   * switched off settle, and the frame is drawn again.
+   * `:108-118`): a moment switched off mid-way ends now, putting the user's
+   * view back, rings whose fades are switched off settle, and the frame is
+   * drawn again.
    */
   setLayers(layers: ReplayLayers): DirectorOutput {
     this.paints = []
@@ -330,6 +346,7 @@ export class Director {
     if (before.throwInBanner && !layers.throwInBanner) this.stopMoment(this.throwIn)
     if (before.ringFades && !layers.ringFades) this.rings.settle(this.shown.record?.frame ?? null)
     this.paint()
+    this.flushView()
     return this.output()
   }
 
@@ -343,10 +360,16 @@ export class Director {
     this.goal.releaseCamera()
   }
 
-  /** Forget everything, for a new match or a reconnect: as if just made. Draws nothing. */
+  /**
+   * Forget everything, for a new match or a reconnect: as if just made, but
+   * for the view. Draws nothing. A goal showing puts the user's view back,
+   * which the next output reports as `camera`.
+   */
   reset(): void {
-    for (const moment of [this.goal, this.attack, this.freeKick, this.throwIn]) moment.stop()
-    this.order.length = 0
+    this.goal.stop()
+    for (const moment of [this.goal, this.attack, this.freeKick, this.throwIn]) moment.reset()
+    this.requests = []
+    this.due = []
     this.rings.clear()
     this.roll.reset()
     this.memory = freshMemory()
@@ -356,6 +379,48 @@ export class Director {
     this.ready = false
     this.painted = null
     this.paints = []
+  }
+
+  /** Steps 1 to 5 of "One update is one flush". */
+  private flush(input: DirectorInput): void {
+    const before = this.seen
+    const next: ShownReplay = {
+      time: input.time,
+      playing: input.playing,
+      record: input.record,
+      // A phase and a trail are worked out afresh for every record, but hold
+      // for many: as setHistory does (usePipelineReplay.ts:485-499), an equal
+      // one keeps the one already seen, so it is not taken for a change.
+      phase: before.phase && input.phase && samePhase(before.phase, input.phase) ? before.phase : input.phase,
+      trail: sameTrail(before.trail, input.trail) ? before.trail : input.trail,
+    }
+    this.seen = next
+    // 1. The clock, before the record it brought in: still showing the old one.
+    this.shown = { ...before, time: next.time, playing: next.playing }
+    if (next.time !== before.time) this.clockMoved(input.playback)
+    this.shown = next
+    // 2. Pause.
+    if (before.playing && !next.playing) {
+      this.stopSequences()
+      this.rings.settle(next.record?.frame ?? null)
+      this.paint()
+    }
+    // 3. The view.
+    this.flushView()
+    // 4. The frame watcher.
+    if (
+      next.record !== before.record ||
+      next.phase !== before.phase ||
+      next.time !== before.time ||
+      next.trail !== before.trail
+    ) {
+      this.frameChanged(before)
+    }
+    // 5. Ready.
+    if (!this.ready && next.record) {
+      this.ready = true
+      this.paint()
+    }
   }
 
   /** The currentTime watcher (`:562-581`). */
@@ -372,14 +437,22 @@ export class Director {
   }
 
   /** The frame watcher (`:1268-1309`), with `before` what it last saw. */
-  private frameChanged(before: Seen): void {
+  private frameChanged(before: ShownReplay): void {
     const { record, phase, trail, time } = this.shown
     const playing = this.shown.playing && this.lastStepWasPlayback && !this.options.reducedMotion()
     if (!record) return
     if (record !== before.record) {
-      // Label detection, in the reference's order (:1280-1293): the goal and
-      // goalLabelSeen (Task 8, goal.ts), then updateFreeKick(frame, prevFrame,
-      // now), updateThrowIn(frame, now) and maybeStartAttack(frame) (Task 9).
+      // ensureRenderer: the first record attaches the renderer, which is given the view and paints.
+      if (!this.ready) this.pushView()
+      const frame = record.frame
+      if (this.goal.detect(frame)) {
+        // The goal takes over from any other moment still showing.
+        this.stopMoment(this.attack)
+        this.stopMoment(this.freeKick)
+        this.stopMoment(this.throwIn)
+        if (this.goal.start(frame)) this.request(this.goal)
+      }
+      // Task 9: updateFreeKick(frame, prevFrame, time), updateThrowIn(frame, time), maybeStartAttack(frame).
     }
     // A fade that has just finished still needs the paint that shows its end.
     const wasFading = this.rings.fading()
@@ -396,15 +469,40 @@ export class Director {
     }
   }
 
-  /** Each active moment's animation frame, in the order they were requested. */
-  private stepMoments(nowMs: number): void {
-    // A copy: a moment that ends leaves `order` while this goes through it.
-    for (const moment of this.order.slice()) {
-      if (!moment.active) continue
-      const result = moment.step(nowMs)
-      if (result === 'paint') this.paint()
-      else if (result === 'stop') this.stopMoment(moment)
+  /** The requests due in the frame at `nowMs`, if it is a new frame; none if not. */
+  private beginFrame(nowMs: number): FrameRequest[] {
+    if (!(nowMs > this.frameMs)) return []
+    this.frameMs = nowMs
+    const due = this.requests
+    this.requests = []
+    return due
+  }
+
+  /** Each moment's animation frame, in the order requested, the view flushed after each. */
+  private runFrame(due: FrameRequest[], nowMs: number): void {
+    this.due = due
+    for (const request of due) {
+      if (!request.live) continue
+      const { moment } = request
+      if (moment.step(nowMs) === 'paint') {
+        this.paint()
+        this.request(moment)
+      } else {
+        this.stopMoment(moment)
+      }
+      this.flushView()
     }
+    this.due = []
+  }
+
+  private request(moment: Moment): void {
+    this.requests.push({ moment, live: true })
+  }
+
+  /** `cancelAnimationFrame` on `moment`'s request, made for the next frame or due in this one. */
+  private cancel(moment: Moment): void {
+    for (const request of [...this.requests, ...this.due]) if (request.moment === moment) request.live = false
+    this.requests = this.requests.filter((request) => request.live)
   }
 
   /** `stopSequences` (`:597-602`): every moment, in the reference's order. */
@@ -418,8 +516,50 @@ export class Director {
   /** `stopGoal` and the like: end `moment` at once, and paint the frame as it is if it was showing. */
   private stopMoment(moment: Moment): void {
     if (!moment.stop()) return
-    const at = this.order.indexOf(moment)
-    if (at >= 0) this.order.splice(at, 1)
+    this.cancel(moment)
+    this.paint()
+  }
+
+  /** A view passed with an update or a trigger: see "The view" above. */
+  private takeView(view: DirectorView): void {
+    const passed = this.passedView
+    this.passedView = { ...view }
+    if (passed === null) {
+      // The first view: the one the renderer starts with.
+      this.userView = cameraOf(view)
+      this.renderedWidth = view.renderedWidth
+      this.flushedView = cameraOf(view)
+      this.rendered = { ...view }
+      return
+    }
+    if (sameView(view, passed) || sameView(view, this.view)) return
+    this.applyView(view)
+  }
+
+  /** The caller's view, as theirs: pushed, and drawn. */
+  private applyView(view: DirectorView): void {
+    this.userView = cameraOf(view)
+    this.renderedWidth = view.renderedWidth
+    this.flushedView = cameraOf(view)
+    this.pushView()
+  }
+
+  /** `showCamera` (`:490-496`): the user's view on `camera`, until the view is next flushed. */
+  private showCamera(camera: Camera): void {
+    this.userView = viewFromCamera(camera, this.renderedWidth)
+    this.movedTo = { ...this.userView }
+  }
+
+  /** The view watcher (`:213`): when the zoom or pan moved since it last ran, push them. */
+  private flushView(): void {
+    if (sameCamera(this.userView, this.flushedView)) return
+    this.flushedView = { ...this.userView }
+    this.pushView()
+  }
+
+  /** `pushView` (`:167-180`): the renderer gets the user's view, and the frame is drawn again in it. */
+  private pushView(): void {
+    this.rendered = this.view
     this.paint()
   }
 
@@ -454,16 +594,18 @@ export class Director {
       received: this.rings.covers(),
     }
     this.painted = layers
-    this.paints.push(layers)
+    this.paints.push({ frame: record.frame, layers, view: { ...this.rendered } })
   }
 
   private output(): DirectorOutput {
     const moments = [this.goal, this.attack, this.freeKick, this.throwIn]
+    const camera = this.movedTo
+    this.movedTo = null
     return {
       layers: this.painted,
       paint: this.paints.length > 0,
       paints: this.paints,
-      camera: this.goal.camera(),
+      camera,
       animating: moments.some((m) => m.active) || this.rings.fading(),
     }
   }

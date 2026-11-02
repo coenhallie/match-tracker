@@ -1,5 +1,5 @@
 import type { BallTrail } from '../../src/analysis/ballTrail'
-import type { TeamPhase } from '../../src/analysis/teamPhase'
+import type { TeamId, TeamPhase } from '../../src/analysis/teamPhase'
 import {
   Director,
   type DirectorInput,
@@ -8,15 +8,15 @@ import {
   type DirectorView,
 } from '../../src/director/director'
 import { nextPlayback } from '../../src/director/playback'
-import { DEFAULT_REPLAY_LAYERS, type ReplayLayers } from '../../src/model/replayLayers'
+import { DEFAULT_REPLAY_LAYERS, type ReplayLayers, type ReplayMoment } from '../../src/model/replayLayers'
 import type { Frame, TrackerRecord } from '../../src/model/types'
 import type { FrameLayers } from '../../src/render/renderer'
 
 /** The view every test draws in: the reference's frame box, not zoomed. */
 export const VIEW: DirectorView = { zoom: 1, panX: 0, panY: 0, renderedWidth: 1280 }
 
-/** One animation frame, as the golden recordings run them. */
-const FRAME_MS = 16
+/** One animation frame, as the reference tests run them: 60 a second. */
+const FRAME_MS = 1000 / 60
 
 interface ReplayState {
   time: number
@@ -45,6 +45,9 @@ export interface Change {
  * identity on every set, as the reference's `frameWith` hands out a new
  * object each time. The playback flag is worked out as the widget will,
  * with nextPlayback.
+ *
+ * As in the reference tests, a `set` is not an animation frame: the clock
+ * of the frames moves only in `animate`, and the moments step only there.
  */
 export class FakeReplay {
   readonly director: Director
@@ -86,8 +89,51 @@ export class FakeReplay {
     this.state = next
     const playback = nextPlayback(this.flag, next.time, next.playing)
     this.flag = { time: next.time, playback }
-    this.nowMs += FRAME_MS
-    const output = this.director.update(this.input(playback), VIEW)
+    return this.push(this.director.update(this.input(playback), VIEW))
+  }
+
+  /**
+   * Run animation frames for `ms`, as the reference tests' `animate` does:
+   * 60 a second from where the last left off. `whole` is the free kick,
+   * throw-in and by-hand blocks' loop, which stops a hair short of `ms` so a
+   * duration is a whole number of frames however it rounds.
+   */
+  animate(ms: number, whole = false): DirectorOutput[] {
+    const end = this.nowMs + ms
+    const outputs: DirectorOutput[] = []
+    while (whole ? this.nowMs < end - 1e-6 : this.nowMs < end) {
+      this.nowMs += FRAME_MS
+      outputs.push(this.push(this.director.update(this.input(), VIEW)))
+    }
+    return outputs
+  }
+
+  /** Play `moment` by hand, as the demo controls do. */
+  trigger(moment: ReplayMoment, team: TeamId = 0): DirectorOutput | null {
+    const output = this.director.trigger(moment, team, this.input(), VIEW)
+    if (output) this.outputs.push(output)
+    return output
+  }
+
+  /**
+   * One wheel notch in over the middle of the stage, as the reference's
+   * handler makes it (:307-341): the view handed to the user, then zoomed
+   * about the middle, which scales the pan with the zoom.
+   */
+  wheel(): DirectorOutput {
+    this.director.releaseCamera()
+    const view = this.director.view
+    const zoom = Math.min(6, view.zoom + 0.15)
+    const scale = zoom / view.zoom
+    return this.push(this.director.setView({ ...view, zoom, panX: view.panX * scale, panY: view.panY * scale }))
+  }
+
+  /** Someone presses on the drawing layer (`:1471`). */
+  stopAll(): DirectorOutput {
+    return this.push(this.director.stopAll())
+  }
+
+  private push(output: DirectorOutput): DirectorOutput {
     this.outputs.push(output)
     return output
   }
@@ -123,9 +169,16 @@ export class FakeReplay {
   /** Switch layers, as the layers menu does. */
   toggle(change: Partial<ReplayLayers>): DirectorOutput {
     this.layers = { ...this.layers, ...change }
-    const output = this.director.setLayers(this.layers)
-    this.outputs.push(output)
-    return output
+    return this.push(this.director.setLayers(this.layers))
+  }
+
+  /** The view the renderer was last given, as the reference tests read `setView.mock.calls.at(-1)`. */
+  lastView(): DirectorView | undefined {
+    for (let i = this.outputs.length - 1; i >= 0; i--) {
+      const paint = this.outputs[i]!.paints.at(-1)
+      if (paint) return paint.view
+    }
+    return undefined
   }
 
   /** What was last drawn, as the reference tests read `renderFrame.mock.calls.at(-1)`. */
