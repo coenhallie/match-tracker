@@ -9,14 +9,18 @@ export const HISTORY_S = Math.max(PHASE_LOOKBACK_S, TRAIL_LOOKBACK_S)
  * The records the frames before `at` decide its phase and trail from: those from
  * HISTORY_S before it up to it, de-duplicated by frame number with `at` itself
  * winning over any copy of it, and in time order.
+ *
+ * The order is the replay's, tie for tie. `at` is placed first and the other records
+ * follow in input order, then the whole is sorted by t with a stable sort. So among
+ * records with one t, `at` comes first and the others keep their input order: a record
+ * sharing `at`'s t sorts after it, and is left out of its phase and trail.
  */
 export function windowAt(records: readonly TrackerRecord[], at: TrackerRecord): TrackerRecord[] {
   const from = at.t - HISTORY_S
-  const byFrame = new Map<number, TrackerRecord>()
+  const byFrame = new Map<number, TrackerRecord>([[at.frameCount, at]])
   for (const r of records) {
-    if (r.t >= from && r.t <= at.t) byFrame.set(r.frameCount, r)
+    if (r.frameCount !== at.frameCount && r.t >= from && r.t <= at.t) byFrame.set(r.frameCount, r)
   }
-  byFrame.set(at.frameCount, at)
   return [...byFrame.values()].toSorted((a, b) => a.t - b.t)
 }
 

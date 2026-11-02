@@ -71,6 +71,31 @@ describe('windowAt', () => {
     expect(window.map((r) => r.frameCount)).toEqual([0, 1, 2, 4, 5, 6, 7])
   })
 
+  it('puts `at` first among the records sharing its t, and leaves the others out of its view', () => {
+    const before = [record(3), record(4)]
+    const at = record(5)
+    const twin = { ...record(6), t: at.t }
+    // `twin` arrives first in the input, and still sorts after `at`.
+    const window = windowAt([...before, twin, at], at)
+    expect(window.map((r) => r.frameCount)).toEqual([3, 4, 5, 6])
+    expect(window[2]).toBe(at)
+    const { phase, trail } = deriveAt(window, at)
+    expect({ phase, trail }).toEqual({
+      phase: teamPhaseAt([...before, at], 2),
+      trail: ballTrailAt([...before, at], 2),
+    })
+  })
+
+  it('keeps the input order of records that are not `at` and share a t', () => {
+    const at = record(10)
+    const tied = (frameCount: number) => ({ ...record(frameCount), t: record(8).t })
+    const a = tied(80)
+    const b = tied(81)
+    const c = tied(79)
+    expect(windowAt([a, b, c], at).map((r) => r.frameCount)).toEqual([80, 81, 79, 10])
+    expect(windowAt([c, a, b], at).map((r) => r.frameCount)).toEqual([79, 80, 81, 10])
+  })
+
   it('does not change the records it is given', () => {
     const records = run(5)
     const copy = [...records]
