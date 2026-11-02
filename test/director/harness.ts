@@ -76,6 +76,16 @@ export class FakeReplay {
     return this.state.time
   }
 
+  /**
+   * An animation frame in which the replay's tick brings `change`, as in the
+   * browser during playback: the tick is the frame's first callback, and the
+   * moments' come after it.
+   */
+  frame(change: Change): DirectorOutput {
+    this.nowMs += FRAME_MS
+    return this.set(change)
+  }
+
   /** Change what the replay holds, then let the director see it all at once. */
   set(change: Change): DirectorOutput {
     const next = { ...this.state }

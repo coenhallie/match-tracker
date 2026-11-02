@@ -115,15 +115,15 @@ import { sameTrail, type BallTrail } from '../analysis/ballTrail'
 import { samePhase, type TeamId, type TeamPhase } from '../analysis/teamPhase'
 import type { ReplayLayers, ReplayMoment } from '../model/replayLayers'
 import type { Frame, TrackerRecord } from '../model/types'
-import type { AttackIndicator } from '../render/attackIndicator'
-import type { FreeKickBanner } from '../render/freeKick'
+import { planGoal } from '../analysis/goalSequence'
 import type { FrameLayers } from '../render/renderer'
-import type { ThrowInIndicator } from '../render/throwIn'
 import { viewFromCamera, type Camera } from '../render/viewTransform'
-import type { Spin } from '../analysis/football'
-import { BallRoll } from './ballRoll'
+import { Attack } from './attack'
+import { BallRoll, shownBall } from './ballRoll'
+import { FreeKick } from './freeKick'
 import { Goal } from './goal'
-import type { Moment, MomentContext, MomentMemory, MomentStep, ShownReplay } from './moment'
+import type { Moment, MomentContext, MomentMemory, ShownReplay } from './moment'
+import { ThrowIn } from './throwIn'
 import { Rings } from './rings'
 
 export type { Moment, MomentContext, MomentMemory, MomentStep } from './moment'
@@ -185,31 +185,25 @@ export interface DirectorOptions {
   teamColor: (team: TeamId) => string
 }
 
-export interface AttackMoment extends Moment {
-  value(): AttackIndicator | undefined
-  /** The ball's trail and spin as they were when the attack was shown, while it is. */
-  moment(): { trail: BallTrail | null; spin: Spin } | null
-}
-
-export interface FreeKickMoment extends Moment {
-  value(): FreeKickBanner | undefined
-}
-
-export interface ThrowInMoment extends Moment {
-  value(): ThrowInIndicator | undefined
+/** Which moments can be played by hand on the frame on screen (`momentAvailability`, `:1020-1036`). */
+export interface MomentAvailability {
+  /** The goal it goes in is the one in the ball's half: none without a ball. */
+  goal: boolean
+  /** Without a direction there is no telling which goal a team attacks. */
+  attack: Record<TeamId, boolean>
+  freeKick: boolean
+  throwIn: boolean
 }
 
 /** The reference's refs as the surface mounts: the clock at 0, paused, nothing on screen. */
 const NOTHING_SEEN: ShownReplay = { time: 0, playing: false, record: null, phase: null, trail: null }
 
-const IDLE = { active: false, step: (): MomentStep => 'stop', stop: () => false, reset: () => {} } as const
-
-// The slots until Task 9 fills them: nothing shows, and nothing starts.
-const idleAttack = (): AttackMoment => ({ ...IDLE, value: () => undefined, moment: () => null })
-const idleFreeKick = (): FreeKickMoment => ({ ...IDLE, value: () => undefined })
-const idleThrowIn = (): ThrowInMoment => ({ ...IDLE, value: () => undefined })
-
-const freshMemory = (): MomentMemory => ({ freeKickLabelAt: null, throwInLabelAt: null, lastBall: null, playMovedAt: 0 })
+const freshMemory = (): MomentMemory => ({
+  freeKickLabelAt: null,
+  throwInLabelAt: null,
+  lastBall: null,
+  playMovedAt: 0,
+})
 
 /** The zoom and pan the surface mounts with: the whole pitch. */
 const WHOLE_PITCH: DirectorCamera = { zoom: 1, panX: 0, panY: 0 }
@@ -233,9 +227,9 @@ export class Director {
   private readonly roll = new BallRoll()
   private readonly context: MomentContext
   private readonly goal: Goal
-  private readonly attack: AttackMoment = idleAttack()
-  private readonly freeKick: FreeKickMoment = idleFreeKick()
-  private readonly throwIn: ThrowInMoment = idleThrowIn()
+  private readonly attack: Attack
+  private readonly freeKick: FreeKick
+  private readonly throwIn: ThrowIn
   /** The moments' requests for the next animation frame, in the order they were made. */
   private requests: FrameRequest[] = []
   /** The requests the frame now running is calling, so a stop can cancel one not yet called. */
@@ -281,6 +275,9 @@ export class Director {
       showCamera: (camera) => this.showCamera(camera),
     }
     this.goal = new Goal(this.context)
+    this.attack = new Attack(this.context)
+    this.freeKick = new FreeKick(this.context)
+    this.throwIn = new ThrowIn(this.context)
   }
 
   /** The user's view: their zoom and pan, or where a sequence has put them, and the width drawn at. */
@@ -310,16 +307,63 @@ export class Director {
   }
 
   /**
-   * Play `moment` now; for an attack, `team`'s. Task 9 ports triggerMoment
-   * (`:1038-1063`); until then no moment can be played. Null when there is no
-   * record on screen, as the reference plays nothing without a frame.
+   * Play `moment` now, by hand (`triggerMoment`, `:1038-1063`); for an
+   * attack, `team`'s. It takes over from whatever is showing and runs as it
+   * would on its label, during playback or not, except the free kick: with
+   * no label or cutaway to wait on, it is on screen for FREE_KICK_DEMO_MS. A
+   * seek or a step ends any of them, as it ends the others.
+   *
+   * `input` and `view` are the replay and the view as they are now, taken in
+   * first as an update would, but not as an animation frame. Null when there
+   * is no record on screen, as the reference plays nothing without a frame.
+   * A moment that cannot be played here (see `availability`) paints nothing;
+   * one that plays paints once.
    */
-  trigger(_moment: ReplayMoment, _team: TeamId, input: DirectorInput, view: DirectorView): DirectorOutput | null {
+  trigger(moment: ReplayMoment, team: TeamId, input: DirectorInput, view: DirectorView): DirectorOutput | null {
     this.paints = []
     this.takeView(view)
     this.flush(input)
-    if (!this.shown.record) return null
+    const { record, phase, time: now } = this.shown
+    if (!record) return null
+    const frame = record.frame
+    if (moment === 'goal') {
+      if (!planGoal(frame)) return this.output()
+      this.stopSequences()
+      if (this.goal.start(frame)) this.request(this.goal)
+    } else if (moment === 'attack') {
+      const direction = phase?.attacks[team]
+      if (direction == null) return this.output()
+      this.stopSequences()
+      // Seen, so it does not play again by itself once this one is over.
+      this.attack.markSeen(team, direction)
+      this.attack.start({ team, direction, color: this.options.teamColor(team) }, shownBall(frame, undefined))
+      this.request(this.attack)
+    } else if (moment === 'freeKick') {
+      this.stopSequences()
+      this.memory.freeKickLabelAt = now
+      this.freeKick.start(true)
+      this.request(this.freeKick)
+    } else {
+      this.stopSequences()
+      this.memory.throwInLabelAt = now
+      this.throwIn.start(now)
+      this.request(this.throwIn)
+    }
+    this.paint()
+    this.flushView()
     return this.output()
+  }
+
+  /** Which moments `trigger` can play on the frame on screen (`momentAvailability`, `:1020-1036`). */
+  availability(): MomentAvailability {
+    const { record, phase } = this.shown
+    const ready = record !== null
+    return {
+      goal: ready && planGoal(record.frame) !== null,
+      attack: { 0: ready && phase?.attacks[0] != null, 1: ready && phase?.attacks[1] != null },
+      freeKick: ready,
+      throwIn: ready,
+    }
   }
 
   /** Someone wants the real frame and their own view: end every sequence (`stopSequences`). */
@@ -452,7 +496,23 @@ export class Director {
         this.stopMoment(this.throwIn)
         if (this.goal.start(frame)) this.request(this.goal)
       }
-      // Task 9: updateFreeKick(frame, prevFrame, time), updateThrowIn(frame, time), maybeStartAttack(frame).
+      if (this.freeKick.detect(frame, before.record?.frame ?? null, time, this.goal.active)) {
+        // A free kick takes over from an attack and a throw-in.
+        this.stopMoment(this.attack)
+        this.stopMoment(this.throwIn)
+        this.freeKick.start()
+        this.request(this.freeKick)
+      }
+      if (this.throwIn.detect(frame, time, this.goal.active || this.freeKick.active)) {
+        this.throwIn.start(time)
+        this.request(this.throwIn)
+      }
+      // An attack shows alongside a throw-in, but not over a goal or a free kick.
+      const attack = this.attack.detect(frame, this.goal.active || this.freeKick.active)
+      if (attack) {
+        this.attack.start(attack.target, attack.ball)
+        this.request(this.attack)
+      }
     }
     // A fade that has just finished still needs the paint that shows its end.
     const wasFading = this.rings.fading()

@@ -326,27 +326,13 @@ describe('Director', () => {
 // Reference cases not ported here, one line each (pipelineOutputSurface.test.ts line numbers).
 // :517 'draws immediately when state flips to ready and the frame was already set': Vue watcher plumbing;
 //   the director has no replay state, and its first record always paints (ported :496 above).
-// Seek and pause cases inside the moment groups need the moments, and go with them:
-// :769 goal 'does not play when a seek lands on a GOAL label': Task 8, with goal.ts.
-// :777 goal 'does not play while paused, for example when stepping a frame': Task 8.
-// :787 goal 'stops and shows the real frame the moment playback pauses': Task 8.
-// :797 goal 'stops on a seek made while it plays': Task 8.
-// :855 goal 'snaps back to the view it started from the moment playback pauses': Task 8, with camera.ts.
-// :1089 attack 'is not shown for an attack a seek lands in the middle of': Task 9, with attack.ts.
-// :1098 attack 'stops at once on a pause': Task 9.
-// :1108 attack 'stops at once on a seek': Task 9.
-// :1432 free kick 'is not shown for a free kick a seek lands in the middle of': Task 9, with freeKick.ts.
-// :1441 free kick 'is shown after a seek back to before it': Task 9.
-// :1455 free kick 'stops at once on a pause': Task 9.
-// :1465 free kick 'stops at once on a seek': Task 9.
-// :2058 throw-in 'is not shown for a throw-in a seek lands in the middle of': Task 9, with throwIn.ts.
-// :2067 throw-in 'stops at once on a pause': Task 9.
-// :2336 by hand 'is ended by a seek, as the others are': Task 9, with trigger.
+// The seek and pause cases of the moment groups are ported with their moments, under the same names:
+// goal :769, :777, :787, :797, :855 in goal.test.ts; attack :1089, :1098, :1108 in attack.test.ts; free kick
+// :1432, :1441, :1455, :1465 in freeKick.test.ts; throw-in :2058, :2067 in throwIn.test.ts; by hand :2336
+// in trigger.test.ts. So are the layers menu's goal cases, :2517 and :2528, in goal.test.ts.
 // Layers menu cases that are not about what paint() draws:
 // :2441 'lists every layer, all shown by default': menu DOM, Task 11.
 // :2450 'hides the attacking and defending labels': HUD DOM, Task 11.
 // :2460 'leaves the attacking and defending labels to their own layer': HUD DOM, Task 11.
-// :2517 'does not play the goal animation when it is off': Task 8, with goal.ts.
-// :2528 'stops a goal animation that is playing when it is switched off, view and all': Task 8.
 // :2541 'remembers the choice for the next time the replay opens': storage, Task 10/11.
 // :2552 'closes on Escape, and on a click outside it': menu DOM, Task 11.

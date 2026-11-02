@@ -300,7 +300,15 @@ describe('goal sequence', () => {
         teamColor: () => '#e51a1a',
       })
       const record = { t: 10, frameCount: 1, frame: goalFrame(['other']) }
-      const input: DirectorInput = { nowMs: 1000, time: 10, playing: false, playback: false, record, phase: null, trail: null }
+      const input: DirectorInput = {
+        nowMs: 1000,
+        time: 10,
+        playing: false,
+        playback: false,
+        record,
+        phase: null,
+        trail: null,
+      }
       director.update(input, VIEW)
       // The same view again: nothing to push.
       expect(director.update({ ...input, nowMs: 1016 }, VIEW).paint).toBe(false)

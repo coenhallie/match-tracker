@@ -22,7 +22,11 @@ export function isPlaybackStep(before: number | null, now: number, playing: bool
  * before its record arrives; taking either as a step of 0 would stop every
  * moment. With nothing before, it is a seek.
  */
-export function nextPlayback(prev: { time: number; playback: boolean } | null, time: number, playing: boolean): boolean {
+export function nextPlayback(
+  prev: { time: number; playback: boolean } | null,
+  time: number,
+  playing: boolean,
+): boolean {
   if (prev && time === prev.time) return prev.playback
   return isPlaybackStep(prev?.time ?? null, time, playing)
 }

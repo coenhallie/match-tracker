@@ -96,7 +96,7 @@ function readGolden(name: string): GoldenFile {
   return JSON.parse(brotliDecompressSync(readFileSync(resolve(FIXTURES, `${name}.json.br`))).toString('utf8'))
 }
 
-/** The renderer's calls as the recorder saved them: through JSON, so NaN reads as null and the pitch cache as its size. */
+/** The renderer's calls as the recorder saved them: through JSON, so NaN reads as null, the pitch cache as its size. */
 const asSaved = (calls: unknown[]): unknown[] => normalizeCalls(JSON.parse(JSON.stringify(calls)))
 
 /** The steps one director call made: see "From steps to calls". */
@@ -241,21 +241,6 @@ const FIXTURE_NAMES = [
   'layers-off',
 ] as const
 
-/** The moments Task 9 ports; until then their fixtures wait. */
-const NEEDS_TASK_9 = new Set<string>([
-  'attack-team0',
-  'attack-team1',
-  'pause-mid-attack',
-  'free-kick-held-through-cutaway',
-  'real-free-kick',
-  'throw-in-left',
-  'throw-in-right',
-  'throw-in-no-ball',
-  'real-throw-in',
-  'trigger-each-moment',
-  'layers-off',
-])
-
 describe('golden recordings of the reference replay', () => {
   let offscreen: ReturnType<typeof stubOffscreenCanvas> | null = null
   afterEach(() => {
@@ -263,13 +248,7 @@ describe('golden recordings of the reference replay', () => {
     offscreen = null
   })
 
-  // Until Task 9 ports the moments these play. It removes this.
-  for (const name of FIXTURE_NAMES.filter((name) => NEEDS_TASK_9.has(name))) {
-    // oxlint-disable-next-line vitest/warn-todo, vitest/valid-title
-    it.todo(name)
-  }
-
-  it.each(FIXTURE_NAMES.filter((name) => !NEEDS_TASK_9.has(name)))(
+  it.each(FIXTURE_NAMES)(
     '%s',
     (name) => {
       offscreen = stubOffscreenCanvas()
