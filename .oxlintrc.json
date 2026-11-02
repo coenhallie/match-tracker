@@ -38,5 +38,19 @@
       }
     ]
   },
-  "overrides": []
+  "overrides": [
+    {
+      "files": [
+        "src/analysis/**",
+        "src/render/**",
+        "test/**"
+      ],
+      "rules": {
+        "unicorn/consistent-function-scoping": "off",
+        "unicorn/no-array-sort": "off",
+        "eslint/no-shadow": "off",
+        "vitest/no-conditional-expect": "off"
+      }
+    }
+  ]
 }

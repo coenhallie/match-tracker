@@ -1,6 +1,5 @@
 // ---------------------------------------------------------------------------
-// Shared type definitions for the football visualisation app.
-// Derived from the JSONL data format consumed by the original index.html.
+// Type definitions for the pipeline frames and the parsed records the tracker reads.
 // ---------------------------------------------------------------------------
 
 /** Raw projected coordinates as they appear in the JSONL data. */
