@@ -166,6 +166,7 @@ Also exported: `MATCH_TRACKER_VERSION`, `parseRecord(message): TrackerRecord | n
 | `teams` | `{ home?: { name?, color? }, away?: { name?, color? } }` | | Team 0 is home and team 1 is away. A name defaults to the localised "Red" and "Blue". A `color` is the team's fill, on its players, its attack and its label. |
 | `colors` | `Partial<Record<PersonRole, Partial<PersonColors>>>` | video-annotation's | `fill`, `outline` and `text` per role: `home`, `away`, `goalkeeper`, `official`, `unknown`. A team's `color` wins over `fill` here. |
 | `layers` | `Partial<ReplayLayers>` | all on | The layers shown until the viewer chooses in the menu. |
+| `layersMenu` | `boolean` | `true` | `false` takes the layers button and menu out. The layers are then the defaults over `layers`, and nothing is read from or written to `layersStorageKey`. Can be changed with `setOptions`. |
 | `layersStorageKey` | `string \| null` | `'match-tracker.layers'` | Where the menu's choice is kept in `localStorage`. `null` keeps nothing. A kept choice wins over `layers`. |
 | `formatAction` | `(actionType: string) => string` | as it comes | The bottom-left text for each of a frame's actions, from its `action_type` (for example `'EventType.FREE_KICK'` to `'Free kick'`). |
 
@@ -274,6 +275,9 @@ features it uses:
 - Chrome and Edge 105 (container queries);
 - Firefox 112 (canvas `roundRect`);
 - Safari 16.4, on macOS and iOS (`OffscreenCanvas` with a 2D context).
+
+The other newer APIs the code calls are older than these: `Array.prototype.at`,
+`Object.hasOwn` and `structuredClone` (Chrome 98, Firefox 94, Safari 15.4 at the latest).
 
 ## Size and performance
 

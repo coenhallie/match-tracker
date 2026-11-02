@@ -37,6 +37,7 @@ this site's live matches and, next, for video-annotation itself.
 - Live matches: frames are drawn as they arrive. A hidden tab or a widget
   scrolled out of view stops drawing, and catches up when you come back.
 - The layers menu closes with Escape only while you are using it.
+- A page that embeds the widget can hide the layers menu (`layersMenu: false`). The layers are then the same for every viewer, and nothing is kept.
 - Long team names are cut short with "…". The full name is in the tooltip.
 
 ### Size and speed

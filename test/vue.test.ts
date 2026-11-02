@@ -114,6 +114,14 @@ describe('the Vue component', () => {
     expect(item.getAttribute('aria-checked')).toBe('false')
   })
 
+  it('leaves the layers menu on when the layersMenu prop is left out, and hides it when false', async () => {
+    const { wrapper, host } = mountTracker()
+    expect(last().options).not.toHaveProperty('layersMenu')
+    expect(host.shadowRoot!.querySelector('.mt-layers-toggle')).not.toBeNull()
+    await wrapper.setProps({ layersMenu: false })
+    expect(host.shadowRoot!.querySelector('.mt-layers-toggle')).toBeNull()
+  })
+
   it('makes a new tracker when the mode changes, as the mode is fixed at mount', async () => {
     const { wrapper } = mountTracker()
     const first = last().tracker
