@@ -1,0 +1,127 @@
+// ---------------------------------------------------------------------------
+// Shared type definitions for the football visualisation app.
+// Derived from the JSONL data format consumed by the original index.html.
+// ---------------------------------------------------------------------------
+
+/** Raw projected coordinates as they appear in the JSONL data. */
+export interface ProjectedCoordinates {
+  x: number
+  y: number
+  z?: number
+}
+
+/** A single player entry inside a team. */
+export interface Player {
+  track_id?: number | string
+  person_type?: string
+  projected_coordinates?: ProjectedCoordinates
+  player_number?: number | string
+  in_possession?: boolean
+  team_id?: number
+}
+
+/** A single team entry inside a frame. */
+export interface Team {
+  team_id: number
+  team_name?: string
+  /** Flat array of colour channel values (r,g,b repeated per colour). */
+  colors?: number[]
+  /** Weight per colour (length = colors.length / 3). */
+  color_weights?: number[]
+  /**
+   * Ordered colour triplets: [fill, outline, text].
+   * Each element is a 3-element array [r, g, b] in 0-1 or 0-255 range.
+   */
+  ordered_colors?: number[][]
+  /** Primary shirt colour as [r, g, b] in 0-1 or 0-255 range. */
+  color_rgb?: number[]
+  /** Human-readable shirt colour name (e.g. "White", "Red"). */
+  color_name?: string
+  /** Detector confidence for color_rgb / color_name, 0-1. */
+  color_confidence?: number
+  players: Player[]
+  /** Player-level actions reported for this team. */
+  actions?: FrameAction[]
+}
+
+/** A ball entry inside a frame. */
+export interface Ball {
+  projected_coordinates?: ProjectedCoordinates
+}
+
+/** Pitch dimension metadata (metres). */
+export interface PitchDimensions {
+  length: number
+  width: number
+  penalty_area_length: number
+  penalty_area_width: number
+  goal_area_length: number
+  goal_area_width: number
+  goal_width: number
+  goal_height?: number
+  center_circle_radius: number
+  penalty_mark_distance: number
+}
+
+/** Frame-level action entry (e.g. "pass", "shot"). */
+export interface FrameAction {
+  action_type?: string
+  /** Who reported the action: the AI pipeline or a human analyst. */
+  action_origin?: 'ai' | 'human' | string
+}
+
+/** Frame-level metadata carried inside `frame_data`. */
+export interface FrameDataEntry {
+  frame_count?: number
+}
+
+/** Top-level JSON object for a single JSONL line / frame. */
+export interface Frame {
+  match_id?: string | number
+  pitch_dimensions?: Partial<PitchDimensions>
+  frame_data?: FrameDataEntry[]
+  state?: {
+    actions?: FrameAction[]
+  }
+  teams: Team[]
+  balls?: Ball[]
+}
+
+/** Resolved CSS-friendly colour set for a team. */
+export interface TeamColors {
+  /** CSS colour string for the player fill. */
+  fill: string
+  /** CSS colour string for the player outline / stroke. */
+  outline: string
+  /** CSS colour string for jersey number text. */
+  text: string
+  /** RGB tuple (0-255) of the fill colour. */
+  fillRgb: [number, number, number]
+}
+
+/**
+ * 2D canvas coordinate transform.
+ * Maps world (pitch) coordinates to pixel positions on a FRAME_W x FRAME_H canvas.
+ */
+export interface Transform2D {
+  /** Pixel offset X (centres the pitch horizontally). */
+  ox: number
+  /** Pixel offset Y (centres the pitch vertically). */
+  oy: number
+  /** Scale factor (world metres -> pixels). */
+  sc: number
+  /** Pitch length in metres. */
+  pl: number
+  /** Pitch width in metres. */
+  pw: number
+}
+
+/** One parsed pipeline message, reduced to what the tracker reads. */
+export interface TrackerRecord {
+  /** Absolute record timestamp in seconds. Not zero-based. */
+  t: number
+  /** The pipeline's own frame number. Not zero-based. */
+  frameCount: number
+  /** The normalised frame, with `frame_data` reduced to `[{ frame_count }]`. */
+  frame: Frame
+}
