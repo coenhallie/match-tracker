@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { ELLIPSIS, fitFontPx, fitText } from '../../src/render/fitText'
+import { ELLIPSIS, MIN_FIT, fitFontPx, fitText } from '../../src/render/fitText'
 import { createRenderer, type FrameLayers } from '../../src/render/renderer'
 import { DEFAULT_THEME, type RenderTheme } from '../../src/render/theme'
 import { build2DTransform, designUnit, worldToPx } from '../../src/render/pitchGeometry'
@@ -60,6 +60,40 @@ describe('fitText', () => {
 
   it('never cuts a character in two', () => {
     expect(fitText(ctx(), '𝔸'.repeat(20), font, 20, 60).text).toBe(`𝔸𝔸𝔸${ELLIPSIS}`)
+  })
+
+  it('gives the ellipsis alone when not even one character fits', () => {
+    expect(fitText(ctx(), 'ABC', font, 20, 0)).toEqual({ px: 12, text: ELLIPSIS })
+    expect(fitText(ctx(), 'ABC', font, 20, -5)).toEqual({ px: 12, text: ELLIPSIS })
+    // One character 12 * 0.6 = 7.2 wide at the floor, against 5.
+    expect(fitText(ctx(), 'W', font, 20, 5)).toEqual({ px: 12, text: ELLIPSIS })
+  })
+
+  // The size that fits is scaled from one measurement, so measured again it
+  // can come out a rounding error over the width. A name that only needed to
+  // shrink must still be drawn whole, as the reference draws it.
+  it('cuts a name only at the floor, and never draws it wider than it may be', () => {
+    const problems: string[] = []
+    let cut = 0
+    for (const u of [1, 2 / 3]) {
+      const basePx = 40 * u
+      const maxWidth = 560 * u
+      const nameFont = (px: number) => `600 ${px}px Test`
+      for (let n = 20; n <= 40; n++) {
+        const name = 'N'.repeat(n)
+        const c = ctx()
+        const fitted = fitText(c, name, nameFont, basePx, maxWidth)
+        c.font = nameFont(fitted.px)
+        const at = `${n} characters at u = ${u}`
+        if (c.measureText(fitted.text).width > maxWidth * (1 + 1e-6)) problems.push(`${at}: too wide`)
+        if (fitted.px > basePx * MIN_FIT && fitted.text !== name) problems.push(`${at}: cut above the floor`)
+        if (fitted.px < basePx * MIN_FIT) problems.push(`${at}: below the floor`)
+        if (fitted.text !== name) cut++
+      }
+    }
+    expect(problems).toEqual([])
+    // The sweep reaches the floor too: the longest names are cut there.
+    expect(cut).toBeGreaterThan(0)
   })
 
   it('leaves the context as it found it', () => {
@@ -205,6 +239,17 @@ describe('canvas text fits its card', () => {
     expect(long.startsWith(text.slice(0, -1))).toBe(true)
     expect(sizePx(name!)).toBeCloseTo(40 * 0.6, 6)
     expect(width(name!)).toBeLessThanOrEqual(560 * u + 1e-6)
+  })
+
+  it('draws every name that only needs to shrink whole, within the label', () => {
+    const problems: string[] = []
+    for (let n = 20; n <= 40; n++) {
+      const name = 'N'.repeat(n)
+      const [drawn] = textAt(320, {}, attack(name))
+      if (width(drawn!) > 560 * u * (1 + 1e-6)) problems.push(`${n} characters: too wide`)
+      if (sizePx(drawn!) > 40 * MIN_FIT + 1e-9 && drawn!.args[0] !== name) problems.push(`${n} characters: cut`)
+    }
+    expect(problems).toEqual([])
   })
 
   it('leaves a team name that fits at 60% whole', () => {
