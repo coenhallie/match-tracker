@@ -1,11 +1,17 @@
 /**
  * The real Director and renderer, wrapped to note what the widget hands
- * them: every director's options and update inputs, the stopAll calls, and
- * every view the renderer is given. A test file mocks src/director/director
- * with `recordingDirector` and src/render/renderer with `recordingRenderer`,
- * and reads `control` back.
+ * them: every director's options, update inputs and outputs, the stopAll and
+ * releaseCamera calls, and every view the renderer is given. A test file
+ * mocks src/director/director with `recordingDirector` and
+ * src/render/renderer with `recordingRenderer`, and reads `control` back.
  */
-import type { Director, DirectorInput, DirectorOptions, DirectorView } from '../../src/director/director'
+import type {
+  Director,
+  DirectorInput,
+  DirectorOptions,
+  DirectorOutput,
+  DirectorView,
+} from '../../src/director/director'
 import type { createRenderer } from '../../src/render/renderer'
 
 /** What the tests read back. */
@@ -14,6 +20,10 @@ export const control = {
   options: [] as DirectorOptions[],
   /** Every update input, in order. */
   inputs: [] as DirectorInput[],
+  /** What every update gave back, in order. */
+  outputs: [] as DirectorOutput[],
+  /** How many times releaseCamera was called. */
+  releases: 0,
   /** How many times stopAll was called. */
   stopAll: 0,
   /** Every view a renderer was given, in order. */
@@ -21,6 +31,8 @@ export const control = {
   reset() {
     control.options = []
     control.inputs = []
+    control.outputs = []
+    control.releases = 0
     control.stopAll = 0
     control.views = []
   },
@@ -34,7 +46,14 @@ export function recordingDirector(Real: typeof Director): typeof Director {
     const update = real.update.bind(real)
     real.update = (input, view) => {
       control.inputs.push(input)
-      return update(input, view)
+      const out = update(input, view)
+      control.outputs.push(out)
+      return out
+    }
+    const releaseCamera = real.releaseCamera.bind(real)
+    real.releaseCamera = () => {
+      control.releases++
+      releaseCamera()
     }
     const stopAll = real.stopAll.bind(real)
     real.stopAll = () => {

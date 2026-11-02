@@ -58,6 +58,10 @@ canvas {
   inset: 0;
   overflow: hidden;
 }
+/* "cursor-grab" while zoomed in. Its touch-action is set with the zoom (createMatchTracker.ts). */
+.mt-viewport.mt-zoomed {
+  cursor: grab;
+}
 /* "absolute", placed in the computed box. */
 .mt-canvas,
 .mt-overlay,

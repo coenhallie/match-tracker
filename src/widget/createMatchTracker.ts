@@ -23,9 +23,12 @@
  * ## The view
  *
  * The widget holds the user's zoom and pan and passes them with every call.
- * A goal's camera comes back as `camera`, which the widget takes as its own
- * view (and says so with `zoom`); each drawn paint carries the view it was
- * made in, which the renderer is given before it draws.
+ * The user's own wheel, pinch, drag and double-click (zoomPan.ts) take the
+ * view over from a goal's camera (`releaseCamera`) and go in through
+ * `setView`. A goal's camera comes back as `camera`, which the widget takes
+ * as its own view; either way it says so with `zoom`. Each drawn paint
+ * carries the view it was made in, which the renderer is given before it
+ * draws.
  *
  * While the tab is hidden or the widget is out of view nothing is updated or
  * drawn; `push` still records. Coming back is a seek in live mode, so nothing
@@ -76,6 +79,7 @@ import {
   type Resolved,
 } from './options'
 import { STYLES } from './styles'
+import { ZoomPan } from './zoomPan'
 
 /** What a replay host hands over on each tick of its clock. */
 export interface ReplayState {
@@ -198,6 +202,7 @@ class Tracker implements MatchTracker {
   private readonly phaseRow = new PhaseRow()
   private readonly layersMenu: LayersMenu
   private readonly zoomBadge: ZoomBadge
+  private readonly zoomPan: ZoomPan
   /** The phase of the last update, which the HUD's row shows. */
   private phase: TeamPhase | null = null
   private readonly renderer: Renderer | null
@@ -256,6 +261,7 @@ class Tracker implements MatchTracker {
     this.hud.append(this.phaseRow.box, this.layersMenu.el)
     this.layersMenu.setText(this.resolved.text)
     this.layersMenu.setLayers(this.layers)
+    this.renderHud()
 
     this.renderer = rendererFor(this.canvas, themeFor(this.resolved, this.icons))
     // Frame size is a sane bitmap until the box arrives, as in the reference.
@@ -264,6 +270,11 @@ class Tracker implements MatchTracker {
     this.loop = new FrameLoop(this.tick)
 
     this.overlay.addEventListener('pointerdown', this.onOverlayPointerDown, { capture: true })
+    this.zoomPan = new ZoomPan(this.viewport, {
+      view: () => this.view,
+      takeCamera: () => this.director.releaseCamera(),
+      setView: this.setUserView,
+    })
     this.doc.addEventListener('visibilitychange', this.onVisibilityChange)
     if (typeof ResizeObserver !== 'undefined') {
       this.resizeObserver = new ResizeObserver(this.measure)
@@ -367,6 +378,7 @@ class Tracker implements MatchTracker {
     this.doc.removeEventListener('visibilitychange', this.onVisibilityChange)
     this.overlay.removeEventListener('pointerdown', this.onOverlayPointerDown, { capture: true })
     this.layersMenu.destroy()
+    this.zoomPan.destroy()
     this.emitter.clear()
     this.history.clear()
     this.presented = null
@@ -397,7 +409,21 @@ class Tracker implements MatchTracker {
   /** The HUD as the phase, the layers, the view and the options are now. */
   private renderHud(): void {
     this.phaseRow.update(this.phase, this.layers.phaseLabels, this.resolved)
+    this.renderZoom()
+  }
+
+  /**
+   * What shows the zoom: the badge, and on the viewport the grab cursor, the
+   * tooltip on getting back, and the touches it takes. At the whole pitch
+   * one finger scrolls the page up and down; zoomed in, every touch is the
+   * widget's, to pan and pinch.
+   */
+  private renderZoom(): void {
+    const zoomed = this.view.zoom > 1
     this.zoomBadge.update(this.view.zoom, this.resolved.text)
+    this.viewport.classList.toggle('mt-zoomed', zoomed)
+    this.viewport.style.touchAction = zoomed ? 'none' : 'pan-y'
+    this.viewport.title = zoomed ? this.resolved.text.zoomReset : ''
   }
 
   // ── The loop ──────────────────────────────────────────────────────────────
@@ -506,8 +532,26 @@ class Tracker implements MatchTracker {
   private adoptCamera(camera: DirectorCamera): void {
     const { zoom } = this.view
     this.view = { zoom: camera.zoom, panX: camera.panX, panY: camera.panY }
-    this.zoomBadge.update(this.view.zoom, this.resolved.text)
-    if (camera.zoom !== zoom) this.emitter.emit('zoom', { zoom: camera.zoom })
+    this.viewMoved(zoom)
+  }
+
+  /**
+   * The user moved the view (zoomPan.ts, which has already taken it over
+   * from any sequence): the director pushes it and paints, as the
+   * reference's view watcher does.
+   */
+  private readonly setUserView = (view: DirectorCamera): void => {
+    if (this.destroyed) return
+    const { zoom } = this.view
+    this.view = { zoom: view.zoom, panX: view.panX, panY: view.panY }
+    this.show(this.director.setView(this.directorView()))
+    this.viewMoved(zoom)
+  }
+
+  /** The view is where it now is: show its zoom, and tell the host when that changed from `zoom`. */
+  private viewMoved(zoom: number): void {
+    this.renderZoom()
+    if (this.view.zoom !== zoom) this.emitter.emit('zoom', { zoom: this.view.zoom })
   }
 
   // ── Sizing ────────────────────────────────────────────────────────────────
