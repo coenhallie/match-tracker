@@ -3,13 +3,19 @@ import { createMatchTracker, type MatchTracker, type MatchTrackerOptions } from 
 import { LiveHistory } from '../../src/history/liveHistory'
 import { PERSON_COLORS } from '../../src/render/constants'
 import { FakeIntersectionObserver, installEnv, makeHost, type Env } from './env'
-import { control, GOAL_CAMERA, GOAL_MS } from './fakeDirector'
+import { GOAL_SEQUENCE_MS } from '../../src/analysis/goalSequence'
+import { control } from './recording'
 import { FIXTURE_MESSAGES, message } from './messages'
 
 vi.mock('../../src/director/director', async (importOriginal) => {
   const real = await importOriginal<typeof import('../../src/director/director')>()
-  const { switchable } = await import('./fakeDirector')
-  return { ...real, Director: switchable(real.Director) }
+  const { recordingDirector } = await import('./recording')
+  return { ...real, Director: recordingDirector(real.Director) }
+})
+vi.mock('../../src/render/renderer', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../../src/render/renderer')>()
+  const { recordingRenderer } = await import('./recording')
+  return { ...real, createRenderer: recordingRenderer(real.createRenderer) }
 })
 
 let env: Env
@@ -30,12 +36,11 @@ function momentLog(tracker: MatchTracker): string[] {
   return log
 }
 
-/** A tracker with a goal playing on the fake director, a few frames in. */
+/** A tracker with a goal playing on the real director, a few frames in. */
 function goalRunning() {
-  control.fake = true
   const mountedTracker = mount()
   const log = momentLog(mountedTracker.tracker)
-  mountedTracker.tracker.push(message(0))
+  mountedTracker.tracker.push(message(0, { withBall: true }))
   env.settle()
   expect(mountedTracker.tracker.trigger('goal')).toBe(true)
   env.frame()
@@ -62,10 +67,10 @@ describe('live input', () => {
     // The fixture's three messages are one frame.
     for (const m of FIXTURE_MESSAGES) tracker.push(m)
     env.frame()
-    // The first record also stands for the replay becoming ready, which paints once more, and
-    // every paint is drawn.
+    // The first record paints three times (the renderer attaching, the frame watcher, ready),
+    // all in one display frame: only the last is drawn.
     const first = env.draws(host)
-    expect(first).toBe(2)
+    expect(first).toBe(1)
     expect(control.inputs.at(-1)?.record?.frameCount).toBe(55149)
 
     for (const m of FIXTURE_MESSAGES) tracker.push(m)
@@ -226,26 +231,73 @@ describe('live input', () => {
   it('says when a goal starts and when it ends', () => {
     const { log } = goalRunning()
     const frames = env.settle()
-    expect(frames).toBeGreaterThanOrEqual(Math.floor(GOAL_MS / 16) - 3)
+    expect(frames).toBeGreaterThanOrEqual(Math.floor(GOAL_SEQUENCE_MS / 16) - 3)
     expect(log).toEqual(['goal:start', 'goal:end'])
     expect(env.queued()).toBe(0)
   })
 
-  it("follows the goal's camera, and says how far it zoomed", () => {
-    control.fake = true
+  it("draws a goal in its camera's view, zoomed in, and hands the whole pitch back", () => {
     const { tracker } = mount()
     const zooms: number[] = []
     tracker.on('zoom', ({ zoom }) => zooms.push(zoom))
-    tracker.push(message(0))
+    tracker.push(message(0, { withBall: true }))
     env.settle()
-    tracker.trigger('goal')
-    env.frame()
-    expect(zooms).toEqual([GOAL_CAMERA.zoom])
+    expect(control.views.at(-1)?.zoom).toBe(1)
+    expect(tracker.trigger('goal')).toBe(true)
+    for (let i = 0; i < 60; i++) env.frame()
+    // Partway in, the renderer draws zoomed in, and the host hears of it.
+    const during = control.views.at(-1)!
+    expect(during.zoom).toBeGreaterThan(1)
+    expect(during.renderedWidth).toBeGreaterThan(0)
+    expect(zooms.at(-1)).toBeGreaterThan(1)
+    env.settle()
+    expect(control.views.at(-1)).toMatchObject({ zoom: 1, panX: 0, panY: 0 })
+    expect(zooms.at(-1)).toBe(1)
+    expect(env.queued()).toBe(0)
+  })
+
+  it('plays every moment by hand on a frame with a ball, each taking over from the one before', () => {
+    const { tracker } = mount()
+    const log = momentLog(tracker)
+    tracker.push(message(0, { withBall: true }))
+    env.settle()
+    const plays = [['goal'], ['attack', 0], ['attack', 1], ['freeKick'], ['throwIn']] as const
+    for (const [moment, team] of plays) {
+      expect(tracker.trigger(moment, team)).toBe(true)
+      env.frame()
+    }
+    tracker.overlay.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+    expect(log).toEqual([
+      'goal:start',
+      'goal:end',
+      'attack:start',
+      'attack:end',
+      'attack:start',
+      'attack:end',
+      'freeKick:start',
+      'freeKick:end',
+      'throwIn:start',
+      'throwIn:end',
+    ])
+    env.settle()
+    expect(env.queued()).toBe(0)
   })
 
   it('plays nothing by hand before there is a record', () => {
     const { tracker } = mount()
     expect(tracker.trigger('goal')).toBe(false)
+  })
+
+  it('plays no goal on a frame with no ball, and draws nothing for it', () => {
+    const { host, tracker } = mount()
+    const log = momentLog(tracker)
+    tracker.push(message(0))
+    env.settle()
+    const draws = env.draws(host)
+    expect(tracker.trigger('goal')).toBe(false)
+    expect(env.draws(host)).toBe(draws)
+    expect(log).toEqual([])
+    expect(env.queued()).toBe(0)
   })
 
   it('colours the home team, and its attack, as the host asks', () => {

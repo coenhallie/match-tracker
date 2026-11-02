@@ -2,18 +2,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMatchTracker, parseRecord, type MatchTracker, type TrackerRecord } from '../../src/index'
 import { deriveAt, windowAt } from '../../src/analysis/derive'
 import { installEnv, makeHost, type Env } from './env'
-import { control } from './fakeDirector'
+import { control } from './recording'
 import { message } from './messages'
 
 vi.mock('../../src/director/director', async (importOriginal) => {
   const real = await importOriginal<typeof import('../../src/director/director')>()
-  const { switchable } = await import('./fakeDirector')
-  return { ...real, Director: switchable(real.Director) }
+  const { recordingDirector } = await import('./recording')
+  return { ...real, Director: recordingDirector(real.Director) }
 })
 
 let env: Env
 const mounted: MatchTracker[] = []
-const records: TrackerRecord[] = Array.from({ length: 20 }, (_, i) => parseRecord(message(i))!)
+const records: TrackerRecord[] = Array.from({ length: 20 }, (_, i) => parseRecord(message(i, { withBall: true }))!)
 
 function mount() {
   const host = makeHost()
@@ -88,7 +88,6 @@ describe('replay input', () => {
   })
 
   it('takes a jump of 3 s as a seek, which stops a running goal', () => {
-    control.fake = true
     const { tracker, log } = mount()
     tracker.present(stateAt(10))
     env.frame()
@@ -105,7 +104,6 @@ describe('replay input', () => {
   })
 
   it('stops moments when play pauses', () => {
-    control.fake = true
     const { tracker, log } = mount()
     tracker.present(stateAt(10))
     env.frame()

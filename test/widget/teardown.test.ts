@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMatchTracker } from '../../src/index'
 import { FakeIntersectionObserver, FakeMediaQuery, FakeResizeObserver, installEnv, makeHost, type Env } from './env'
-import { control } from './fakeDirector'
+import { control } from './recording'
 import { message } from './messages'
 
 vi.mock('../../src/director/director', async (importOriginal) => {
   const real = await importOriginal<typeof import('../../src/director/director')>()
-  const { switchable } = await import('./fakeDirector')
-  return { ...real, Director: switchable(real.Director) }
+  const { recordingDirector } = await import('./recording')
+  return { ...real, Director: recordingDirector(real.Director) }
 })
 
 /** The fonts and the icons, loading until a test says they are in. */
@@ -90,11 +90,10 @@ afterEach(() => {
 
 describe('destroy', () => {
   it('draws nothing more once destroyed in the middle of a goal', () => {
-    control.fake = true
     const { host, tracker } = mount()
-    tracker.push(message(0))
+    tracker.push(message(0, { withBall: true }))
     env.settle()
-    tracker.trigger('goal')
+    expect(tracker.trigger('goal')).toBe(true)
     env.frame()
     expect(env.queued()).toBe(1)
     const canvas = host.shadowRoot!.querySelector('canvas')!

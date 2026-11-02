@@ -12,10 +12,20 @@
  *
  * One animation frame loop, run only when something asks: an input, a moment
  * or fade still animating, a return to view. Each frame is one director
- * update, and the canvas is drawn only for the director's paints, every one
- * in order. A resize, the fonts or icons arriving and an options change
- * repaint at once, through the director (`setLayers` with the layers in
- * force paints and changes nothing else), as the reference's pushView paints.
+ * update, and the canvas is drawn only when the director paints. All the
+ * paints of one call land in one display frame, so only the last is drawn,
+ * with its own frame, layers and view; the goldens prove at the director
+ * that its paints are the reference's, in order. The fonts or icons arriving
+ * and an options change repaint at once, through the director (`setLayers`
+ * with the layers in force paints and changes nothing else); a resize goes
+ * in as a view change (`setView`), as the reference's pushView paints.
+ *
+ * ## The view
+ *
+ * The widget holds the user's zoom and pan and passes them with every call.
+ * A goal's camera comes back as `camera`, which the widget takes as its own
+ * view (and says so with `zoom`); each drawn paint carries the view it was
+ * made in, which the renderer is given before it draws.
  *
  * While the tab is hidden or the widget is out of view nothing is updated or
  * drawn; `push` still records. Coming back is a seek in live mode, so nothing
@@ -30,16 +40,17 @@ import {
   Director,
   type DirectorCamera,
   type DirectorInput,
-  type DirectorOptions,
   type DirectorOutput,
+  type DirectorPaint,
   type DirectorView,
+  type MomentAvailability,
 } from '../director/director'
 import { nextPlayback } from '../director/playback'
 import { LiveHistory } from '../history/liveHistory'
 import { parseRecord } from '../model/parseRecord'
 import type { ReplayLayers, ReplayMoment } from '../model/replayLayers'
 import type { TrackerRecord } from '../model/types'
-import { createRenderer, type FrameLayers } from '../render/renderer'
+import { createRenderer } from '../render/renderer'
 import type { RenderTheme } from '../render/theme'
 import type { FrameBox } from '../render/viewTransform'
 import { MATCH_TRACKER_VERSION } from '../version'
@@ -92,28 +103,15 @@ export interface MatchTracker {
   destroy(): void
 }
 
-/**
- * The director as the widget drives it. `trigger` is typed to take both the
- * director's answer as Task 7 left it (a boolean) and as Tasks 8 and 9 give
- * it (its output, or null with no record); see triggered().
- */
-interface DirectorPort {
-  update(input: DirectorInput, view: DirectorView): DirectorOutput
-  trigger(moment: ReplayMoment, team: TeamId, input: DirectorInput, view: DirectorView): DirectorOutput | boolean | null
-  stopAll(): DirectorOutput
-  setLayers(layers: ReplayLayers): DirectorOutput
-  setOptions(options: Partial<Omit<DirectorOptions, 'layers'>>): void
-  reset(): void
-}
-
 type Renderer = ReturnType<typeof createRenderer>
 
-/** What `trigger` comes to: the output to show, or null when nothing was played. */
-function triggered(result: DirectorOutput | boolean | null): DirectorOutput | null {
-  if (result === null || result === false) return null
-  if (result === true) return { layers: null, paint: false, paints: [], camera: null, animating: true }
-  return result
+/** Whether `moment` can be played for `team` on the frame on screen. */
+function playable(availability: MomentAvailability, moment: ReplayMoment, team: TeamId): boolean {
+  return moment === 'attack' ? availability.attack[team] : availability[moment]
 }
+
+const sameView = (a: DirectorView, b: DirectorView | null) =>
+  b !== null && a.zoom === b.zoom && a.panX === b.panX && a.panY === b.panY && a.renderedWidth === b.renderedWidth
 
 /** The widget's stylesheet, made once and shared by every instance, where the browser can. */
 let sharedSheet: CSSStyleSheet | null = null
@@ -194,7 +192,7 @@ class Tracker implements MatchTracker {
   private readonly canvas: HTMLCanvasElement
   private readonly hud: HTMLElement
   private readonly renderer: Renderer | null
-  private readonly director: DirectorPort
+  private readonly director: Director
   private readonly emitter = new Emitter<TrackerEvents>()
   private readonly moments = new MomentWatch()
   private readonly loop: FrameLoop
@@ -204,7 +202,10 @@ class Tracker implements MatchTracker {
   private destroyed = false
 
   private box: FrameBox | null = null
+  /** The user's zoom and pan, or where a sequence has moved them. */
   private view: DirectorCamera = { zoom: 1, panX: 0, panY: 0 }
+  /** The view the renderer was last given, or null before it was given one. */
+  private rendererView: DirectorView | null = null
 
   /** Whether the tab was hidden since the last frame drawn: coming back is then a seek. */
   private wasHidden: boolean
@@ -223,8 +224,6 @@ class Tracker implements MatchTracker {
 
   /** The input of the last update: what the director has seen. */
   private lastInput: DirectorInput | null = null
-  /** The record the director's paints are drawn with: the last one it was given. */
-  private shownRecord: TrackerRecord | null = null
   /** Whether the canvas is behind the director: a paint went undrawn, or the bitmap was cleared. */
   private stale = false
 
@@ -301,7 +300,6 @@ class Tracker implements MatchTracker {
     this.derived = null
     this.director.reset()
     this.lastInput = null
-    this.shownRecord = null
     this.resumed = true
     // The director stops its moments without a paint.
     for (const change of this.moments.clear()) this.emitter.emit('moment', change)
@@ -312,10 +310,12 @@ class Tracker implements MatchTracker {
     // A frame due now is run first, so the moment plays on what is on screen by now.
     this.loop.flush(performance.now())
     const input = this.lastInput
-    if (!input) return false
-    const out = triggered(this.director.trigger(moment, team, input, this.directorView()))
+    // What the director can play is read from the frame it was last given,
+    // which is `input`: taking it in again inside trigger changes nothing.
+    if (!input || !playable(this.director.availability(), moment, team)) return false
+    const out = this.director.trigger(moment, team, input, this.directorView())
     if (!out) return false
-    this.show(out, null)
+    this.show(out)
     return true
   }
 
@@ -365,7 +365,7 @@ class Tracker implements MatchTracker {
   private applyLayers(layers: ReplayLayers, keep: boolean): void {
     this.layers = { ...layers }
     if (keep) storeLayers(this.options, this.layers)
-    this.show(this.director.setLayers(this.layers), null)
+    this.show(this.director.setLayers(this.layers))
     this.emitter.emit('layers', { ...this.layers })
   }
 
@@ -376,7 +376,7 @@ class Tracker implements MatchTracker {
     const input = this.nextInput(nowMs)
     if (!input) return
     this.lastInput = input
-    this.show(this.director.update(input, this.directorView()), input.record)
+    this.show(this.director.update(input, this.directorView()))
     if (this.stale) this.repaint()
   }
 
@@ -415,30 +415,32 @@ class Tracker implements MatchTracker {
   }
 
   /**
-   * Take in what the director did: its camera, then every paint in order,
-   * and the moments they start and end. `record` is the update's record:
-   * the director paints the one it was last given, so a paint is drawn with
-   * it, or with the one before when there is none.
+   * Take in what the director did: the view a sequence moved to, the
+   * moments its paints start and end, in order, and the last paint drawn.
    */
-  private show(out: DirectorOutput, record: TrackerRecord | null): void {
+  private show(out: DirectorOutput): void {
     if (this.destroyed) return
-    const shown = record ?? this.shownRecord
-    this.shownRecord = shown
-    if (out.camera) this.applyCamera(out.camera)
-    for (const layers of out.paints) {
-      this.draw(shown, layers)
-      for (const change of this.moments.next(layers)) this.emitter.emit('moment', change)
+    if (out.camera) this.adoptCamera(out.camera)
+    for (const paint of out.paints) {
+      for (const change of this.moments.next(paint.layers)) this.emitter.emit('moment', change)
     }
+    const last = out.paints.at(-1)
+    if (last) this.draw(last)
     if (out.animating) this.loop.request()
   }
 
-  private draw(record: TrackerRecord | null, layers: FrameLayers): void {
-    if (!this.renderer || !record) return
+  /** Draw `paint` as the director made it: its frame and layers, in its view. */
+  private draw(paint: DirectorPaint): void {
+    if (!this.renderer) return
     if (!this.box || !this.visible()) {
       this.stale = true
       return
     }
-    this.renderer.renderFrame(record.frame, layers)
+    if (!sameView(paint.view, this.rendererView)) {
+      this.rendererView = { ...paint.view }
+      this.renderer.setView(this.rendererView)
+    }
+    this.renderer.renderFrame(paint.frame, paint.layers)
     this.stale = false
   }
 
@@ -449,7 +451,7 @@ class Tracker implements MatchTracker {
       this.stale = true
       return
     }
-    this.show(this.director.setLayers(this.layers), null)
+    this.show(this.director.setLayers(this.layers))
   }
 
   private visible(): boolean {
@@ -462,12 +464,14 @@ class Tracker implements MatchTracker {
     return { ...this.view, renderedWidth: this.box?.width ?? 0 }
   }
 
-  /** A sequence drives the view: the renderer draws through it, and the host hears of a new zoom. */
-  private applyCamera(camera: DirectorCamera): void {
-    const { zoom, panX, panY } = this.view
-    if (camera.zoom === zoom && camera.panX === panX && camera.panY === panY) return
+  /**
+   * A sequence moved the view: it is the widget's view from here, passed
+   * back with every call, and the host hears of a new zoom. The director has
+   * drawn in it already; the renderer gets it with the paint.
+   */
+  private adoptCamera(camera: DirectorCamera): void {
+    const { zoom } = this.view
     this.view = { zoom: camera.zoom, panX: camera.panX, panY: camera.panY }
-    this.renderer?.setView(this.directorView())
     if (camera.zoom !== zoom) this.emitter.emit('zoom', { zoom: camera.zoom })
   }
 
@@ -482,8 +486,9 @@ class Tracker implements MatchTracker {
     this.box = next
     for (const el of [this.canvas, this.overlay, this.hud]) place(el, next)
     const cleared = this.renderer ? sizeBitmap(this.canvas, next) : false
-    this.renderer?.setView(this.directorView())
-    if (moved || cleared) this.repaint()
+    // A new width changes how a pan in screen pixels lands, so it goes in as
+    // a view change, which pushes the view and paints.
+    if (moved || cleared) this.show(this.director.setView(this.directorView()))
   }
 
   /**
@@ -536,7 +541,7 @@ class Tracker implements MatchTracker {
   /** Someone wants the real frame, and their own view: every moment ends. */
   private readonly onOverlayPointerDown = (): void => {
     if (this.destroyed) return
-    this.show(this.director.stopAll(), null)
+    this.show(this.director.stopAll())
   }
 }
 
