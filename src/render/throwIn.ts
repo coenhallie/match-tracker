@@ -1,0 +1,90 @@
+import type { Frame, PitchDimensions, Transform2D } from '../model/types'
+import { frameHasAction } from '../analysis/actionLabels'
+import { designUnit, resolvePitchDimensions, worldToPx } from './pitchGeometry'
+import { drawEventBand, drawEventTitle, INTER_ASCENT } from './eventBanner'
+import { FRAME_W } from './constants'
+
+/**
+ * The throw-in, as the match-summary design shows it (Figma vp-pitch-2): a
+ * small "THROW IN" band just above the bottom touchline, the players left as
+ * they are. It slides in from the side of the half the ball is in, and back
+ * out the same way: the export does not say which team takes a throw-in, so
+ * the side says where it is rather than whose it is.
+ */
+export interface ThrowInIndicator {
+  /** 0 to 1: how far it has faded in, or, leaving, how much of it is left. */
+  intensity: number
+  /** 0 to 1: how far it has slid in from its side; 1 is in place. */
+  slide: number
+  /** The side it slides from: -1 the left, 1 the right, null in place. */
+  side: -1 | 1 | null
+}
+
+/**
+ * How a throw-in is shown, in milliseconds: it slides in over THROW_IN_IN_MS,
+ * stays until THROW_IN_SHOW_MS from the start, then slides back out over
+ * THROW_IN_OUT_MS.
+ */
+export const THROW_IN_IN_MS = 500
+export const THROW_IN_SHOW_MS = 2000
+export const THROW_IN_OUT_MS = 400
+
+/**
+ * The label flickers on and off over a few records around one throw-in: it
+ * has to have been off for this long, in seconds of replay time, before it
+ * counts as a new one.
+ */
+export const THROW_IN_REARM_S = 5
+
+/**
+ * Whether the pipeline labelled this frame a throw-in, however the export
+ * writes it ("Throw in", "EventType.THROW_IN"; see actionName).
+ */
+export function isThrowInFrame(frame: Frame): boolean {
+  return frameHasAction(frame, 'throw in')
+}
+
+/**
+ * The band, in design pixels. Measured from the design's frame: 501 by 109,
+ * its top 90 px above the middle of the bottom touchline, so its foot sits on
+ * the grass just past the line. Centred on the pitch.
+ */
+const BAND_WIDTH_PX = 501
+const BAND_HEIGHT_PX = 109
+const BAND_TOP_ABOVE_TOUCHLINE_PX = 90
+/** "THROW IN": its left edge, its baseline and its size. */
+const TITLE_LEFT_PX = BAND_WIDTH_PX / 2 - 165.5
+const TITLE_BASELINE_PX = 16 + 64 * INTER_ASCENT
+const TITLE_FONT_PX = 64
+
+const clamp01 = (k: number) => Math.min(1, Math.max(0, k))
+const easeOutCubic = (k: number) => 1 - (1 - k) ** 3
+
+/**
+ * Draw the throw-in indicator over everything else on the pitch, in frame
+ * units through the context's current transform. Sliding, it starts wholly
+ * past the frame's edge on its side.
+ */
+export function drawThrowInIndicator(
+  ctx: CanvasRenderingContext2D,
+  pd: Partial<PitchDimensions> | undefined,
+  t: Transform2D,
+  ind: ThrowInIndicator,
+): void {
+  const alpha = clamp01(ind.intensity)
+  if (alpha <= 0) return
+  const u = designUnit(t)
+  const width = BAND_WIDTH_PX * u
+  const halfWidth = resolvePitchDimensions(pd).width.value / 2
+  const [cx, touchline] = worldToPx(0, halfWidth, t)
+  const travel = FRAME_W / 2 + width / 2
+  const offset = ind.side === null ? 0 : ind.side * travel * (1 - easeOutCubic(clamp01(ind.slide)))
+  const left = cx + offset - width / 2
+  const top = touchline - BAND_TOP_ABOVE_TOUCHLINE_PX * u
+
+  ctx.save()
+  ctx.globalAlpha = alpha
+  drawEventBand(ctx, left, top, width, BAND_HEIGHT_PX * u)
+  drawEventTitle(ctx, t, 'THROW IN', left + TITLE_LEFT_PX * u, top + TITLE_BASELINE_PX * u, TITLE_FONT_PX)
+  ctx.restore()
+}

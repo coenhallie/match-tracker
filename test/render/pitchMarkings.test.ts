@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { build2DTransform, buildPitchCache, resolvePitchDimensions, designUnit } from '../../src/render/pitchGeometry'
 import type { PitchDimensions } from '../../src/model/types'
-import { stubOffscreenCanvas, type Op } from './recordingCtx'
+import { stubOffscreenCanvas, type Op } from '../helpers/recordingCtx'
 
 // Exactly the keys the pipeline's own export carries. It states neither
 // center_circle_radius nor penalty_mark_distance in any of its 121,371 frames,
