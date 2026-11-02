@@ -274,3 +274,89 @@ describe('the layers menu', () => {
     expect(menu(host)).toBeNull()
   })
 })
+
+describe('the layersMenu option', () => {
+  const stored = (choice: Partial<ReplayLayers>) =>
+    localStorage.setItem('match-tracker.layers', JSON.stringify({ ...DEFAULT_REPLAY_LAYERS, ...choice }))
+
+  it('renders no button and no menu when it is false', () => {
+    const { host } = mount({ layersMenu: false })
+    expect(shadow(host).querySelector('button')).toBeNull()
+    expect(shadow(host).querySelector('.mt-layers')).toBeNull()
+    expect(menu(host)).toBeNull()
+  })
+
+  it('shows the button by default and when it is true', () => {
+    expect(button(mount().host)).not.toBeNull()
+    expect(button(mount({ layersMenu: true }).host)).not.toBeNull()
+  })
+
+  it('ignores a stored choice, and keeps the defaults over the host\'s layers', () => {
+    stored({ goal: false, attack: false })
+    mount({ layersMenu: false, layersStorageKey: undefined, layers: { ballTrail: false } })
+    expect(control.options.at(-1)?.layers).toEqual({ ...DEFAULT_REPLAY_LAYERS, ballTrail: false })
+    expect(control.options.at(-1)?.layers.goal).toBe(true)
+  })
+
+  it('neither reads nor writes storage when it is false', () => {
+    stored({ goal: false })
+    const read = vi.spyOn(Storage.prototype, 'getItem')
+    const write = vi.spyOn(Storage.prototype, 'setItem')
+    try {
+      const { tracker } = mount({ layersMenu: false, layersStorageKey: undefined })
+      tracker.setOptions({ layers: { farFade: false } })
+      expect(read).not.toHaveBeenCalled()
+      expect(write).not.toHaveBeenCalled()
+    } finally {
+      read.mockRestore()
+      write.mockRestore()
+    }
+  })
+
+  it('adds and removes the button when setOptions toggles it', () => {
+    const { host, tracker } = mount()
+    expect(button(host)).not.toBeNull()
+    tracker.setOptions({ layersMenu: false })
+    expect(shadow(host).querySelector('.mt-layers')).toBeNull()
+    expect(shadow(host).querySelector('button')).toBeNull()
+    tracker.setOptions({ layersMenu: true })
+    expect(shadow(host).querySelectorAll('.mt-layers-toggle')).toHaveLength(1)
+    toggle(host, 'ballTrail')
+    expect(checked(host, 'ballTrail')).toBe('false')
+  })
+
+  it('closes an open menu when it is switched off, and opens closed when it is back', () => {
+    const { host, tracker } = mount()
+    open(host)
+    tracker.setOptions({ layersMenu: false })
+    expect(menu(host)).toBeNull()
+    expect(backdrop(host)).toBeNull()
+    tracker.setOptions({ layersMenu: true })
+    expect(menu(host)).toBeNull()
+    expect(button(host).getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('goes back to the defaults over the host\'s layers when switched off', () => {
+    const { host, tracker } = mount({ layers: { phaseLabels: false } })
+    toggle(host, 'goal')
+    const log: ReplayLayers[] = []
+    tracker.on('layers', (layers) => log.push(layers))
+    tracker.setOptions({ layersMenu: false })
+    expect(log).toEqual([{ ...DEFAULT_REPLAY_LAYERS, phaseLabels: false }])
+    expect(control.options.at(-1)?.layers.goal).toBe(true)
+    expect(shadow(host).querySelector('.mt-phase')).toBeNull()
+  })
+
+  it('reads storage as at mount when switched on, and keeps the user\'s choices again', () => {
+    const { host, tracker } = mount({ layersMenu: false, layersStorageKey: undefined })
+    stored({ goal: false })
+    const log: ReplayLayers[] = []
+    tracker.on('layers', (layers) => log.push(layers))
+    tracker.setOptions({ layersMenu: true })
+    expect(log).toEqual([{ ...DEFAULT_REPLAY_LAYERS, goal: false }])
+    open(host)
+    expect(checked(host, 'goal')).toBe('false')
+    toggle(host, 'farFade')
+    expect(JSON.parse(localStorage.getItem('match-tracker.layers')!)).toMatchObject({ goal: false, farFade: false })
+  })
+})

@@ -128,6 +128,16 @@ export class LayersMenu {
     this.menu.style.maxWidth = `${Math.max(0, box.width - 2 * MENU_INSET_PX)}px`
   }
 
+  /** Take the button, and the menu if it is open, out of `hud`, or put the button back in. */
+  setShown(hud: HTMLElement, shown: boolean): void {
+    if (shown) {
+      if (this.el.parentNode !== hud) hud.append(this.el)
+    } else {
+      this.setOpen(false)
+      this.el.remove()
+    }
+  }
+
   destroy(): void {
     this.shadow.removeEventListener('keydown', this.onKeydown)
     this.setOpen(false)

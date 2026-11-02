@@ -35,6 +35,12 @@ export interface MatchTrackerOptions {
   colors?: Partial<Record<PersonRole, Partial<PersonColors>>>
   /** The layers shown where none have been chosen and kept. */
   layers?: Partial<ReplayLayers>
+  /**
+   * Whether the LAYERS button and menu are shown. Default true. When false
+   * the layers are the defaults over `layers` and the kept choice is neither
+   * read nor written, so the view always shows the canonical layers.
+   */
+  layersMenu?: boolean
   /** Where the layer choice is kept in localStorage. Default 'match-tracker.layers'; null keeps nothing. */
   layersStorageKey?: string | null
   /** The bottom-left text for one of a frame's actions, from its `action_type`. Default: as it comes. */
@@ -122,18 +128,32 @@ function layerStore(key: string | null): Pick<Storage, 'getItem' | 'setItem'> | 
   }
 }
 
+/** Whether the layers menu is on: it is unless the host turned it off. */
+export function layersMenuOn(options: MutableOptions): boolean {
+  return options.layersMenu !== false
+}
+
+/** The layers with no menu and nothing kept: the defaults, over the host's `layers`. */
+export function canonicalLayers(options: MutableOptions): ReplayLayers {
+  return { ...DEFAULT_REPLAY_LAYERS, ...options.layers }
+}
+
 function storageKey(options: MutableOptions): string | null {
+  // Without the menu there is no user choice to keep, and none to honour.
+  if (!layersMenuOn(options)) return null
   return options.layersStorageKey === undefined ? DEFAULT_LAYERS_STORAGE_KEY : options.layersStorageKey
 }
 
 /**
  * The layers to start with: the choice kept under the storage key, layer by
- * layer, over the host's `layers`, over the defaults. A kept entry that is
+ * layer, over the host's `layers`, over the defaults; with the menu off, the
+ * host's `layers` over the defaults and nothing read. A kept entry that is
  * not a known layer set to true or false is ignored, as readReplayLayers
  * ignores it.
  */
 export function initialLayers(options: MutableOptions): ReplayLayers {
-  const layers: ReplayLayers = { ...DEFAULT_REPLAY_LAYERS, ...options.layers }
+  const layers = canonicalLayers(options)
+  if (!layersMenuOn(options)) return layers
   const store = layerStore(storageKey(options))
   let kept: unknown = null
   try {
