@@ -6,6 +6,32 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-11-03
+
+A tiny `@coenhallie/match-tracker/banner` entry for the console banner, so a
+host can call it from its app entry without loading the widget. Nothing
+changes for someone watching the tracker: the pitch, the moments and the HUD
+are drawn as in 0.1.3, and the goldens and snapshots are unchanged.
+
+### For pages that embed it
+
+- **`@coenhallie/match-tracker/banner`** exports `logMatchTrackerBanner()` and
+  `matchTrackerBanner()` on their own. Before, the only way to get them was the
+  main entry, which is the whole widget in one module, so calling the banner
+  from an app's entry pulled the widget into the entry chunk (163 kB to 253 kB
+  on one app that otherwise loads the widget lazily). `/banner` is under 1 kB
+  gzipped and imports nothing. The README's Console banner section says to
+  import it from there at your entry.
+- The main entry and `/vue` still export both functions, and they are the
+  same functions, so the banner still prints once per page when a page loads
+  `/banner` and either of the others.
+
+### Size
+
+- `dist/banner.js` is 0.76 kB gzipped (budget 2 kB, checked by `npm run size`).
+  The widget is 33.7 kB gzipped (budget 60 kB), as before, and the fonts are
+  still 81.7 kB.
+
 ## [0.1.3] - 2026-11-03
 
 Host controls over the pitch are left alone by zoom and pan too, and an
