@@ -1,4 +1,5 @@
 export { MATCH_TRACKER_VERSION } from './version.js'
+export { logMatchTrackerBanner, matchTrackerBanner } from './banner.js'
 export { parseRecord } from './model/parseRecord.js'
 export type * from './model/types.js'
 export { createMatchTracker } from './widget/createMatchTracker.js'

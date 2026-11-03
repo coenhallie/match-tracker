@@ -4,7 +4,14 @@
  * host for. Also the hooks the size and performance checks use, on
  * `window.demo`.
  */
-import { createMatchTracker, parseRecord, type MatchTracker, type ReplayMoment, type TeamId } from '../src/index.js'
+import {
+  createMatchTracker,
+  logMatchTrackerBanner,
+  parseRecord,
+  type MatchTracker,
+  type ReplayMoment,
+  type TeamId,
+} from '../src/index.js'
 import type { TrackerRecord } from '../src/model/types.js'
 import { HISTORY_S, deriveAt, windowAt } from '../src/analysis/derive.js'
 import { Director, type DirectorInput, type DirectorPaint } from '../src/director/director.js'
@@ -367,6 +374,8 @@ $<HTMLInputElement>('hostile').addEventListener('change', (e) => {
   document.head.append(style)
 })
 
+// The version banner in the console, which the widget prints only when its host asks.
+logMatchTrackerBanner()
 triggers('live', () => live)
 triggers('replay', () => replay)
 setWidth(768)

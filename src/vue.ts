@@ -61,6 +61,8 @@ import {
 // Every type of the main entry but `MatchTracker`, which here is the
 // component: the tracker instance is `MatchTrackerInstance` in both.
 export type * from './index.js'
+// The console banner, the main entry's own, so one guard holds for both entries.
+export { logMatchTrackerBanner, matchTrackerBanner } from './index.js'
 
 /** What the component's ref exposes: the tracker's input, and its overlay and box once mounted. */
 export interface MatchTrackerHandle {

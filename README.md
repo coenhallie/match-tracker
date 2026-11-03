@@ -192,6 +192,24 @@ socket.addEventListener('message', (event) => tracker.value?.push(event.data))
   `MatchTracker` is the component, so the tracker instance's type is
   `MatchTrackerInstance`, a name both entries export.
 
+### Console banner
+
+The widget never prints a banner on its own. To show the widget's version in
+the browser's developer console as a small pitch, call
+`logMatchTrackerBanner()` once from your app, for example where you mount the
+tracker:
+
+```ts
+import { logMatchTrackerBanner } from '@coenhallie/match-tracker' // or '@coenhallie/match-tracker/vue'
+
+logMatchTrackerBanner()
+```
+
+- It prints once per page, however many times it is called, so calling it
+  from every component that mounts a tracker is fine.
+- On the server (SSR), or without a console, it does nothing.
+- `matchTrackerBanner()` returns the same art as plain text, without colours.
+
 ## API
 
 ### `createMatchTracker(host, options): MatchTracker`
@@ -217,6 +235,7 @@ destroyed on can have a new one.
 
 Also exported:
 - `MATCH_TRACKER_VERSION`;
+- `logMatchTrackerBanner()` and `matchTrackerBanner()`, the opt-in console banner (see Console banner), also from `/vue`;
 - `parseRecord(message): TrackerRecord | null`;
 - `REPLAY_LOOKBACK_S`, the seconds of records a replay host passes as `lookback`;
 - `DEFAULT_PERSON_COLORS`, the default `fill`, `outline` and `text` per role, frozen;
