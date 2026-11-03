@@ -3,6 +3,8 @@ export { parseRecord } from './model/parseRecord.js'
 export type * from './model/types.js'
 export { createMatchTracker } from './widget/createMatchTracker.js'
 export type { MatchTracker, ReplayState } from './widget/createMatchTracker.js'
+/** The tracker createMatchTracker returns, by a name the Vue entry does not take for its component. */
+export type { MatchTracker as MatchTrackerInstance } from './widget/createMatchTracker.js'
 export type { MatchTrackerOptions, TeamOptions } from './widget/options.js'
 export type { TrackerEvents } from './widget/events.js'
 export type { ReplayLayerKey, ReplayLayers, ReplayMoment } from './model/replayLayers.js'

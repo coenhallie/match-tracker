@@ -127,12 +127,17 @@ socket.addEventListener('message', (event) => tracker.value?.push(event.data))
 
 - Every option below is a prop. A prop that changes, in place or not, goes to
   `setOptions` on its own, so it never undoes another prop or the layers
-  chosen in the menu.
+  chosen in the menu. Props are compared by what they hold, so an inline
+  object such as `:teams="{ home: { name: home } }"` that renders again with
+  the same contents changes nothing. A new `:layers` with other contents does
+  go over the viewer's choice in the menu, as `setOptions` does.
 - `mode` is fixed for a tracker's life. Changing it makes a new tracker.
 - The component emits `zoom`, `layers` and `moment`.
 - The ref exposes `push`, `present`, `reset`, `trigger` and `overlay`. They
   do nothing until the component is mounted.
-- All the types of the main entry are re-exported from `/vue`.
+- All the types of the main entry are re-exported from `/vue`. There
+  `MatchTracker` is the component, so the tracker instance's type is
+  `MatchTrackerInstance`, a name both entries export.
 
 ## API
 

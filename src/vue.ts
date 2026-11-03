@@ -14,12 +14,16 @@
  * - Every other prop is a `MatchTrackerOptions` field. A change, in place or
  *   not, goes to `setOptions` with that one field, so a change to one prop
  *   never takes back what another set, nor the layers chosen in the menu.
+ *   A prop is compared by what it holds, not by identity: a parent that
+ *   renders an inline object again (`:layers="{ ballTrail: true }"`) has
+ *   changed nothing, and setOptions is not called. The tracker is given a
+ *   copy of each, never the parent's reactive object.
  * - The tracker's `zoom`, `layers` and `moment` events are emitted as they are.
  * - `push`, `present`, `reset`, `trigger` and `overlay` are exposed on the
  *   component's ref (see MatchTrackerHandle). Before mount and after unmount
  *   they do nothing, `trigger` returns false and `overlay` is null.
  */
-import { defineComponent, h, onBeforeUnmount, onMounted, ref, watch, type PropType } from 'vue'
+import { defineComponent, h, onBeforeUnmount, onMounted, ref, toRaw, watch, type PropType } from 'vue'
 import {
   createMatchTracker,
   type MatchTracker as Tracker,
@@ -30,6 +34,8 @@ import {
   type TrackerEvents,
 } from './index.js'
 
+// Every type of the main entry but `MatchTracker`, which here is the
+// component: the tracker instance is `MatchTrackerInstance` in both.
 export type * from './index.js'
 
 /** What the component's ref exposes: the tracker's input, and its overlay once mounted. */
@@ -65,6 +71,33 @@ const optionProps = {
 
 const OPTION_KEYS = Object.keys(optionProps) as OptionKey[]
 
+const isPlain = (value: unknown): value is Record<string, unknown> | unknown[] => {
+  if (Array.isArray(value)) return true
+  if (typeof value !== 'object' || value === null) return false
+  const proto = Object.getPrototypeOf(value)
+  return proto === Object.prototype || proto === null
+}
+
+/** A prop as it is now, out of Vue's reactivity: plain objects and arrays copied all the way down, anything else as it is. */
+function snapshot(value: unknown): unknown {
+  const raw = toRaw(value)
+  if (Array.isArray(raw)) return raw.map(snapshot)
+  if (!isPlain(raw)) return raw
+  const out: Record<string, unknown> = {}
+  for (const [key, inner] of Object.entries(raw)) out[key] = snapshot(inner)
+  return out
+}
+
+/** Whether two snapshots hold the same: plain objects and arrays by what they hold, anything else (a function) by identity. */
+function same(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) return true
+  if (!isPlain(a) || !isPlain(b) || Array.isArray(a) !== Array.isArray(b)) return false
+  const [x, y] = [a as Record<string, unknown>, b as Record<string, unknown>]
+  const keys = Object.keys(x)
+  if (keys.length !== Object.keys(y).length) return false
+  return keys.every((key) => Object.hasOwn(y, key) && same(x[key], y[key]))
+}
+
 export const MatchTracker = defineComponent({
   name: 'MatchTracker',
   props: {
@@ -79,10 +112,14 @@ export const MatchTracker = defineComponent({
   setup(props, { emit, expose }) {
     const host = ref<HTMLElement | null>(null)
     let tracker: Tracker | null = null
+    /** What the tracker was last given for each option: what a prop is compared with. */
+    let sent: Partial<Record<OptionKey, unknown>> = {}
 
     function options(): MatchTrackerOptions {
+      sent = {}
+      for (const key of OPTION_KEYS) sent[key] = snapshot(props[key])
       const out: Partial<Record<OptionKey, unknown>> = {}
-      for (const key of OPTION_KEYS) if (props[key] !== undefined) out[key] = props[key]
+      for (const key of OPTION_KEYS) if (sent[key] !== undefined) out[key] = sent[key]
       return { ...(out as Omit<MatchTrackerOptions, 'mode'>), mode: props.mode }
     }
 
@@ -112,7 +149,13 @@ export const MatchTracker = defineComponent({
     for (const key of OPTION_KEYS) {
       watch(
         () => props[key],
-        (value) => tracker?.setOptions({ [key]: value }),
+        (value) => {
+          if (!tracker) return
+          const next = snapshot(value)
+          if (same(next, sent[key])) return
+          sent[key] = next
+          tracker.setOptions({ [key]: next })
+        },
         { deep: true },
       )
     }

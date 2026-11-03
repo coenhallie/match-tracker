@@ -3,10 +3,10 @@
  * hands its props to it, passes its events on, and exposes its input.
  */
 import { mount, type VueWrapper } from '@vue/test-utils'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest'
 import { defineComponent, h, nextTick, reactive, ref } from 'vue'
-import type { MatchTracker as Tracker, MatchTrackerOptions } from '../src/index'
-import { MatchTracker, type MatchTrackerHandle } from '../src/vue'
+import type { MatchTracker as Tracker, MatchTrackerInstance, MatchTrackerOptions } from '../src/index'
+import { MatchTracker, type MatchTrackerHandle, type MatchTrackerInstance as VueInstance } from '../src/vue'
 import { installEnv, type Env } from './widget/env'
 import { message } from './widget/messages'
 
@@ -100,6 +100,79 @@ describe('the Vue component', () => {
     await nextTick()
     expect(setOptions).toHaveBeenCalledTimes(1)
     expect(setOptions.mock.calls[0]![0].teams?.home?.name).toBe('Feyenoord')
+  })
+
+  it('keeps the layer chosen in the menu when the parent renders an equal inline :layers again', async () => {
+    const tick = ref(0)
+    const Parent = defineComponent({
+      setup: () => () =>
+        h('div', { 'data-tick': tick.value }, [
+          // A new object on every render, as an inline :layers="{ ... }" is.
+          h(MatchTracker, { mode: 'live', layersStorageKey: null, layers: { ballTrail: true } }),
+        ]),
+    })
+    const wrapper = mount(Parent, { attachTo: document.body })
+    wrappers.push(wrapper)
+    const host = wrapper.element.firstElementChild as HTMLElement
+    host.shadowRoot!.querySelector<HTMLButtonElement>('.mt-layers-toggle')!.click()
+    host.shadowRoot!.querySelector<HTMLButtonElement>('[data-layer="ballTrail"]')!.click()
+    tick.value++
+    await nextTick()
+    expect(wrapper.element.getAttribute('data-tick')).toBe('1')
+    const item = host.shadowRoot!.querySelector<HTMLButtonElement>('[data-layer="ballTrail"]')!
+    expect(item.getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('calls no setOptions when the parent renders equal inline objects again, and one when they differ', async () => {
+    const tick = ref(0)
+    const home = ref('Ajax')
+    const formatAction = (type: string) => type
+    const Parent = defineComponent({
+      setup: () => () =>
+        h('div', { 'data-tick': tick.value }, [
+          h(MatchTracker, {
+            mode: 'live',
+            layersStorageKey: null,
+            teams: { home: { name: home.value, color: '#ff0000' }, away: { name: 'PSV' } },
+            colors: { official: { fill: '#000' } },
+            text: { layers: { goal: { label: 'Goals' } } },
+            formatAction,
+          }),
+        ]),
+    })
+    const wrapper = mount(Parent, { attachTo: document.body })
+    wrappers.push(wrapper)
+    const setOptions = vi.spyOn(last().tracker, 'setOptions')
+    tick.value++
+    await nextTick()
+    tick.value++
+    await nextTick()
+    expect(wrapper.element.getAttribute('data-tick')).toBe('2')
+    expect(setOptions).not.toHaveBeenCalled()
+    home.value = 'Feyenoord'
+    await nextTick()
+    expect(setOptions).toHaveBeenCalledTimes(1)
+    expect(setOptions.mock.calls[0]![0]).toEqual({
+      teams: { home: { name: 'Feyenoord', color: '#ff0000' }, away: { name: 'PSV' } },
+    })
+  })
+
+  it('takes an in-place change to an object it has sent before, each time', async () => {
+    const layers = reactive({ ballTrail: true })
+    const Parent = defineComponent({
+      setup: () => () => h(MatchTracker, { mode: 'live', layersStorageKey: null, layers }),
+    })
+    const wrapper = mount(Parent, { attachTo: document.body })
+    wrappers.push(wrapper)
+    const setOptions = vi.spyOn(last().tracker, 'setOptions')
+    layers.ballTrail = false
+    await nextTick()
+    layers.ballTrail = true
+    await nextTick()
+    expect(setOptions.mock.calls.map(([options]) => options)).toEqual([
+      { layers: { ballTrail: false } },
+      { layers: { ballTrail: true } },
+    ])
   })
 
   it('keeps the layer chosen in the menu when another prop changes', async () => {
@@ -207,5 +280,13 @@ describe('the Vue component', () => {
     expect(() => exposed.push(message(0))).not.toThrow()
     expect(exposed.trigger('goal')).toBe(false)
     expect(exposed.overlay).toBeNull()
+  })
+
+  it('names the tracker instance MatchTrackerInstance from both entries, as the component takes MatchTracker in /vue', () => {
+    expectTypeOf<MatchTrackerInstance>().toEqualTypeOf<Tracker>()
+    expectTypeOf<VueInstance>().toEqualTypeOf<Tracker>()
+    mountTracker()
+    const instance: VueInstance = last().tracker
+    expect(instance.version).toBe(last().tracker.version)
   })
 })
