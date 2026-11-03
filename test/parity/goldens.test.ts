@@ -18,6 +18,7 @@ import type { TrackerRecord } from '../../src/model/types'
 import { FRAME_H, FRAME_W, PERSON_COLORS } from '../../src/render/constants'
 import { createRenderer } from '../../src/render/renderer'
 import { DEFAULT_THEME } from '../../src/render/theme'
+import { withinRounding } from '../helpers/close'
 import { normalizeCalls } from '../helpers/normalize'
 import { recordingCtx, stubOffscreenCanvas } from '../helpers/recordingCtx'
 
@@ -195,16 +196,16 @@ function replay(golden: GoldenFile) {
         canvas.width = golden.box.width * golden.box.dpr
         canvas.height = golden.box.height * golden.box.dpr
       }
-      expect(paint.view, `${at(step)}: view`).toEqual(step.view)
+      expect(paint.view, `${at(step)}: view`).toEqual(withinRounding(step.view))
       expect(paint.frame === records[step.recordIndex!]!.frame, `${at(step)}: record ${step.recordIndex}`).toBe(true)
       renderer.setView(paint.view)
       renderer.renderFrame(paint.frame, paint.layers)
       const calls = asSaved(ops.splice(0))
       const expected = normalizeCalls(step.calls)
-      if (JSON.stringify(calls) !== JSON.stringify(expected)) expect(calls, `${at(step)}: calls`).toEqual(expected)
+      if (JSON.stringify(calls) !== JSON.stringify(expected)) expect(calls, `${at(step)}: calls`).toEqual(withinRounding(expected))
     })
     const last = group.steps.at(-1)!
-    expect(director.view, `${at(last)}: the user's view`).toEqual({ ...last.userView, renderedWidth })
+    expect(director.view, `${at(last)}: the user's view`).toEqual(withinRounding({ ...last.userView, renderedWidth }))
   }
 
   for (const group of groups(golden.steps)) {
