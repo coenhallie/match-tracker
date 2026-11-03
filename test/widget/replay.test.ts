@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMatchTracker, parseRecord, type MatchTracker, type TrackerRecord } from '../../src/index'
 import { deriveAt, windowAt } from '../../src/analysis/derive'
-import { installEnv, makeHost, type Env } from './env'
+import { FakeIntersectionObserver, installEnv, makeHost, type Env } from './env'
 import { control } from './recording'
 import { message } from './messages'
 
@@ -99,8 +99,12 @@ describe('replay input', () => {
     env.frame()
     expect(control.inputs.at(-1)?.playback).toBe(false)
     expect(log).toEqual(['goal:start', 'goal:end'])
+    // Nothing animates on; the loop runs only for the clock, until it pauses.
+    expect(control.outputs.at(-1)?.animating).toBe(false)
+    tracker.present(stateAt(13.04, false))
     env.settle()
     expect(env.queued()).toBe(0)
+    expect(log).toEqual(['goal:start', 'goal:end'])
   })
 
   it('stops moments when play pauses', () => {
@@ -123,6 +127,121 @@ describe('replay input', () => {
     const live = createMatchTracker(host, { mode: 'live', layersStorageKey: null })
     mounted.push(live)
     live.present(stateAt(10))
+    expect(env.queued()).toBe(0)
+  })
+})
+
+describe('the replay loop while playing', () => {
+  /**
+   * A replay host whose clock runs in its own animation frame callback, as
+   * video-annotation's does: it asks for its next frame first, then
+   * presents, twice in a frame (the clock, then the frame the video has
+   * reached). Returns the last time it presented in each frame, in order.
+   */
+  function hostClock(tracker: MatchTracker, start = 10) {
+    const presented: number[] = []
+    let time = start
+    const tick = () => {
+      requestAnimationFrame(tick)
+      time = Math.round((time + 0.02) * 1000) / 1000
+      tracker.present(stateAt(time))
+      time = Math.round((time + 0.02) * 1000) / 1000
+      tracker.present(stateAt(time))
+      presented.push(time)
+    }
+    requestAnimationFrame(tick)
+    return presented
+  }
+
+  it('runs one update in every display frame, however the presents fall', () => {
+    const { tracker } = mount()
+    tracker.present(stateAt(10))
+    env.frame()
+    const presented = hostClock(tracker)
+    const perFrame: number[] = []
+    for (let i = 0; i < 24; i++) {
+      const before = control.inputs.length
+      env.frame()
+      perFrame.push(control.inputs.length - before)
+    }
+    expect(perFrame).toEqual(Array(24).fill(1))
+    // Every frame the host presented in is taken in once, at most a frame late.
+    const times = control.inputs.slice(1).map((i) => i.time)
+    expect(new Set(times).size).toBe(times.length)
+    expect(presented.slice(0, -1).every((t) => times.includes(t))).toBe(true)
+    // Each display frame is its own animation frame to the director.
+    const frames = control.inputs.slice(1).map((i) => i.nowMs)
+    expect(frames).toEqual(frames.map((_, i) => frames[0]! + 16 * i))
+  })
+
+  it('keeps ticking while playing with nothing new, and draws only when the director paints', () => {
+    const { host, tracker } = mount()
+    tracker.present(stateAt(10))
+    env.frame()
+    tracker.present(stateAt(10.04))
+    // Let any fade the step started run out.
+    for (let i = 0; i < 300; i++) env.frame()
+    const updates = control.inputs.length
+    const draws = env.draws(host)
+    for (let i = 0; i < 30; i++) {
+      env.frame()
+      expect(env.queued()).toBe(1)
+    }
+    expect(control.inputs.length - updates).toBe(30)
+    expect(control.outputs.slice(-30).every((o) => !o.paint)).toBe(true)
+    expect(env.draws(host)).toBe(draws)
+  })
+
+  it('stops asking for frames once the host pauses', () => {
+    const { tracker } = mount()
+    tracker.present(stateAt(10))
+    env.frame()
+    expect(env.queued()).toBe(1)
+    tracker.present(stateAt(10.04, false))
+    env.settle()
+    expect(env.queued()).toBe(0)
+    tracker.present(stateAt(10.08))
+    env.frame()
+    expect(env.queued()).toBe(1)
+  })
+
+  it('stops while the tab is hidden, and runs again when it is back', () => {
+    const { tracker } = mount()
+    tracker.present(stateAt(10))
+    env.frame()
+    env.setVisibility('hidden')
+    env.settle()
+    expect(env.queued()).toBe(0)
+    const updates = control.inputs.length
+    env.setVisibility('visible')
+    env.frame()
+    env.frame()
+    expect(control.inputs.length - updates).toBe(2)
+    expect(env.queued()).toBe(1)
+  })
+
+  it('stops while out of view, and runs again when back in view', () => {
+    const { tracker } = mount()
+    tracker.present(stateAt(10))
+    env.frame()
+    for (const observer of FakeIntersectionObserver.live) observer.fire(false)
+    env.settle()
+    expect(env.queued()).toBe(0)
+    const updates = control.inputs.length
+    for (const observer of FakeIntersectionObserver.live) observer.fire(true)
+    env.frame()
+    env.frame()
+    expect(control.inputs.length - updates).toBe(2)
+    expect(env.queued()).toBe(1)
+  })
+
+  it('leaves live mode to ask only when something arrives or animates', () => {
+    const host = makeHost()
+    const live = createMatchTracker(host, { mode: 'live', layersStorageKey: null })
+    mounted.push(live)
+    env.resize(host, 1280, 760)
+    live.push(message(0, { withBall: true }))
+    env.settle()
     expect(env.queued()).toBe(0)
   })
 })

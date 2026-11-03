@@ -17,7 +17,10 @@
  * update, and the canvas is drawn only when the director paints. All the
  * paints of one call land in one display frame, so only the last is drawn,
  * with its own frame, layers and view; the goldens prove at the director
- * that its paints are the reference's, in order. The fonts or icons arriving
+ * that its paints are the reference's, in order. In replay, while the host's
+ * clock plays, the loop asks for every display frame, so a host presenting
+ * from its own animation frames is taken in each frame rather than every
+ * other one; a frame with nothing new updates and draws nothing. The fonts or icons arriving
  * and an options change repaint at once, through the director (`setLayers`
  * with the layers in force paints and changes nothing else); a resize goes
  * in as a view change (`setView`), as the reference's pushView paints.
@@ -601,6 +604,11 @@ class Tracker implements MatchTracker {
 
   private readonly tick = (nowMs: number): void => {
     if (this.destroyed || !this.visible()) return
+    // Replay while the host's clock plays: the next display frame too, asked
+    // for before anything here can throw. A host presenting from its own
+    // animation frame then always finds this one due, rather than asking for
+    // the frame after. Paused, hidden or out of view, the loop stops.
+    if (this.mode === 'replay' && this.presented?.playing) this.loop.request()
     const input = this.nextInput(nowMs)
     if (!input) return
     this.lastInput = input
