@@ -6,6 +6,18 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-11-03
+
+The corner's cone is easier to see. Nothing else changes for someone
+watching the tracker, and the goldens and snapshots are unchanged.
+
+### What you see
+
+- **The corner's cone is stronger.** Its sections are about three quarters
+  brighter, and between waves they settle lower than before (to 40% of full,
+  from 65%), so each wave out from the flag stands out. Each section also
+  takes a little longer to light up and settle (0.7 s, from 0.6 s).
+
 ## [0.1.5] - 2026-11-03
 
 A new moment, the corner, which video-annotation does not have. The free kick
