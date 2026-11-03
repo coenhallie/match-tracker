@@ -52,6 +52,13 @@ export interface MatchTrackerOptions {
   layersStorageKey?: string | null
   /** The bottom-left text for one of a frame's actions, from its `action_type`. Default: as it comes. */
   formatAction?: (actionType: string) => string
+  /**
+   * Developer mode: a badge over the pitch while fewer than 18 players are
+   * tracked, saying how many are, and whose attack covers the loss when one
+   * does. For telling a real attack from one shown over lost players.
+   * Default false.
+   */
+  debug?: boolean
 }
 
 /** The options as the widget holds them: all but the mode. */

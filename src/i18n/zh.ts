@@ -3,8 +3,8 @@ import type { TrackerText } from './text.js'
 /**
  * Simplified Chinese. The canvas words, the phase row's words and the team
  * names were given; the rest is a draft for Coen to check before release,
- * the corner's words (角球, and its layer) and the throw-in layer's hint
- * among them.
+ * the corner's words (角球, and its layer), the throw-in layer's hint, and
+ * the player loss's layer and debug badge among them.
  */
 export const zh: TrackerText = {
   goal: '进球',
@@ -27,9 +27,12 @@ export const zh: TrackerText = {
   zoomLevel: '{zoom}x',
   zoomReset: '双击恢复原始大小',
   pitchLabel: '比赛追踪',
+  playerLoss: '球员丢失：仅跟踪到 {players} 人',
+  playerLossCover: '球员丢失：仅跟踪到 {players} 人，以{team}的进攻覆盖',
   layers: {
     goal: { label: '进球动画', hint: '出现进球标签时，播放射门入网的动画' },
     attack: { label: '进攻', hint: '根据控球推算：阴影和球队名称' },
+    playerLoss: { label: '球员丢失时显示进攻', hint: '跟踪到的球员少于 18 人时显示进攻动画' },
     freeKick: { label: '任意球', hint: '出现任意球标签时显示横幅，比赛暂停期间一直显示' },
     corner: { label: '角球', hint: '出现角球标签时显示横幅并点亮角球区，比赛暂停期间一直显示' },
     throwInBanner: { label: '界外球', hint: '出现界外球标签时，在底边线上方显示横幅' },

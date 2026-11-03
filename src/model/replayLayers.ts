@@ -9,6 +9,7 @@
 export type ReplayLayerKey =
   | 'goal'
   | 'attack'
+  | 'playerLoss'
   | 'freeKick'
   | 'corner'
   | 'throwInBanner'
@@ -34,6 +35,7 @@ export type ReplayMoment = 'goal' | 'attack' | 'freeKick' | 'corner' | 'throwIn'
 export const REPLAY_LAYERS: ReadonlyArray<{ key: ReplayLayerKey }> = [
   { key: 'goal' },
   { key: 'attack' },
+  { key: 'playerLoss' },
   { key: 'freeKick' },
   { key: 'corner' },
   // Not "throwIn": that was the removed throw-in zoom's key, and a browser
@@ -49,6 +51,7 @@ export const REPLAY_LAYERS: ReadonlyArray<{ key: ReplayLayerKey }> = [
 export const DEFAULT_REPLAY_LAYERS: ReplayLayers = {
   goal: true,
   attack: true,
+  playerLoss: true,
   freeKick: true,
   corner: true,
   throwInBanner: true,

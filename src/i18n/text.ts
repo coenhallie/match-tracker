@@ -52,6 +52,13 @@ export interface TrackerText {
   zoomReset: string
   /** What a screen reader calls the pitch: the canvas's ARIA label. */
   pitchLabel: string
+  /**
+   * The debug badge (the `debug` option) while too few players are tracked,
+   * with `{players}` for how many are; and the same while an attack covers
+   * it, with `{team}` for whose.
+   */
+  playerLoss: string
+  playerLossCover: string
   /** Each layer's name and hint in the layers menu, listed in REPLAY_LAYERS order. */
   layers: Record<ReplayLayerKey, LayerText>
 }

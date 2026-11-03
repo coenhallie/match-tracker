@@ -5,7 +5,8 @@ match's moments (goals, attacks, free kicks, corners, throw-ins) on a pitch,
 from the tracking pipeline's frames, inside any element you give it. It is the
 2D replay from video-annotation, taken out of Vue: the same picture, timing and
 behaviour for the same data, with zoom and pan, the attacking/defending row and
-the layers menu. The corner is the widget's own, as video-annotation has none.
+the layers menu. The corner is the widget's own, as video-annotation has none,
+and so is the attack shown over a player loss.
 
 - **Framework-free.** One function, `createMatchTracker`, and plain DOM. A thin
   Vue 3 component is a separate entry, `@coenhallie/match-tracker/vue`.
@@ -266,9 +267,30 @@ Also exported:
 | `layersMenu` | `boolean` | `true` | `false` takes the layers button and menu out. The layers are then the defaults over `layers`, and nothing is read from or written to `layersStorageKey`. Can be changed with `setOptions`. |
 | `layersStorageKey` | `string \| null` | `'match-tracker.layers'` | Where the menu's choice is kept in `localStorage`. `null` keeps nothing. A kept choice wins over `layers`. Fixed at mount, like `mode`: `setOptions` ignores it, and so does the Vue component when the prop changes. To keep the choice somewhere else, make a new tracker. |
 | `formatAction` | `(actionType: string) => string` | as it comes | The bottom-left text for each of a frame's actions, from its `action_type` (for example `'EventType.FREE_KICK'` to `'Free kick'`). |
+| `debug` | `boolean` | `false` | Developer mode. A red badge, top left of the pitch, while fewer than 18 players are tracked on the frame on screen: how many are, and whose attack covers the loss when one does (see [Player loss](#player-loss)). For telling a real attack from one shown over lost players. Can be changed with `setOptions`. |
 
-The layers are `goal`, `attack`, `freeKick`, `corner`, `throwInBanner`, `ballTrail`,
-`phaseLabels`, `nearbyRings`, `farFade` and `ringFades`.
+The layers are `goal`, `attack`, `playerLoss`, `freeKick`, `corner`, `throwInBanner`,
+`ballTrail`, `phaseLabels`, `nearbyRings`, `farFade` and `ringFades`.
+
+#### Player loss
+
+Now and then the pipeline loses track of most players for a few seconds, and
+the pitch is left nearly empty. While fewer than 18 players are tracked (both
+teams' players, keepers included, officials not), the widget shows an attack
+over the gap instead, with everyone faded out (the `playerLoss` layer, on by
+default):
+- It starts once the loss has lasted 0.3 s of playback.
+- It shows the attack of the team the ball is heading towards the other goal
+  with. While the ball isn't clearly moving, it shows the attack of the team
+  that last had the ball. Until either is known it waits, and tries again on
+  each record.
+- The ball isn't held, as an attack holds it: play carries on underneath, and
+  the ball keeps moving, ringed in the team's colour.
+- It stays while the loss lasts, and fades out once 18 or more players have
+  been tracked again for 0.5 s.
+- A goal, a free kick or a corner takes over from it. An attack the team
+  phase calls during a loss isn't shown on top of it.
+- With `debug` on, a badge says when this is happening.
 
 The `TrackerText` keys are:
 - on the canvas: `goal`, `freeKick`, `corner`, `throwIn`, `attack`;
@@ -276,7 +298,8 @@ The `TrackerText` keys are:
 - ARIA templates: `phaseAttackingAria` and `phaseDefendingAria` (with `{team}`), and `phaseAria` (with `{home}` and `{away}`);
 - the menu: `layersButton`, `layersTooltip`, `layersMenuLabel`, and `layers` (`{ label, hint }` per layer);
 - the zoom: `zoomLevel` (with `{zoom}`) and `zoomReset`;
-- for screen readers: `pitchLabel`, the pitch's name ("Match tracker").
+- for screen readers: `pitchLabel`, the pitch's name ("Match tracker");
+- the `debug` badge: `playerLoss` (with `{players}`) and `playerLossCover` (with `{players}` and `{team}`).
 
 ### Events
 

@@ -8,6 +8,7 @@
  * labels, so a label filling with its team's colour fades as it does there.
  */
 import type { TeamId, TeamPhase, TeamState } from '../analysis/teamPhase.js'
+import type { PlayerLossState } from '../director/director.js'
 import { formatText, type TrackerText } from '../i18n/text.js'
 
 /** What the row says the teams are, and how it draws them. */
@@ -141,6 +142,33 @@ export class ZoomBadge {
     }
     const label = formatText(text.zoomLevel, { zoom: zoom.toFixed(1) })
     if (this.el.textContent !== label) this.el.textContent = label
+    if (this.el.parentNode !== this.parent) this.parent.append(this.el)
+  }
+}
+
+/**
+ * The debug badge, top left, while too few players are tracked on the
+ * frame on screen: how many are, and whose attack covers the loss when one
+ * does (the `debug` option). Nothing is in the DOM while it is off or there
+ * is no loss.
+ */
+export class LossBadge {
+  private readonly el = element('div', 'mt-loss')
+
+  constructor(private readonly parent: HTMLElement) {}
+
+  update(loss: PlayerLossState | null, on: boolean, text: TrackerText, teamName: (team: TeamId) => string): void {
+    if (!on || !loss) {
+      this.el.remove()
+      return
+    }
+    const players = String(loss.players)
+    const label =
+      loss.cover === null
+        ? formatText(text.playerLoss, { players })
+        : formatText(text.playerLossCover, { players, team: teamName(loss.cover) })
+    if (this.el.textContent !== label) this.el.textContent = label
+    this.el.dataset.cover = loss.cover === null ? 'none' : String(loss.cover)
     if (this.el.parentNode !== this.parent) this.parent.append(this.el)
   }
 }

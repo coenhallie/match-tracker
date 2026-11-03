@@ -80,6 +80,12 @@ interface Source {
    */
   at: number[]
   teamNames: [string, string] | null
+  /**
+   * Made up rather than recorded: the golden goal has six players throughout,
+   * which would be a player loss from start to end, so its attack over lost
+   * players is off.
+   */
+  synthetic: boolean
 }
 
 const GAP_S = 1
@@ -94,10 +100,11 @@ function timeline(records: TrackerRecord[]): number[] {
 }
 
 async function loadSource(name: string): Promise<Source> {
-  if (name === 'excerpt') {
-    const messages = (await (await fetch('/demo/fixtures/excerpt.json')).json()) as string[]
+  if (name === 'excerpt' || name === 'loss') {
+    const file = name === 'excerpt' ? 'excerpt.json' : 'player-loss.json'
+    const messages = (await (await fetch(`/demo/fixtures/${file}`)).json()) as string[]
     const records = messages.map((m) => parseRecord(m)).filter((r): r is TrackerRecord => r !== null)
-    return { messages, records, at: timeline(records), teamNames: null }
+    return { messages, records, at: timeline(records), teamNames: null, synthetic: false }
   }
   const golden = (await (await fetch('/demo/fixtures/goal.json')).json()) as {
     records: TrackerRecord[]
@@ -112,7 +119,13 @@ async function loadSource(name: string): Promise<Source> {
       },
     }),
   )
-  return { messages, records: golden.records, at: timeline(golden.records), teamNames: golden.teamNames }
+  return {
+    messages,
+    records: golden.records,
+    at: timeline(golden.records),
+    teamNames: golden.teamNames,
+    synthetic: true,
+  }
 }
 
 // ── The page ──────────────────────────────────────────────────────────────────
@@ -181,7 +194,14 @@ const events: Array<{ widget: string; moment: ReplayMoment; phase: 'start' | 'en
 const buttons: Record<keyof typeof draws, HTMLButtonElement[]> = { live: [], replay: [] }
 
 function mount(host: HTMLElement, mode: 'live' | 'replay', status: string, key: keyof typeof draws): MatchTracker {
-  const tracker = createMatchTracker(host, { mode, locale, teams: teams(), layersStorageKey: null })
+  const tracker = createMatchTracker(host, {
+    mode,
+    locale,
+    teams: teams(),
+    layersStorageKey: null,
+    debug: $<HTMLInputElement>('debug').checked,
+    ...(source?.synthetic ? { layers: { playerLoss: false } } : {}),
+  })
   // Mounted in the overlay and styled by this page's stylesheet: the pitch's box, as the tracker reports it.
   const badge = document.createElement('div')
   badge.className = 'demo-badge'
@@ -373,6 +393,13 @@ $<HTMLInputElement>('hostile').addEventListener('change', (e) => {
   style.id = 'hostile-css'
   style.textContent = HOSTILE
   document.head.append(style)
+})
+
+// Developer mode: the player loss badge, which says when an attack is shown over lost players.
+$<HTMLInputElement>('debug').addEventListener('change', (e) => {
+  const debug = (e.target as HTMLInputElement).checked
+  live?.setOptions({ debug })
+  replay?.setOptions({ debug })
 })
 
 // The version banner in the console, which the widget prints only when its host asks.

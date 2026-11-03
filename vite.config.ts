@@ -35,6 +35,8 @@ function fontLicences(): Plugin {
  *
  *  - `/demo/fixtures/excerpt.json`: test/fixtures/excerpt.jsonl.gz, a real
  *    stretch of match as the websocket sent it, one raw message per entry.
+ *  - `/demo/fixtures/player-loss.json`: test/fixtures/player-loss.jsonl.gz,
+ *    the same for 16 s of the February export with players lost, as above.
  *  - `/demo/fixtures/goal.json`: the records of the golden goal recording
  *    (test/fixtures/goldens/goal.json.br), a synthetic attack ending in a
  *    GOAL label, with the team names it was recorded with.
@@ -43,8 +45,8 @@ function fontLicences(): Plugin {
  */
 const FIXTURES = fileURLToPath(new URL('./test/fixtures', import.meta.url))
 
-function excerpt(): string {
-  const text = gunzipSync(readFileSync(resolve(FIXTURES, 'excerpt.jsonl.gz'))).toString('utf8')
+function jsonl(file: string): string {
+  const text = gunzipSync(readFileSync(resolve(FIXTURES, file))).toString('utf8')
   return JSON.stringify(text.split('\n').filter((line) => line.trim()))
 }
 
@@ -55,7 +57,11 @@ function goal(): string {
   return JSON.stringify({ records: golden.records, teamNames: golden.teamNames })
 }
 
-const SOURCES: Record<string, () => string> = { 'excerpt.json': excerpt, 'goal.json': goal }
+const SOURCES: Record<string, () => string> = {
+  'excerpt.json': () => jsonl('excerpt.jsonl.gz'),
+  'player-loss.json': () => jsonl('player-loss.jsonl.gz'),
+  'goal.json': goal,
+}
 
 function demoFixtures(): Plugin {
   const cache = new Map<string, string>()

@@ -67,10 +67,12 @@
        * The page's own CSS for what it mounts in each tracker's overlay: the
        * overlay is in the page's light DOM, so these rules reach it.
        */
+      /* Bottom middle: the widget's player loss badge, in developer mode, is top left. */
       .demo-badge {
         position: absolute;
-        top: 8px;
-        left: 8px;
+        bottom: 8px;
+        left: 50%;
+        transform: translateX(-50%);
         padding: 2px 8px;
         border-radius: 4px;
         background: rgb(0 0 0 / 0.6);
@@ -94,6 +96,7 @@
         <select id="source">
           <option value="goal">Golden goal (synthetic)</option>
           <option value="excerpt">Match excerpt</option>
+          <option value="loss">Player loss (February export)</option>
         </select>
       </label>
       <label>
@@ -107,6 +110,7 @@
       </label>
       <button id="locale" type="button">Locale: en</button>
       <label><input id="hostile" type="checkbox" /> Hostile CSS</label>
+      <label><input id="debug" type="checkbox" checked /> Developer mode</label>
       <span id="draws" class="status"></span>
     </div>
 

@@ -10,7 +10,8 @@ import type { TrackerText } from './text.js'
  * widget's own: the reference has no tooltip for the zoom, and no label on
  * its canvas. The corner's words, on its card and in the layers menu, are the
  * widget's own too: the reference has no corner. So is the throw-in layer's
- * hint, as the widget's throw-in fades in where the reference's slides.
+ * hint, as the widget's throw-in fades in where the reference's slides, and
+ * so are the player loss's layer and debug badge.
  */
 export const en: TrackerText = {
   goal: 'GOAL',
@@ -34,9 +35,12 @@ export const en: TrackerText = {
   zoomLevel: '{zoom}x',
   zoomReset: 'Double-click to reset the zoom',
   pitchLabel: 'Match tracker',
+  playerLoss: 'Player loss: {players} tracked',
+  playerLossCover: "Player loss: {players} tracked, covered by {team}'s attack",
   layers: {
     goal: { label: 'Goal animation', hint: 'A shot into the net on a goal label' },
     attack: { label: 'Attack', hint: 'Worked out from possession: shade and team name' },
+    playerLoss: { label: 'Attack over lost players', hint: 'An attack while fewer than 18 players are tracked' },
     freeKick: { label: 'Free kick', hint: 'A banner on a free kick label, held while play is stopped' },
     corner: { label: 'Corner', hint: 'A banner and the corner lit up on a corner label, held while play is stopped' },
     throwInBanner: { label: 'Throw-in', hint: 'A banner along the bottom touchline on a throw-in label' },

@@ -67,6 +67,7 @@ import {
   type DirectorPaint,
   type DirectorView,
   type MomentAvailability,
+  type PlayerLossState,
 } from '../director/director.js'
 import { nextPlayback } from '../director/playback.js'
 import { LiveHistory } from '../history/liveHistory.js'
@@ -79,7 +80,7 @@ import type { FrameBox } from '../render/viewTransform.js'
 import { MATCH_TRACKER_VERSION } from '../version.js'
 import { Emitter, MomentWatch, type TrackerBox, type TrackerEvents } from './events.js'
 import { measureBox, pixelRatio, place, sameBox, sizeBitmap } from './layout.js'
-import { PhaseRow, ZoomBadge } from './hud.js'
+import { LossBadge, PhaseRow, ZoomBadge } from './hud.js'
 import { LayersMenu } from './layersMenu.js'
 import { FrameLoop } from './loop.js'
 import {
@@ -319,6 +320,9 @@ class Tracker implements MatchTracker {
   private readonly phaseRow = new PhaseRow()
   private readonly layersMenu: LayersMenu
   private readonly zoomBadge: ZoomBadge
+  private readonly lossBadge: LossBadge
+  /** The player loss on the frame on screen, as the director last said, for the debug badge. */
+  private loss: PlayerLossState | null = null
   private readonly zoomPan: ZoomPan
   /** The phase of the last update, which the HUD's row shows. */
   private phase: TeamPhase | null = null
@@ -385,6 +389,7 @@ class Tracker implements MatchTracker {
     this.hud = dom.hud
     this.layersMenu = new LayersMenu(this.shadow, this.onLayerToggle)
     this.zoomBadge = new ZoomBadge(this.hud)
+    this.lossBadge = new LossBadge(this.hud)
     this.hud.append(this.phaseRow.box)
     this.layersMenu.setShown(this.hud, layersMenuOn(this.options))
     this.layersMenu.setText(this.resolved.text)
@@ -466,8 +471,9 @@ class Tracker implements MatchTracker {
     this.adoptCamera(this.director.view)
     this.lastInput = null
     this.resumed = true
-    // No phase until the next record: the row of the match before goes.
+    // No phase until the next record: the row of the match before goes, and so does its player loss.
     this.phase = null
+    this.loss = null
     this.renderHud()
     this.updateAvailability()
     // The director stops its moments without a paint.
@@ -589,9 +595,15 @@ class Tracker implements MatchTracker {
   }
 
   /** The HUD as the phase, the layers, the view and the options are now, and the pitch's name. */
+  /** The debug badge, in developer mode, while too few players are tracked on the frame on screen. */
+  private renderLoss(): void {
+    this.lossBadge.update(this.loss, this.options.debug === true, this.resolved.text, this.resolved.teamName)
+  }
+
   private renderHud(): void {
     this.phaseRow.update(this.phase, this.layers.phaseLabels, this.resolved)
     this.renderZoom()
+    this.renderLoss()
     const name = this.resolved.text.pitchLabel
     if (this.canvas.getAttribute('aria-label') !== name) this.canvas.setAttribute('aria-label', name)
   }
@@ -674,6 +686,8 @@ class Tracker implements MatchTracker {
   private show(out: DirectorOutput): void {
     if (this.destroyed) return
     if (out.camera) this.adoptCamera(out.camera)
+    this.loss = out.loss
+    this.renderLoss()
     for (const paint of out.paints) {
       for (const change of this.moments.next(paint.layers)) this.emitter.emit('moment', change)
     }

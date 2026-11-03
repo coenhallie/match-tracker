@@ -62,7 +62,9 @@ export class FakeReplay {
   private layers: ReplayLayers
 
   constructor(layers: Partial<ReplayLayers> = {}, options: Partial<DirectorOptions> = {}) {
-    this.layers = { ...DEFAULT_REPLAY_LAYERS, ...layers }
+    // The attack over a player loss off, unless a test asks for it: every frame these tests make has fewer
+    // than 18 players, which would be a loss throughout (test/director/playerLoss.test.ts has it on).
+    this.layers = { ...DEFAULT_REPLAY_LAYERS, playerLoss: false, ...layers }
     this.director = new Director({
       layers: this.layers,
       reducedMotion: () => this.reducedMotion,

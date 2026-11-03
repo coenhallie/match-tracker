@@ -398,6 +398,27 @@ svg {
   color: var(--mt-hud-text, #fff);
 }
 
+/*
+ * The debug badge for a player loss, top left: the widget's own, in the zoom
+ * badge's type, on red so it reads as a warning about the data. It keeps
+ * clear of the layers button, top right, at any width, wrapping rather than
+ * cutting its text short.
+ */
+.mt-loss {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  max-width: calc(100% - 120px);
+  border-radius: 4px;
+  background-color: rgb(185 28 28 / 0.85);
+  padding: 2px 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 10px;
+  line-height: 1.5;
+  color: #fff;
+  pointer-events: none;
+}
+
 /* "motion-reduce:transition-none" */
 @media (prefers-reduced-motion: reduce) {
   .mt-phase-team,
