@@ -43,4 +43,10 @@ describe('the README', () => {
     expect(row).toContain('data-match-tracker-keep')
     expect(section('### Replay')).toContain('data-match-tracker-keep')
   })
+
+  it('tells Vite apps to keep the package out of dependency pre-bundling', () => {
+    const bundlers = section('### Bundlers')
+    expect(bundlers).toContain('optimizeDeps')
+    expect(bundlers).toContain("exclude: ['@coenhallie/match-tracker']")
+  })
 })

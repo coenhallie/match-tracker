@@ -378,6 +378,19 @@ with `new URL('./font.woff2', import.meta.url)`, which bundlers copy as assets:
 this was checked with Vite 8 (build and dev server) and webpack 5. Without a
 bundler, serve the whole `dist` folder, so the fonts sit next to `index.js`.
 
+On Vite 7, or any version whose dev server pre-bundles dependencies, exclude
+the package from pre-bundling. Pre-bundled, its code is served from
+`node_modules/.vite/deps`, where the fonts are not, so the dev server answers
+the font requests with the app's HTML and the pitch falls back to system
+fonts. Builds are not affected.
+
+```js
+// vite.config.js
+export default defineConfig({
+  optimizeDeps: { exclude: ['@coenhallie/match-tracker'] },
+})
+```
+
 ### Browsers
 
 The code is ES2022. The oldest browsers it runs in are set by the platform
