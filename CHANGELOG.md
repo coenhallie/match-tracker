@@ -6,6 +6,28 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-03
+
+The moments play only on labels a human gave. Everything else is drawn as in
+0.2.0.
+
+### What you see
+
+- **Only human labels play a moment.** A goal, a corner or a throw-in plays
+  only on a label whose `action_origin` is `"human"`. Labels from the
+  pipeline's AI (`"ai"`), and labels from older exports with no
+  `action_origin`, play nothing. On an export labelled by the AI alone, such
+  as the February one, no goal, corner or throw-in plays by itself any more.
+- The bottom-left action text still lists every label, AI ones included, and
+  the attack, the attack over lost players and the moments played by hand
+  are unchanged: none of them comes from a label.
+
+### Parity
+
+- The goldens and snapshots are unchanged. The goldens' labels predate
+  `action_origin`, so the parity test marks them human as it loads them:
+  each still plays as video-annotation played it.
+
 ## [0.2.0] - 2026-11-03
 
 The free kick is gone. Everything else is drawn as in 0.1.7. This breaks the
