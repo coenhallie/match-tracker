@@ -80,11 +80,11 @@ export const CORNER_SECTION_METRES = [7, 15, 24] as const
  * SECTION_PULSE_MS before it settles back.
  */
 export const SECTION_IN_MS = 300
-export const SECTION_STAGGER_MS = 180
+export const SECTION_STAGGER_MS = 200
 export const SECTION_WAVE_MS = 1600
-export const SECTION_PULSE_MS = 600
-/** How strongly a section is lit between waves. */
-export const SECTION_REST = 0.65
+export const SECTION_PULSE_MS = 700
+/** How strongly a section is lit between waves: low enough that each wave reads. */
+export const SECTION_REST = 0.4
 
 const clamp01 = (k: number) => Math.min(1, Math.max(0, k))
 
@@ -112,9 +112,9 @@ export function cornerSections(elapsedMs: number, reducedMotion: boolean): numbe
  * the step between them divides the cone with no line drawn.
  */
 const SECTION_FILL: ReadonlyArray<readonly [number, number]> = [
-  [0.24, 0.46],
-  [0.14, 0.32],
-  [0.05, 0.2],
+  [0.4, 0.78],
+  [0.24, 0.56],
+  [0.1, 0.36],
 ]
 
 /**
