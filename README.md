@@ -154,15 +154,16 @@ destroyed on can have a new one.
 | `present(state)` | Replay: `{ time, playing, record, lookback }` at the host's clock. |
 | `reset()` | Forget everything seen and end every moment. What comes next is a seek. The last picture stays until new data arrives. |
 | `trigger(moment, team?)` | Play `'goal'`, `'attack'`, `'freeKick'` or `'throwIn'` now, on the frame on screen. `team` (0 home, 1 away, default 0) is for an attack. Returns false when the moment cannot be played on that frame (for example before the first frame, or a goal with no ball). |
-| `setOptions(options)` | Change any option but `mode`. The HUD and the canvas follow at once, without a remount. |
+| `setOptions(options)` | Change any option but `mode` and `layersStorageKey`, which are fixed at mount. The HUD and the canvas follow at once, without a remount. Options that throw change nothing. |
 | `on(event, listener)` | Listen to an event. Returns a function that unsubscribes. |
 | `overlay` | An element over the pitch, in the canvas's own box, for a host's drawing layer. Pointer events pass through it unless you turn them on for your own elements. A press on it stops every moment. |
 | `version` | The package version this tracker runs. |
 | `destroy()` | Stop everything and empty the shadow root. Every method is a no-op after. |
 
 Also exported: `MATCH_TRACKER_VERSION`, `parseRecord(message): TrackerRecord | null`, and the types
-(`MatchTrackerOptions`, `ReplayState`, `TrackerEvents`, `TrackerRecord`, `Frame`, `ReplayLayers`,
-`ReplayMoment`, `TrackerText`, `PersonColors`, `PersonRole` and the rest).
+(`MatchTrackerOptions`, `SettableOptions`, `MatchTrackerInstance`, `ReplayState`, `TrackerEvents`,
+`TrackerRecord`, `Frame`, `ReplayLayers`, `ReplayMoment`, `TrackerText`, `TrackerTextOverrides`,
+`PersonColors`, `PersonRole` and the rest).
 
 ### Options
 
@@ -175,7 +176,7 @@ Also exported: `MATCH_TRACKER_VERSION`, `parseRecord(message): TrackerRecord | n
 | `colors` | `Partial<Record<PersonRole, Partial<PersonColors>>>` | video-annotation's | `fill`, `outline` and `text` per role: `home`, `away`, `goalkeeper`, `official`, `unknown`. A team's `color` wins over `fill` here. |
 | `layers` | `Partial<ReplayLayers>` | all on | The layers shown until the viewer chooses in the menu. |
 | `layersMenu` | `boolean` | `true` | `false` takes the layers button and menu out. The layers are then the defaults over `layers`, and nothing is read from or written to `layersStorageKey`. Can be changed with `setOptions`. |
-| `layersStorageKey` | `string \| null` | `'match-tracker.layers'` | Where the menu's choice is kept in `localStorage`. `null` keeps nothing. A kept choice wins over `layers`. |
+| `layersStorageKey` | `string \| null` | `'match-tracker.layers'` | Where the menu's choice is kept in `localStorage`. `null` keeps nothing. A kept choice wins over `layers`. Fixed at mount, like `mode`: `setOptions` ignores it, and so does the Vue component when the prop changes. To keep the choice somewhere else, make a new tracker. |
 | `formatAction` | `(actionType: string) => string` | as it comes | The bottom-left text for each of a frame's actions, from its `action_type` (for example `'EventType.FREE_KICK'` to `'Free kick'`). |
 
 The layers are `goal`, `attack`, `freeKick`, `throwInBanner`, `ballTrail`,
@@ -282,6 +283,24 @@ scripts and styles, several times on one page.
     So does the focus leaving it. Nothing covers the page while it is open.
 - **Reduced motion** is honoured, in every branch where video-annotation honours it.
 
+### Content Security Policy
+
+On a page with a Content Security Policy, the widget needs:
+- `img-src data:`, for the free kick and goal cards' icons, which are SVG `data:` URLs
+  drawn through an `Image`. Without it the cards are drawn without their icons.
+- `font-src` for wherever the package's files are served from: the fonts are
+  woff2 files next to `dist/index.js`, loaded with `FontFace`. Bundled into your app
+  that is usually `'self'`; from a CDN, that CDN's origin. Without it the text falls
+  back to the system fonts.
+- Nothing for `style-src`: the stylesheet is a constructed one, adopted by the
+  shadow root, which a policy does not block, and every other style is set through
+  the CSSOM. No `'unsafe-inline'` is needed.
+- Nothing else: no `connect-src`, `worker-src` or `'unsafe-eval'`. The widget makes
+  no requests of its own.
+
+This was checked in Chrome with `default-src 'none'; script-src 'self'; img-src 'self' data:; font-src 'self'; style-src 'self'`,
+with no violation reported.
+
 ### Bundlers
 
 The package is ES modules with `.d.ts` types, and resolves under TypeScript's
@@ -343,7 +362,10 @@ format, and says what a viewer will notice.
 To release:
 
 1. Move the changelog's `Unreleased` notes under the new version, with the
-   date and the measured size and performance.
+   date and the measured size and performance, and commit the changelog.
+   `npm version` refuses to run with uncommitted changes, and its commit holds
+   only `package.json` and `package-lock.json`, so the changelog has to be in
+   a commit of its own first.
 2. `npm version <major|minor|patch>`. This sets the version in
    `package.json`, which the build injects as `MATCH_TRACKER_VERSION`, then
    commits and tags `v<version>`.

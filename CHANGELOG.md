@@ -28,7 +28,10 @@ this site's live matches and, next, for video-annotation itself.
 - Above the pitch, which team is attacking and which is defending.
 - A layers menu to switch each of these on or off. Your choice is remembered.
 - English or Chinese text. Chinese uses your system's Chinese font, and every
-  label fits its card or row, down to a 320 px wide phone.
+  label fits its card or row, down to a widget 160 px wide: below 260 px the
+  attacking/defending row shows only the team names (the attacking team is still
+  filled in its colour), and below 200 px it leaves out "vs" too.
+- The same layout on a right-to-left page as on any other.
 
 ### What is new compared with video-annotation
 
@@ -36,9 +39,31 @@ this site's live matches and, next, for video-annotation itself.
   on a trackpad or touch screen. Double-click to reset.
 - Live matches: frames are drawn as they arrive. A hidden tab or a widget
   scrolled out of view stops drawing, and catches up when you come back.
-- The layers menu closes with Escape only while you are using it.
+- After a reconnect, or when the stream starts again from the top, the widget
+  picks up at once: nothing from before plays late, it never freezes on the
+  last picture, and a goal's zoom is not left behind.
+- A frame that fails to draw does not stop a moment that is playing. The error
+  is reported once in the browser console.
+- The layers menu covers nothing else on the page: while it is open, the rest
+  of the page still takes clicks, and a click anywhere outside the menu, or the
+  focus moving away, closes it. It closes with Escape only while you are using
+  it, and that Escape does nothing else on the page.
+- Screen readers hear the pitch as one picture, "Match tracker", and the layers
+  as buttons that are pressed or not.
 - A page that embeds the widget can hide the layers menu (`layersMenu: false`). The layers are then the same for every viewer, and nothing is kept.
 - Long team names are cut short with "…". The full name is in the tooltip.
+
+### For pages that embed it
+
+- `locale` takes a language tag too: `'zh-CN'`, `'zh-TW'` and `'zh-Hans'` are
+  Chinese, and a language the widget has no text for is English.
+- The host must be a plain element without a shadow root of its own.
+- `layersStorageKey` is fixed at mount, like `mode`.
+- A Vue parent that renders inline objects as props again no longer undoes the
+  viewer's layer choice.
+- The tracker instance's type is `MatchTrackerInstance`, from both entries.
+- On a page with a Content Security Policy, allow `img-src data:` and
+  `font-src` for where the package's files are served (see the README).
 
 ### Size and speed
 
@@ -46,8 +71,8 @@ Measured on an Apple M4 Pro laptop, in headless Chrome 156 with GPU canvas
 (Metal), at 1280×720 CSS px and a pixel ratio of 2 (a 2560×1440 bitmap):
 
 - **Download:**
-  - the widget is 31.6 kB gzipped (budget 60 kB);
-  - the Vue component adds 0.7 kB;
+  - the widget is 33.0 kB gzipped (budget 60 kB);
+  - the Vue component adds 1.0 kB;
   - the fonts are 81.7 kB, fetched once.
 - **Drawing one frame:**
   - 0.16 ms on average over the 193 frames of a goal, drawn 5 times;

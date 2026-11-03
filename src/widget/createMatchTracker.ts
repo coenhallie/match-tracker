@@ -78,6 +78,7 @@ import {
   themeFor,
   type MatchTrackerOptions,
   type MutableOptions,
+  type SettableOptions,
   type Resolved,
 } from './options.js'
 import { STYLES } from './styles.js'
@@ -111,7 +112,8 @@ export interface MatchTracker {
   reset(): void
   /** Play `moment` now, for `team` when it is an attack (default 0). False when nothing can be played. */
   trigger(moment: ReplayMoment, team?: TeamId): boolean
-  setOptions(options: Partial<MutableOptions>): void
+  /** Change any option but `mode` and `layersStorageKey`, which are fixed at mount: given anyway, they are ignored. */
+  setOptions(options: SettableOptions): void
   on<K extends keyof TrackerEvents>(event: K, listener: (value: TrackerEvents[K]) => void): () => void
   /** Stop everything, and take the widget out of its host. Every method is a no-op after. */
   destroy(): void
@@ -395,10 +397,10 @@ class Tracker implements MatchTracker {
     return true
   }
 
-  setOptions(options: Partial<MutableOptions>): void {
+  setOptions(options: SettableOptions): void {
     if (this.destroyed) return
-    // The mode is fixed at mount; a caller passing it anyway is ignored.
-    const { mode: _mode, ...rest } = options as Partial<MatchTrackerOptions>
+    // The mode and the storage key are fixed at mount; a caller passing them anyway is ignored.
+    const { mode: _mode, layersStorageKey: _key, ...rest } = options as Partial<MatchTrackerOptions>
     // Everything that can throw is worked out before anything changes, so
     // options that throw leave the tracker as it was, and it takes the next.
     const next = { ...this.options, ...rest }

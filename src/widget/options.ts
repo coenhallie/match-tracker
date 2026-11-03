@@ -44,14 +44,21 @@ export interface MatchTrackerOptions {
    * read nor written, so the view always shows the canonical layers.
    */
   layersMenu?: boolean
-  /** Where the layer choice is kept in localStorage. Default 'match-tracker.layers'; null keeps nothing. */
+  /**
+   * Where the layer choice is kept in localStorage. Default
+   * 'match-tracker.layers'; null keeps nothing. Fixed at mount, as `mode`
+   * is: setOptions leaves it as it was.
+   */
   layersStorageKey?: string | null
   /** The bottom-left text for one of a frame's actions, from its `action_type`. Default: as it comes. */
   formatAction?: (actionType: string) => string
 }
 
-/** The options as the widget holds them: everything but the mode can change after mount. */
+/** The options as the widget holds them: all but the mode. */
 export type MutableOptions = Omit<MatchTrackerOptions, 'mode'>
+
+/** What setOptions takes: every option but the two fixed at mount, `mode` and `layersStorageKey`. */
+export type SettableOptions = Partial<Omit<MatchTrackerOptions, 'mode' | 'layersStorageKey'>>
 
 export const DEFAULT_LAYERS_STORAGE_KEY = 'match-tracker.layers'
 

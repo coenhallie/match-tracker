@@ -2,6 +2,11 @@
   "name": "@coenhallie/match-tracker",
   "version": "0.1.0",
   "description": "A framework-free live 2D match tracker widget for football streams.",
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/coenhallie/match-tracker.git"
+  },
   "type": "module",
   "sideEffects": false,
   "engines": {
@@ -15,10 +20,12 @@
     "./vue": {
       "types": "./dist/vue.d.ts",
       "import": "./dist/vue.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"

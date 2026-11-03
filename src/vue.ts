@@ -10,7 +10,8 @@
  * - The component renders one `div`, the tracker's host. The tracker fills
  *   it, so give it a size (a class or style on the component lands on it).
  * - `mode` is fixed for a tracker's life: changing it makes a new tracker,
- *   so the exposed `overlay` is then a new element.
+ *   so the exposed `overlay` is then a new element. `layersStorageKey` is
+ *   fixed at mount too, and a change to it is ignored.
  * - Every other prop is a `MatchTrackerOptions` field. A change, in place or
  *   not, goes to `setOptions` with that one field, so a change to one prop
  *   never takes back what another set, nor the layers chosen in the menu.
@@ -146,7 +147,8 @@ export const MatchTracker = defineComponent({
         start()
       },
     )
-    for (const key of OPTION_KEYS) {
+    // The storage key is fixed at mount, as setOptions has it.
+    for (const key of OPTION_KEYS.filter((k) => k !== 'layersStorageKey')) {
       watch(
         () => props[key],
         (value) => {

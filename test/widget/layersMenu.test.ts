@@ -169,6 +169,20 @@ describe('the layers menu', () => {
     expect(JSON.parse(localStorage.getItem('match-tracker.layers')!)).toMatchObject({ ringFades: false })
   })
 
+  it('keeps the storage key it was mounted with, whatever setOptions says later', () => {
+    const { host, tracker } = mount({ layersStorageKey: 'first.key' })
+    tracker.setOptions({ layersStorageKey: 'second.key' } as Parameters<MatchTracker['setOptions']>[0])
+    tracker.setOptions({ layersStorageKey: null } as Parameters<MatchTracker['setOptions']>[0])
+    toggle(host, 'farFade')
+    expect(JSON.parse(localStorage.getItem('first.key')!)).toMatchObject({ farFade: false })
+    expect(localStorage.getItem('second.key')).toBeNull()
+    // Switching the menu off and on reads the kept choice from that key too.
+    tracker.setOptions({ layersMenu: false })
+    tracker.setOptions({ layersMenu: true })
+    open(host)
+    expect(checked(host, 'farFade')).toBe('false')
+  })
+
   it('keeps nothing when the storage key is null', () => {
     const { host } = mount({ layersStorageKey: null })
     toggle(host, 'farFade')
