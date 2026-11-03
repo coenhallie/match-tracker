@@ -8,7 +8,8 @@ import { DEFAULT_THEME, type RenderTheme } from './theme.js'
 /**
  * The throw-in, as the match-summary design shows it (Figma vp-pitch-2): a
  * small "THROW IN" band just above the bottom touchline, the players left as
- * they are. It slides in from the side of the half the ball is in, and back
+ * they are. The widget's fades in and out where it stands (inPlace). The
+ * reference's slides in from the side of the half the ball is in, and back
  * out the same way: the export does not say which team takes a throw-in, so
  * the side says where it is rather than whose it is.
  */
@@ -19,12 +20,17 @@ export interface ThrowInIndicator {
   slide: number
   /** The side it slides from: -1 the left, 1 the right, null in place. */
   side: -1 | 1 | null
+  /**
+   * Drawn where it stands, fading in and out, whatever `side` says: the
+   * widget's throw-in. Default false, the reference's, which slides.
+   */
+  inPlace?: boolean
 }
 
 /**
- * How a throw-in is shown, in milliseconds: it slides in over THROW_IN_IN_MS,
- * stays until THROW_IN_SHOW_MS from the start, then slides back out over
- * THROW_IN_OUT_MS.
+ * How a throw-in is shown, in milliseconds: it fades in over THROW_IN_IN_MS,
+ * stays until THROW_IN_SHOW_MS from the start, then fades out over
+ * THROW_IN_OUT_MS. The reference's slides in and out over the same times.
  */
 export const THROW_IN_IN_MS = 500
 export const THROW_IN_SHOW_MS = 2000
@@ -93,7 +99,7 @@ export function drawThrowInIndicator(
   const halfWidth = resolvePitchDimensions(pd).width.value / 2
   const [cx, touchline] = worldToPx(0, halfWidth, t)
   const travel = FRAME_W / 2 + width / 2
-  const offset = ind.side === null ? 0 : ind.side * travel * (1 - easeOutCubic(clamp01(ind.slide)))
+  const offset = ind.side === null || ind.inPlace ? 0 : ind.side * travel * (1 - easeOutCubic(clamp01(ind.slide)))
   const left = cx + offset - width / 2
   const top = touchline - BAND_TOP_ABOVE_TOUCHLINE_PX * u
 

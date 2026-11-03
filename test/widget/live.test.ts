@@ -351,7 +351,7 @@ describe('live input', () => {
     const log = momentLog(tracker)
     tracker.push(message(0, { withBall: true }))
     env.settle()
-    const plays = [['goal'], ['attack', 0], ['attack', 1], ['freeKick'], ['throwIn']] as const
+    const plays = [['goal'], ['attack', 0], ['attack', 1], ['freeKick'], ['corner'], ['throwIn']] as const
     for (const [moment, team] of plays) {
       expect(tracker.trigger(moment, team)).toBe(true)
       env.frame()
@@ -366,6 +366,8 @@ describe('live input', () => {
       'attack:end',
       'freeKick:start',
       'freeKick:end',
+      'corner:start',
+      'corner:end',
       'throwIn:start',
       'throwIn:end',
     ])

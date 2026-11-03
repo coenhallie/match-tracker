@@ -1,7 +1,9 @@
 /**
- * The event cards' icons: video-annotation's src/assets/free-kick.svg and
- * src/assets/goal-net.svg at 6f14d1f, copied byte for byte and loaded from
- * data URLs, so the widget fetches nothing from the host.
+ * The event cards' icons, loaded from data URLs, so the widget fetches nothing
+ * from the host. The free kick's and the goal's are video-annotation's
+ * src/assets/free-kick.svg and src/assets/goal-net.svg at 6f14d1f, copied
+ * byte for byte. The corner's is the widget's own, as the reference has no
+ * corner (CORNER_SVG).
  */
 const FREE_KICK_SVG = `<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="45.5" height="40.9498" viewBox="0 0 45.5 40.9498" fill="none" xmlns="http://www.w3.org/2000/svg">
 <g id="free_kick">
@@ -34,11 +36,27 @@ const GOAL_SVG = `<svg preserveAspectRatio="none" overflow="visible" style="disp
 </svg>
 `
 
+/**
+ * The corner's icon, drawn for the widget in the other two's style: the
+ * corner of the pitch in their line colour, its arc, and the goal icon's ball
+ * (GOAL_SVG's first path, moved and scaled) in their gold. Its box is the
+ * free kick's, 45.5 by 40.95, so it sits in the card where that one does.
+ */
+const CORNER_SVG = `<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="45.5" height="40.95" viewBox="0 0 45.5 40.95" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="corner">
+<path id="Lines" d="M2 1.5V39.45H43.5" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" stroke="#E2E8F0"/>
+<path id="Arc" d="M2 14.45A25 25 0 0 1 27 39.45" stroke-width="1" stroke="#E2E8F0"/>
+<path id="Ball" transform="translate(12.8 29.6) scale(0.7) translate(-34.53 -13.19)" d="M42.7302 15.4362C41.5302 19.9362 36.8302 22.6361 32.2302 21.3362C27.6302 20.0362 25.0302 15.4362 26.3302 10.9362C27.6302 6.43615 32.2302 3.73615 36.8302 5.03615C41.4302 6.33615 44.0302 10.9362 42.7302 15.4362ZM41.1302 15.0362L40.0302 15.5362L38.5302 13.0362L39.8302 10.4362L40.9302 10.8362C40.4302 9.43615 39.5302 8.33615 38.2302 7.53615L38.4302 8.73615L35.6302 9.43615L33.5302 7.43615L34.2302 6.53615C32.7302 6.53615 31.3302 7.13615 30.2302 8.03615L31.4302 8.23615L31.2302 11.1362L28.6302 12.5362L27.9302 11.5362C27.5302 12.9362 27.6302 14.4362 28.1302 15.8362L28.7302 14.8362L31.4302 15.9362L31.9302 18.8362L30.7302 19.1362C31.9302 19.9362 33.4302 20.3362 34.8302 20.2362L34.0302 19.3362L35.9302 17.1362L38.8302 17.5362V18.7362C39.9302 17.8362 40.7302 16.6362 41.1302 15.2362V15.0362ZM32.3302 15.0362L32.1302 11.7362L35.2302 10.5362L37.3302 13.1362L35.5302 15.9362L32.3302 15.0362Z" fill="#FDE047"/>
+</g>
+</svg>
+`
+
 const dataUrl = (svg: string) => `data:image/svg+xml,${encodeURIComponent(svg)}`
 
 export interface CardIcons {
   freeKick: HTMLImageElement | null
   goal: HTMLImageElement | null
+  corner: HTMLImageElement | null
 }
 
 let loading: Promise<CardIcons> | null = null
@@ -54,11 +72,13 @@ function load(svg: string): Promise<HTMLImageElement | null> {
 }
 
 /**
- * Load both icons, once for the page. An icon that fails to load is null, and
+ * Load every icon, once for the page. An icon that fails to load is null, and
  * its card is drawn without it, as video-annotation draws it until it loads.
  */
 export function loadIcons(): Promise<CardIcons> {
-  if (typeof Image === 'undefined') return Promise.resolve({ freeKick: null, goal: null })
-  loading ??= Promise.all([load(FREE_KICK_SVG), load(GOAL_SVG)]).then(([freeKick, goal]) => ({ freeKick, goal }))
+  if (typeof Image === 'undefined') return Promise.resolve({ freeKick: null, goal: null, corner: null })
+  loading ??= Promise.all([load(FREE_KICK_SVG), load(GOAL_SVG), load(CORNER_SVG)]).then(
+    ([freeKick, goal, corner]) => ({ freeKick, goal, corner }),
+  )
   return loading
 }

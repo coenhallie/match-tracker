@@ -44,6 +44,21 @@ interface Showing {
   byHand: boolean
 }
 
+/**
+ * `freeKickUnderWay`, for any set piece whose label was last seen at
+ * `labelAt`: whether it is still being taken. Its label is on, nobody has
+ * moved for FREE_KICK_STALL_S of replay time, or the ball is not tracked. A
+ * corner is prepared off camera as a free kick is, and held by the same rules
+ * (corner.ts).
+ */
+export function setPieceUnderWay(ctx: MomentContext, labelAt: number | null): boolean {
+  const { time: now, record } = ctx.shown()
+  const { playMovedAt } = ctx.memory()
+  const labelOn = labelAt !== null && now - labelAt < FREE_KICK_LABEL_HOLD_S
+  const ballGone = !record || shownBall(record.frame, undefined) === null
+  return labelOn || ballGone || now - playMovedAt >= FREE_KICK_STALL_S
+}
+
 export class FreeKick implements Moment {
   private freeKick: Showing | null = null
 
@@ -53,26 +68,19 @@ export class FreeKick implements Moment {
     return this.freeKick !== null
   }
 
-  /**
-   * `freeKickUnderWay`: whether the free kick is still being taken: its label
-   * is on, nobody has moved for FREE_KICK_STALL_S of replay time, or the ball
-   * is not tracked.
-   */
+  /** `freeKickUnderWay`: whether the free kick is still being taken (setPieceUnderWay). */
   underWay(): boolean {
-    const { time: now, record } = this.ctx.shown()
-    const { freeKickLabelAt, playMovedAt } = this.ctx.memory()
-    const labelOn = freeKickLabelAt !== null && now - freeKickLabelAt < FREE_KICK_LABEL_HOLD_S
-    const ballGone = !record || shownBall(record.frame, undefined) === null
-    return labelOn || ballGone || now - playMovedAt >= FREE_KICK_STALL_S
+    return setPieceUnderWay(this.ctx, this.ctx.memory().freeKickLabelAt)
   }
 
   /**
    * `updateFreeKick`, up to its start: note whether play moved on `frame`,
    * and whether it is a free kick that playback has just run into. Called for
-   * every new record, after the goal has had its say; `goalShowing` holds it
-   * back. The director stops the attack and the throw-in, then calls `start`.
+   * every new record, after the goal has had its say; `blocked`, a goal or a
+   * corner showing, holds it back. The director stops the attack and the
+   * throw-in, then calls `start`.
    */
-  detect(frame: Frame, prevFrame: Frame | null, now: number, goalShowing: boolean): boolean {
+  detect(frame: Frame, prevFrame: Frame | null, now: number, blocked: boolean): boolean {
     const memory = this.ctx.memory()
     const playback = this.ctx.playback()
     if (!playback || !prevFrame || playMoved(prevFrame, frame)) memory.playMovedAt = now
@@ -85,7 +93,7 @@ export class FreeKick implements Moment {
     if (!labelled) return false
     const fresh = memory.freeKickLabelAt === null || now - memory.freeKickLabelAt > FREE_KICK_REARM_S
     memory.freeKickLabelAt = now
-    return fresh && this.ctx.layers().freeKick && !goalShowing && !this.freeKick
+    return fresh && this.ctx.layers().freeKick && !blocked && !this.freeKick
   }
 
   /** `startFreeKick`. */
@@ -129,7 +137,7 @@ export class FreeKick implements Moment {
       : m.leavingFromMs !== null
         ? Math.max(0, 1 - (m.elapsedMs - m.leavingFromMs) / FREE_KICK_OUT_MS)
         : Math.min(1, m.elapsedMs / FREE_KICK_IN_MS)
-    return { intensity, playersFade: intensity }
+    return { intensity, playersFade: intensity, ballFade: intensity }
   }
 
   reset(): void {

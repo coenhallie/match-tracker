@@ -76,11 +76,11 @@ describe('playing moments by hand', () => {
     expect(last(replay).freeKick).toBeUndefined()
   })
 
-  it('plays the throw-in by hand, sliding in from the ball’s half', () => {
+  it('plays the throw-in by hand, fading in where it stands, noting the ball’s half', () => {
     const replay = ready(-25)
     replay.trigger('throwIn')
     animate(replay, 600)
-    expect(last(replay).throwIn?.side).toBe(-1)
+    expect(last(replay).throwIn).toMatchObject({ intensity: 1, side: -1, inPlace: true })
   })
 
   it('plays a team’s attack by hand, holding the ball where it is', () => {
@@ -125,6 +125,7 @@ describe('playing moments by hand', () => {
       goal: true,
       attack: { 0: true, 1: true },
       freeKick: true,
+      corner: true,
       throwIn: true,
     })
 
@@ -160,6 +161,7 @@ describe('playing moments by hand', () => {
         goal: false,
         attack: { 0: false, 1: false },
         freeKick: false,
+        corner: false,
         throwIn: false,
       })
     })

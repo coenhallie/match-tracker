@@ -98,7 +98,7 @@ export function themeFor(resolved: Resolved, icons: RenderTheme['icons']): Rende
   const { text } = resolved
   return {
     colors: resolved.colors,
-    text: { goal: text.goal, freeKick: text.freeKick, throwIn: text.throwIn, attack: text.attack },
+    text: { goal: text.goal, freeKick: text.freeKick, corner: text.corner, throwIn: text.throwIn, attack: text.attack },
     fonts: DEFAULT_THEME.fonts,
     icons,
     formatAction: resolved.formatAction,

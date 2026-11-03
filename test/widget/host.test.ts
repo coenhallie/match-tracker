@@ -31,7 +31,13 @@ function mount(options: Partial<MatchTrackerOptions> = {}, host = makeHost()) {
 /** The overlay's slot in `host`'s shadow root. (happy-dom has no `assignedSlot`.) */
 const overlaySlot = (host: HTMLElement) => host.shadowRoot!.querySelector<HTMLSlotElement>('slot[name="overlay"]')!
 
-const NOTHING: MomentAvailability = { goal: false, attack: { 0: false, 1: false }, freeKick: false, throwIn: false }
+const NOTHING: MomentAvailability = {
+  goal: false,
+  attack: { 0: false, 1: false },
+  freeKick: false,
+  corner: false,
+  throwIn: false,
+}
 
 beforeEach(() => {
   env = installEnv()
@@ -272,6 +278,7 @@ describe('moment availability', () => {
       ['attack', 0, available.attack[0]],
       ['attack', 1, available.attack[1]],
       ['freeKick', 0, available.freeKick],
+      ['corner', 0, available.corner],
       ['throwIn', 0, available.throwIn],
     ] as const
     for (const [moment, team, can] of plays) expect(tracker.trigger(moment, team)).toBe(can)

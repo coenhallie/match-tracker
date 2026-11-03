@@ -112,11 +112,19 @@ describe('the built-in text', () => {
       away: formatText(en.phaseDefendingAria, { team: 'Blue' }),
     })).toBe('Red attacking, Blue defending')
     expect(formatText(en.zoomLevel, { zoom: '2.5' })).toBe('2.5x')
-    expect(en.layers).toEqual({
+    // The corner is the widget's own: the reference has none. So is the throw-in's hint, as the widget's
+    // throw-in fades in where the reference's slides in from the ball's half.
+    const { corner, throwInBanner, ...referenceLayers } = en.layers
+    expect(en.corner).toBe('CORNER')
+    expect(corner).toEqual({
+      label: 'Corner',
+      hint: 'A banner and the corner lit up on a corner label, held while play is stopped',
+    })
+    expect(throwInBanner).toEqual({ label: 'Throw-in', hint: 'A banner along the bottom touchline on a throw-in label' })
+    expect(referenceLayers).toEqual({
       goal: { label: 'Goal animation', hint: 'A shot into the net on a goal label' },
       attack: { label: 'Attack', hint: 'Worked out from possession: shade and team name' },
       freeKick: { label: 'Free kick', hint: 'A banner on a free kick label, held while play is stopped' },
-      throwInBanner: { label: 'Throw-in', hint: "A banner on a throw-in label, sliding in from the ball's half" },
       ballTrail: { label: 'Ball trail', hint: "The ball's path, with a dot at each turn" },
       phaseLabels: { label: 'Attacking / defending', hint: 'Team labels above the pitch' },
       nearbyRings: { label: 'Players near the ball', hint: 'White rings within 15 m of the ball carrier' },
@@ -129,6 +137,7 @@ describe('the built-in text', () => {
     expect(zh).toMatchObject({
       goal: '进球',
       freeKick: '任意球',
+      corner: '角球',
       throwIn: '界外球',
       attack: '进攻',
       attacking: '进攻中',

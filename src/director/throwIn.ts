@@ -2,14 +2,17 @@
  * The throw-in, ported from PipelineOutputSurface.vue (6f14d1f) :937-1016.
  *
  * When playback runs into a frame the pipeline labels a throw-in, a small
- * "THROW IN" band slides in along the bottom touchline, stays until
- * THROW_IN_SHOW_MS from the start, and slides back out the way it came
- * (throwIn.ts in render). The players are left as they are.
+ * "THROW IN" band fades in along the bottom touchline, stays until
+ * THROW_IN_SHOW_MS from the start, and fades out (throwIn.ts in render). The
+ * players are left as they are.
  *
- * The export does not say which team takes a throw-in, so it slides in from
- * the side of the half the ball is in: the ball on the frame, or the last one
- * tracked within BALL_MEMORY_S, as the ball is often lost as it goes out.
- * With no ball to go by it fades in where it stands.
+ * The reference's slides in, and back out, from the side of the half the ball
+ * is in, as the export does not say which team takes a throw-in: the ball on
+ * the frame, or the last one tracked within BALL_MEMORY_S, as the ball is
+ * often lost as it goes out. With no ball to go by it fades in where it
+ * stands. The widget's always fades in where it stands, but still works out
+ * the side, which its value carries (`inPlace`), so the parity test can draw
+ * the reference's from it.
  *
  * Shown once per throw-in, as the label flickers (THROW_IN_REARM_S). It only
  * plays during playback, anything that means someone wants the real frame
@@ -54,7 +57,7 @@ export class ThrowIn implements Moment {
   detect(frame: Frame, now: number, blocked: boolean): boolean {
     const memory = this.ctx.memory()
     const ball = shownBall(frame, undefined)
-    if (ball) memory.lastBall = { x: ball.x, at: now }
+    if (ball) memory.lastBall = { x: ball.x, y: ball.y, at: now }
     const labelled = isThrowInFrame(frame)
     // Landed on by a seek or a step: a throw-in under way has been seen.
     if (!this.ctx.playback()) {
@@ -67,7 +70,7 @@ export class ThrowIn implements Moment {
     return fresh && this.ctx.layers().throwInBanner && !blocked && !this.throwIn
   }
 
-  /** `startThrowIn`: slide in from the half the ball is in, or was last tracked in, as of `now`. */
+  /** `startThrowIn`: note the half the ball is in, or was last tracked in, as of `now`. */
   start(now: number): void {
     const { lastBall } = this.ctx.memory()
     const side = lastBall && now - lastBall.at <= BALL_MEMORY_S ? (lastBall.x < 0 ? -1 : 1) : null
@@ -95,13 +98,13 @@ export class ThrowIn implements Moment {
   value(): ThrowInIndicator | undefined {
     const m = this.throwIn
     if (!m) return undefined
-    if (this.ctx.reducedMotion()) return { intensity: 1, slide: 1, side: null }
+    if (this.ctx.reducedMotion()) return { intensity: 1, slide: 1, side: null, inPlace: true }
     const e = m.elapsedMs
     const k =
       e >= THROW_IN_SHOW_MS
         ? Math.max(0, 1 - (e - THROW_IN_SHOW_MS) / THROW_IN_OUT_MS)
         : Math.min(1, e / THROW_IN_IN_MS)
-    return { intensity: k, slide: k, side: m.side }
+    return { intensity: k, slide: k, side: m.side, inPlace: true }
   }
 
   reset(): void {

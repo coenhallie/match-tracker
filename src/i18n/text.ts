@@ -14,6 +14,8 @@ export interface TrackerText {
   goal: string
   /** The free kick card's title. */
   freeKick: string
+  /** The corner card's title. */
+  corner: string
   /** The throw-in band's title. */
   throwIn: string
   /** The word under the team's name in the attack's label. */

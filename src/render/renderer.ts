@@ -8,8 +8,8 @@
 //     noUnusedParameters is on here. The signature and the call are unchanged.
 //  3. Theming and text fitting (theme.ts, fitText.ts). createRenderer takes a
 //     RenderTheme, and setTheme swaps it: the people's colours, the words on
-//     the canvas ("GOAL", "FREE KICK", "THROW IN", "Attack"), the fonts they
-//     are written in, the cards' icons when a layer brings none, and
+//     the canvas ("GOAL", "FREE KICK", "CORNER", "THROW IN", "Attack"), the
+//     fonts they are written in, the cards' icons when a layer brings none, and
 //     formatAction for the bottom-left action text. DEFAULT_THEME draws what
 //     the reference draws, in the bundled faces' private family names
 //     ("MatchTracker Montserrat", "MatchTracker Inter") with a CJK fallback
@@ -47,9 +47,16 @@
 //    the pitch shaded behind the attack, with a label, under the players,
 //    everyone faded out, and a pulsing ring round the ball (attackIndicator.ts).
 //  - renderFrame takes an optional free kick banner, drawn over everything on
-//    the pitch with everyone faded out (freeKick.ts), and an optional throw-in
-//    indicator sliding in along the bottom touchline (throwIn.ts), and the
-//    goal's card over the goal sequence, fixed to the frame (goalBanner.ts).
+//    the pitch with everyone faded out, and as far as its ballFade says the
+//    ball and its trail, which the reference keeps (freeKick.ts), and an
+//    optional throw-in indicator along the bottom touchline, fading in where
+//    it stands, or as its inPlace says sliding in as the reference's does
+//    (throwIn.ts), and the goal's card over the goal sequence, fixed to the
+//    frame (goalBanner.ts).
+//  - renderFrame takes an optional corner, which the reference does not have:
+//    the corner it is taken from lit up as a cone under the players, and a
+//    card like the free kick's over everything, everyone and the ball faded
+//    out (corner.ts).
 //  - renderFrame takes an optional ball trail, drawn over the players: the
 //    path the tracked ball took, with a dot wherever it turned (ballTrail.ts).
 //  - players are not labelled with their tracking id: it is the tracker's
@@ -97,6 +104,7 @@ import {
 import { trailOpacity, type BallTrail, type TrailPoint } from '../analysis/ballTrail.js'
 import { drawFreeKickBanner, type FreeKickBanner } from './freeKick.js'
 import { drawThrowInIndicator, type ThrowInIndicator } from './throwIn.js'
+import { drawCornerCard, drawCornerCone, type CornerBanner } from './corner.js'
 import { drawGoalBanner, type GoalBanner } from './goalBanner.js'
 import { footballPatches, UPRIGHT, type Spin } from '../analysis/football.js'
 import { computeViewMatrix, IDENTITY_VIEW, type PipelineView, type ViewMatrix } from './viewTransform.js'
@@ -185,6 +193,8 @@ export interface FrameLayers {
   attack?: AttackIndicator | undefined
   /** The free kick banner, over everything on the pitch. */
   freeKick?: FreeKickBanner | undefined
+  /** The corner: its cone under the players, its card over everything on the pitch. */
+  corner?: CornerBanner | undefined
   /** The throw-in indicator, over everything on the pitch, the players left as they are. */
   throwIn?: ThrowInIndicator | undefined
   /** The goal's card, over everything, fixed to the frame while the view zooms. */
@@ -323,6 +333,8 @@ export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTh
     // The attack's shade darkens the markings with the grass, as the design
     // does, and its label goes under everything that moves.
     if (attack) drawAttackIndicator(ctx as CanvasRenderingContext2D, pd, transform2d, attack, theme)
+    // The corner's cone lights the grass under everyone, as the attack's shade does.
+    if (layers.corner) drawCornerCone(ctx as CanvasRenderingContext2D, pd, transform2d, layers.corner)
 
     // Goals, on every frame; a struck net bows out while it is hit.
     drawGoalNets(ctx as CanvasRenderingContext2D, pd, transform2d, overlay?.net)
@@ -354,11 +366,19 @@ export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTh
       if (rings && id != null) return rings.possession.get(id) ?? 0
       return p.player.in_possession ? 1 : 0
     }
-    // During an attack or a free kick everyone fades out, players and
-    // officials alike, leaving the ball. Everything drawn for a person goes
-    // through here.
-    const fade = Math.max(attack?.playersFade ?? 0, layers.freeKick?.playersFade ?? 0)
+    // During an attack, a free kick or a corner everyone fades out, players
+    // and officials alike, leaving the ball. Everything drawn for a person
+    // goes through here.
+    const fade = Math.max(
+      attack?.playersFade ?? 0,
+      layers.freeKick?.playersFade ?? 0,
+      layers.corner?.playersFade ?? 0,
+    )
     const shown = 1 - Math.min(1, Math.max(0, fade))
+    // A free kick or a corner fades out the ball and its trail too, leaving
+    // nothing of play under its card. An attack keeps the ball, which it holds.
+    const ballFade = Math.max(layers.freeKick?.ballFade ?? 0, layers.corner?.ballFade ?? 0)
+    const ballShown = 1 - Math.min(1, Math.max(0, ballFade))
     const alphaOf = (p: { faded: boolean }) => (p.faded && fadeFar ? DIMMED_PLAYER_ALPHA : 1) * shown
     // The player with the ball is drawn bigger, so on top of those around them.
     const order = [...people].sort((a, b) => Number(possessionOf(a) > 0) - Number(possessionOf(b) > 0))
@@ -373,9 +393,11 @@ export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTh
 
     // The goal sequence draws its own ball and trail in place of the tracked
     // ones, so the trail is left out while it plays.
-    if (trail && !overlay) {
+    if (trail && !overlay && ballShown > 0) {
+      ctx.globalAlpha = ballShown
       for (const run of trail.runs) drawTrailRun(run)
       for (const turn of trail.turns) drawTrailDot(turn)
+      ctx.globalAlpha = 1
     }
 
     // The shirt number of the player with the ball, over the trail, which
@@ -400,9 +422,9 @@ export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTh
       // shown, and the tracked one only fades back in as the attack goes.
       const held = attack?.ball
       const heldAlpha = held && attack.leaving ? Math.min(1, Math.max(0, attack.intensity)) : 1
-      if (!held || heldAlpha < 1) {
+      if ((!held || heldAlpha < 1) && ballShown > 0) {
         for (const ball of frame.balls ?? []) {
-          draw2DBall(ball, spin, 1 - (held ? heldAlpha : 0), held ? undefined : attack)
+          draw2DBall(ball, spin, (1 - (held ? heldAlpha : 0)) * ballShown, held ? undefined : attack)
         }
       }
       if (held) draw2DBall({ projected_coordinates: held }, spin, heldAlpha, attack)
@@ -423,6 +445,7 @@ export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTh
 
     if (layers.throwIn) drawThrowInIndicator(ctx as CanvasRenderingContext2D, pd, transform2d, layers.throwIn, theme)
     if (layers.freeKick) drawFreeKickBanner(ctx as CanvasRenderingContext2D, transform2d, layers.freeKick, theme)
+    if (layers.corner) drawCornerCard(ctx as CanvasRenderingContext2D, transform2d, layers.corner, theme)
     if (layers.goalBanner) {
       // Fixed to the frame: the goal sequence zooms the view in on the net
       // behind it, and at that scale the card would cover the screen.
@@ -702,7 +725,7 @@ export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTh
     if (!transform2d || !Number.isFinite(at.x) || !Number.isFinite(at.y)) return
     const [px, py] = worldToPx(at.x, at.y, transform2d)
     const before = ctx.globalAlpha
-    ctx.globalAlpha = trailOpacity(at.age)
+    ctx.globalAlpha = before * trailOpacity(at.age)
     ctx.beginPath()
     ctx.arc(px, py, TRAIL_DOT_PX, 0, Math.PI * 2)
     ctx.fillStyle = '#ffffff'

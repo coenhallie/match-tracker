@@ -39,25 +39,28 @@ const animate = (replay: FakeReplay, ms: number) => replay.animate(ms, true)
 const lastThrowIn = (replay: FakeReplay) => replay.last()?.throwIn
 
 describe('throw-in', () => {
-  it('slides in from the left for a throw-in in the left half, the players left as they are', () => {
+  // The reference's slides in from the ball's half; the widget's fades in where it stands, and notes the
+  // side, which the parity test draws the reference's from.
+  it('fades in where it stands for a throw-in in the left half, noting the side, the players left as they are', () => {
     const replay = ready()
     const from = replay.outputs.length
     record(replay, -30, THROW_IN)
     animate(replay, 150)
     const early = lastThrowIn(replay)!
     expect(early.side).toBe(-1)
-    expect(early.slide).toBeGreaterThan(0)
-    expect(early.slide).toBeLessThan(1)
-    expect(early.intensity).toBe(early.slide)
+    expect(early.inPlace).toBe(true)
+    expect(early.intensity).toBeGreaterThan(0)
+    expect(early.intensity).toBeLessThan(1)
+    expect(early.slide).toBe(early.intensity)
     animate(replay, 500)
-    expect(lastThrowIn(replay)).toEqual({ intensity: 1, slide: 1, side: -1 })
+    expect(lastThrowIn(replay)).toEqual({ intensity: 1, slide: 1, side: -1, inPlace: true })
     // Nothing else on the pitch changes for it: no fade, no zoom.
     expect(replay.last()?.freeKick).toBeUndefined()
     expect(replay.outputs.slice(from).every((o) => o.camera === null)).toBe(true)
     expect(replay.lastView()).toMatchObject({ zoom: 1, panX: 0, panY: 0 })
   })
 
-  it('slides in from the right for a throw-in in the right half', () => {
+  it('notes the right side for a throw-in in the right half', () => {
     const replay = ready()
     record(replay, 30, THROW_IN)
     animate(replay, 600)
@@ -78,17 +81,17 @@ describe('throw-in', () => {
     for (let i = 0; i < 130; i++) record(other, null)
     record(other, null, THROW_IN)
     animate(other, 600)
-    expect(lastThrowIn(other)).toEqual({ intensity: 1, slide: 1, side: null })
+    expect(lastThrowIn(other)).toEqual({ intensity: 1, slide: 1, side: null, inPlace: true })
   })
 
-  it('slides back out the way it came after THROW_IN_SHOW_MS', () => {
+  it('fades out where it stands after THROW_IN_SHOW_MS', () => {
     const replay = ready()
     record(replay, -30, THROW_IN)
     animate(replay, 2000 + 150)
     const going = lastThrowIn(replay)!
-    expect(going.side).toBe(-1)
-    expect(going.slide).toBeGreaterThan(0)
-    expect(going.slide).toBeLessThan(1)
+    expect(going.inPlace).toBe(true)
+    expect(going.intensity).toBeGreaterThan(0)
+    expect(going.intensity).toBeLessThan(1)
     animate(replay, 400)
     expect(lastThrowIn(replay)).toBeUndefined()
   })
@@ -150,11 +153,11 @@ describe('throw-in', () => {
     expect(lastThrowIn(replay)).toBeUndefined()
   })
 
-  it('shows in place, without sliding, under reduced motion', () => {
+  it('shows whole and still under reduced motion', () => {
     const replay = ready(true)
     record(replay, -30, THROW_IN)
     animate(replay, 50)
-    expect(lastThrowIn(replay)).toEqual({ intensity: 1, slide: 1, side: null })
+    expect(lastThrowIn(replay)).toEqual({ intensity: 1, slide: 1, side: null, inPlace: true })
     animate(replay, 2000)
     expect(lastThrowIn(replay)).toBeUndefined()
   })

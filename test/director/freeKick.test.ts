@@ -60,7 +60,7 @@ class Pitch {
 }
 
 describe('free kick', () => {
-  it('fades in on a free kick label, fading the players out with it', () => {
+  it('fades in on a free kick label, fading the players, the ball and its trail out with it', () => {
     const pitch = new Pitch()
     pitch.record(FREE_KICK)
     pitch.animate(150)
@@ -68,8 +68,10 @@ describe('free kick', () => {
     expect(early.intensity).toBeGreaterThan(0)
     expect(early.intensity).toBeLessThan(1)
     expect(early.playersFade).toBe(early.intensity)
+    // Beyond the reference, whose free kick leaves the ball.
+    expect(early.ballFade).toBe(early.intensity)
     pitch.animate(400)
-    expect(pitch.freeKick()).toMatchObject({ intensity: 1, playersFade: 1 })
+    expect(pitch.freeKick()).toMatchObject({ intensity: 1, playersFade: 1, ballFade: 1 })
   })
 
   it('goes after FREE_KICK_SHOW_MS when play carries on, fading out onto it', () => {

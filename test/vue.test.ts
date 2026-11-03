@@ -404,6 +404,12 @@ describe('the Vue component over the pitch', () => {
     const exposed = handle.value!
     wrapper.unmount()
     expect(exposed.box).toBeNull()
-    expect(exposed.availability()).toEqual({ goal: false, attack: { 0: false, 1: false }, freeKick: false, throwIn: false })
+    expect(exposed.availability()).toEqual({
+      goal: false,
+      attack: { 0: false, 1: false },
+      freeKick: false,
+      corner: false,
+      throwIn: false,
+    })
   })
 })

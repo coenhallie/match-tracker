@@ -8,11 +8,14 @@ import type { TrackerText } from './text.js'
  * reference's `phaseDescription` ("Red attacking, Blue defending"), which
  * lowercases the state words into it. zoomReset and pitchLabel are the
  * widget's own: the reference has no tooltip for the zoom, and no label on
- * its canvas.
+ * its canvas. The corner's words, on its card and in the layers menu, are the
+ * widget's own too: the reference has no corner. So is the throw-in layer's
+ * hint, as the widget's throw-in fades in where the reference's slides.
  */
 export const en: TrackerText = {
   goal: 'GOAL',
   freeKick: 'FREE KICK',
+  corner: 'CORNER',
   throwIn: 'THROW IN',
   attack: 'Attack',
   attacking: 'Attacking',
@@ -35,7 +38,8 @@ export const en: TrackerText = {
     goal: { label: 'Goal animation', hint: 'A shot into the net on a goal label' },
     attack: { label: 'Attack', hint: 'Worked out from possession: shade and team name' },
     freeKick: { label: 'Free kick', hint: 'A banner on a free kick label, held while play is stopped' },
-    throwInBanner: { label: 'Throw-in', hint: "A banner on a throw-in label, sliding in from the ball's half" },
+    corner: { label: 'Corner', hint: 'A banner and the corner lit up on a corner label, held while play is stopped' },
+    throwInBanner: { label: 'Throw-in', hint: 'A banner along the bottom touchline on a throw-in label' },
     ballTrail: { label: 'Ball trail', hint: "The ball's path, with a dot at each turn" },
     phaseLabels: { label: 'Attacking / defending', hint: 'Team labels above the pitch' },
     nearbyRings: { label: 'Players near the ball', hint: 'White rings within 15 m of the ball carrier' },

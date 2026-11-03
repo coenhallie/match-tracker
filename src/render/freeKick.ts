@@ -6,7 +6,8 @@ import { DEFAULT_THEME, type RenderTheme } from './theme.js'
 /**
  * The free kick, as the match-summary design shows it: "FREE KICK" and the
  * free kick icon on a dark band across the middle of the pitch, the players
- * faded out.
+ * faded out, and here, unlike in the reference, the ball and its trail too
+ * (ballFade).
  *
  * A free kick is usually prepared off camera: the broadcast cuts away, and the
  * data stops moving, either holding everyone where they were or stopping
@@ -18,6 +19,12 @@ export interface FreeKickBanner {
   intensity: number
   /** 0 to 1: how far everyone on the pitch has faded out. */
   playersFade: number
+  /**
+   * 0 to 1: how far the ball and its trail have faded out, so nothing of
+   * play is left under the card. Default 0, the reference's free kick, which
+   * leaves the ball.
+   */
+  ballFade?: number
   /**
    * The free kick icon, once it has loaded. Until then the banner is drawn
    * without it. Default the theme's.

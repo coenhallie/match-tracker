@@ -169,11 +169,24 @@ describe('free kick in the renderer', () => {
   })
 
   const frame = frameWith([], [player(7, 5)])
+  /** The ball's path to it, and a turn on the way, all fresh. */
+  const trail = {
+    runs: [
+      [
+        { x: 0, y: 0, age: 0.4 },
+        { x: 5, y: 0, age: 0.2 },
+        { x: 10, y: 0, age: 0 },
+      ],
+    ],
+    turns: [{ x: 5, y: 0, age: 0.2 }],
+  }
   function render(freeKick?: FreeKickBanner) {
     const { canvas, ops } = fakeCanvas()
-    createRenderer(canvas).renderFrame(frame, { freeKick })
+    createRenderer(canvas).renderFrame(frame, { freeKick, trail })
     return ops
   }
+  const trailOps = (ops: Op[]) =>
+    ops.filter((o) => (o.op === 'stroke' && o.strokeStyle.startsWith('rgba(255,255,255,')) || (o.op === 'arc' && o.args[2] === 2.5))
   const [PX, PY] = worldToPx(5, 3, T)
   const playerOps = (ops: Op[]) =>
     ops.filter(
@@ -190,6 +203,21 @@ describe('free kick in the renderer', () => {
     const gone = render({ intensity: 1, playersFade: 1 })
     expect(playerOps(gone)).toHaveLength(0)
     expect(ballOps(gone).length).toBeGreaterThan(0)
+  })
+
+  // The reference's free kick leaves the ball; the widget's fades it out with everyone else.
+  it('fades the ball and its trail out as far as ballFade says, and leaves them without it', () => {
+    const kept = render({ intensity: 1, playersFade: 1 })
+    expect(ballOps(kept).length).toBeGreaterThan(0)
+    expect(trailOps(kept).length).toBeGreaterThan(0)
+    const half = render({ intensity: 1, playersFade: 1, ballFade: 0.5 })
+    expect(ballOps(half)).toHaveLength(ballOps(kept).length)
+    ballOps(half).forEach((o, i) => expect(o.globalAlpha).toBeCloseTo(ballOps(kept)[i]!.globalAlpha * 0.5, 6))
+    expect(trailOps(half)).toHaveLength(trailOps(kept).length)
+    trailOps(half).forEach((o, i) => expect(o.globalAlpha).toBeCloseTo(trailOps(kept)[i]!.globalAlpha * 0.5, 6))
+    const gone = render({ intensity: 1, playersFade: 1, ballFade: 1 })
+    expect(ballOps(gone)).toHaveLength(0)
+    expect(trailOps(gone)).toHaveLength(0)
   })
 
   it('draws the banner over everything on the pitch', () => {

@@ -68,6 +68,16 @@ describe('throw-in indicator', () => {
     expect(band(draw({ slide: 0, side: null }))).toEqual(band(draw()))
   })
 
+  // The widget's throw-in: the reference's slides, as above.
+  it('stays in place, fading, when drawn in place, whatever its side', () => {
+    for (const side of [-1, 1] as const) {
+      expect(band(draw({ slide: 0, side, inPlace: true }))).toEqual(band(draw()))
+    }
+    const ops = draw({ intensity: 0.4, slide: 0.4, inPlace: true })
+    expect(ops.find((o) => o.op === 'fillRect')!.globalAlpha).toBeCloseTo(0.4, 6)
+    expect(title(ops)!.globalAlpha).toBeCloseTo(0.4, 6)
+  })
+
   it('writes THROW IN in white Inter Black Italic where the design has it', () => {
     const ops = draw()
     const text = title(ops)!

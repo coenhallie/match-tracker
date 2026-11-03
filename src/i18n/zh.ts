@@ -2,11 +2,14 @@ import type { TrackerText } from './text.js'
 
 /**
  * Simplified Chinese. The canvas words, the phase row's words and the team
- * names were given; the rest is a draft for Coen to check before release.
+ * names were given; the rest is a draft for Coen to check before release,
+ * the corner's words (角球, and its layer) and the throw-in layer's hint
+ * among them.
  */
 export const zh: TrackerText = {
   goal: '进球',
   freeKick: '任意球',
+  corner: '角球',
   throwIn: '界外球',
   attack: '进攻',
   attacking: '进攻中',
@@ -28,7 +31,8 @@ export const zh: TrackerText = {
     goal: { label: '进球动画', hint: '出现进球标签时，播放射门入网的动画' },
     attack: { label: '进攻', hint: '根据控球推算：阴影和球队名称' },
     freeKick: { label: '任意球', hint: '出现任意球标签时显示横幅，比赛暂停期间一直显示' },
-    throwInBanner: { label: '界外球', hint: '出现界外球标签时显示横幅，从球所在的半场滑入' },
+    corner: { label: '角球', hint: '出现角球标签时显示横幅并点亮角球区，比赛暂停期间一直显示' },
+    throwInBanner: { label: '界外球', hint: '出现界外球标签时，在底边线上方显示横幅' },
     ballTrail: { label: '球的轨迹', hint: '球的移动路线，每次转向处标一个点' },
     phaseLabels: { label: '进攻 / 防守', hint: '球场上方的球队标签' },
     nearbyRings: { label: '持球者附近的球员', hint: '持球球员 15 米内的球员显示白色圆环' },

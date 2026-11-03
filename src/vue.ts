@@ -78,7 +78,13 @@ export interface MatchTrackerHandle {
   readonly box: TrackerBox | null
 }
 
-const NOTHING_AVAILABLE: MomentAvailability = { goal: false, attack: { 0: false, 1: false }, freeKick: false, throwIn: false }
+const NOTHING_AVAILABLE: MomentAvailability = {
+  goal: false,
+  attack: { 0: false, 1: false },
+  freeKick: false,
+  corner: false,
+  throwIn: false,
+}
 
 const sameBox = (a: TrackerBox | null, b: TrackerBox | null) =>
   a === b ||
@@ -173,6 +179,7 @@ export const MatchTracker = defineComponent({
         value.attack[0] === was.attack[0] &&
         value.attack[1] === was.attack[1] &&
         value.freeKick === was.freeKick &&
+        value.corner === was.corner &&
         value.throwIn === was.throwIn
       ) {
         return

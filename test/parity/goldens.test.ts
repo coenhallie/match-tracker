@@ -16,7 +16,7 @@ import { nextPlayback } from '../../src/director/playback'
 import type { ReplayLayers, ReplayMoment } from '../../src/model/replayLayers'
 import type { TrackerRecord } from '../../src/model/types'
 import { FRAME_H, FRAME_W, PERSON_COLORS } from '../../src/render/constants'
-import { createRenderer } from '../../src/render/renderer'
+import { createRenderer, type FrameLayers } from '../../src/render/renderer'
 import { DEFAULT_THEME } from '../../src/render/theme'
 import { withinRounding } from '../helpers/close'
 import { normalizeCalls } from '../helpers/normalize'
@@ -97,6 +97,21 @@ function readGolden(name: string): GoldenFile {
   return JSON.parse(brotliDecompressSync(readFileSync(resolve(FIXTURES, `${name}.json.br`))).toString('utf8'))
 }
 
+/**
+ * The deliberate differences from the reference in what these scenarios draw
+ * (CHANGELOG, Unreleased): the widget's free kick fades out the ball and its
+ * trail with everyone else, where the reference's leaves them, and its
+ * throw-in fades in where it stands, where the reference's slides in from the
+ * ball's half. Drawn with the reference's free kick and throw-in, everything
+ * else in a paint is still the reference's call for call; the widget's own
+ * are covered in test/render/freeKick.test.ts and throwIn.test.ts.
+ */
+const asReference = (layers: FrameLayers): FrameLayers => ({
+  ...layers,
+  ...(layers.freeKick && { freeKick: { ...layers.freeKick, ballFade: 0 } }),
+  ...(layers.throwIn && { throwIn: { ...layers.throwIn, inPlace: false } }),
+})
+
 /** The renderer's calls as the recorder saved them: through JSON, so NaN reads as null, the pitch cache as its size. */
 const asSaved = (calls: unknown[]): unknown[] => normalizeCalls(JSON.parse(JSON.stringify(calls)))
 
@@ -142,7 +157,7 @@ function replay(golden: GoldenFile) {
   const { ctx, ops } = recordingCtx()
   const canvas = { width: FRAME_W, height: FRAME_H, getContext: () => ctx } as unknown as HTMLCanvasElement
   // The parity theme: the reference's colours and English, its fonts, and no icons, as jsdom loads none.
-  const renderer = createRenderer(canvas, { ...DEFAULT_THEME, icons: { freeKick: null, goal: null } })
+  const renderer = createRenderer(canvas, { ...DEFAULT_THEME, icons: { freeKick: null, goal: null, corner: null } })
   const director = new Director({
     layers: golden.layers,
     reducedMotion: () => golden.reducedMotion,
@@ -199,7 +214,7 @@ function replay(golden: GoldenFile) {
       expect(paint.view, `${at(step)}: view`).toEqual(withinRounding(step.view))
       expect(paint.frame === records[step.recordIndex!]!.frame, `${at(step)}: record ${step.recordIndex}`).toBe(true)
       renderer.setView(paint.view)
-      renderer.renderFrame(paint.frame, paint.layers)
+      renderer.renderFrame(paint.frame, asReference(paint.layers))
       const calls = asSaved(ops.splice(0))
       const expected = normalizeCalls(step.calls)
       if (JSON.stringify(calls) !== JSON.stringify(expected)) expect(calls, `${at(step)}: calls`).toEqual(withinRounding(expected))
