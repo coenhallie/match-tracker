@@ -6,6 +6,45 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-02
+
+Three fixes for replay pages, which video-annotation needs before it ships.
+The pitch, the moments and the HUD are drawn as in 0.1.1, and the goldens and
+snapshots are unchanged.
+
+### What you see
+
+- **Replay plays at the full frame rate.** While a replay plays, the
+  tracker now draws in every display frame. Before, a page that fed it from
+  its own animation frames had it drawing every other frame when no moment was
+  running, so play looked less smooth than the video. Paused, in a hidden tab
+  or scrolled out of view, it still draws nothing.
+- **Pressing Play no longer ends a goal**, on pages that put their player
+  controls over the pitch and mark them (below).
+
+### For pages that embed it
+
+- **`data-match-tracker-keep`.** A press anywhere in `tracker.overlay` still
+  stops every moment, so what is drawn on is the data. A press inside an
+  element in the overlay marked `data-match-tracker-keep` now leaves the
+  moments running. Mark your own controls with it, such as a transport bar or
+  a frame badge.
+- **Replay feeding.** Keep calling `present()` on every tick of your clock, as
+  before. While the last state you presented says `playing: true`, the
+  tracker runs its own loop every display frame. A frame with nothing new
+  costs one cheap update and draws nothing.
+- **Vite.** On Vite 7, or any version whose dev server pre-bundles
+  dependencies, add `optimizeDeps: { exclude: ['@coenhallie/match-tracker'] }`
+  to the Vite config, or the dev server serves the app's HTML in place of the
+  fonts and the pitch falls back to system fonts. Builds were never affected.
+  The README's Bundlers section says so now.
+
+### Size
+
+- The widget is 33.6 kB gzipped (budget 60 kB). The Vue component adds 1.4 kB,
+  and the fonts are still 81.7 kB.
+- Nothing in the draw path changed, so the drawing times of 0.1.0 stand.
+
 ## [0.1.1] - 2026-11-02
 
 What a page needs to put its own content over the pitch, as video-annotation's
