@@ -13,6 +13,11 @@
  *    its `pointers` map and `pinch` state). A pinch hands the view over too.
  *  - The page scrolls under one finger at the whole pitch (`touch-action:
  *    pan-y`, set by the tracker); zoomed in, a finger pans.
+ *  - The host's own controls (`target.keeps`, the overlay's elements marked
+ *    `data-match-tracker-keep`) are left to it: a press on one starts no pan
+ *    and takes no pointer capture, so its click lands, and a double-click on
+ *    one resets nothing. A ctrl/⌘ + wheel or a pinch over one still zooms the
+ *    pitch, so the page never zooms there either.
  *
  * Pans are in CSS px from the centre of the stage, as in the reference, which
  * measures the cursor against the stage (here the viewport, which fills it).
@@ -45,6 +50,8 @@ export interface ZoomPanTarget {
   takeCamera(): void
   /** The user moved the view. */
   setView(view: DirectorCamera): void
+  /** Whether `target` is one of the host's own controls, which a press or double-click on is left to. */
+  keeps(target: EventTarget | null): boolean
 }
 
 interface Point {
@@ -116,11 +123,14 @@ export class ZoomPan {
   }
 
   private readonly onPointerDown = (event: PointerEvent): void => {
+    const kept = this.target.keeps(event.target)
     if (event.pointerType === 'touch') {
       // A third finger changes nothing.
       if (this.touches.size >= 2) return
+      // A finger on a host control counts towards a pinch, but is not
+      // captured, so a tap on the control is still its own.
       this.touches.set(event.pointerId, { x: event.clientX, y: event.clientY })
-      this.capture(event)
+      if (!kept) this.capture(event)
       if (this.touches.size === 2) {
         this.target.takeCamera()
         this.pinch = { distance: this.distance(), zoom: this.target.view().zoom }
@@ -128,6 +138,8 @@ export class ZoomPan {
         return
       }
     }
+    // A press on a host control is the control's: no pan, and no capture to take its click away.
+    if (kept) return
     const view = this.target.view()
     // At the whole pitch a press is not a pan, and leaves the view to a sequence.
     if (!takesCamera('pointerdown', view.zoom)) return
@@ -163,7 +175,8 @@ export class ZoomPan {
     if (this.pan?.pointerId === event.pointerId) this.pan = null
   }
 
-  private readonly onDoubleClick = (): void => {
+  private readonly onDoubleClick = (event: MouseEvent): void => {
+    if (this.target.keeps(event.target)) return
     this.target.takeCamera()
     const view = this.target.view()
     if (view.zoom === 1 && view.panX === 0 && view.panY === 0) return

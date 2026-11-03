@@ -185,6 +185,17 @@ function mount(host: HTMLElement, mode: 'live' | 'replay', status: string, key: 
   showBox()
   tracker.overlay.append(badge)
   tracker.on('box', showBox)
+  if (mode === 'replay') {
+    // The page's own transport over the pitch, kept: pressing it neither ends a moment nor pans or resets the zoom.
+    const transport = document.createElement('button')
+    transport.type = 'button'
+    transport.className = 'demo-transport'
+    transport.dataset.testid = 'overlay-transport'
+    transport.setAttribute('data-match-tracker-keep', '')
+    transport.textContent = clock.playing ? 'Pause' : 'Play'
+    transport.addEventListener('click', togglePlay)
+    tracker.overlay.append(transport)
+  }
   const enable = () => {
     const can = tracker.availability()
     for (const button of buttons[key]) {
@@ -294,11 +305,17 @@ function replayTick(at: number): void {
   nativeRaf(replayTick)
 }
 
-$('play').addEventListener('click', () => {
+/** Play or pause, from the button under the widget or the transport over its pitch. */
+function togglePlay(): void {
   clock.playing = !clock.playing
-  $('play').textContent = clock.playing ? 'Pause' : 'Play'
+  const label = clock.playing ? 'Pause' : 'Play'
+  $('play').textContent = label
+  const transport = replay?.overlay.querySelector('.demo-transport')
+  if (transport) transport.textContent = label
   present()
-})
+}
+
+$('play').addEventListener('click', togglePlay)
 seek.addEventListener('input', () => {
   clock.time = Number(seek.value)
   present()

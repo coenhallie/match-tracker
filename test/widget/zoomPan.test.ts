@@ -44,23 +44,42 @@ function mount() {
 const view = () => control.views.at(-1)!
 const badge = (host: HTMLElement) => host.shadowRoot!.querySelector('.mt-zoom')
 
-function wheel(target: HTMLElement, init: WheelEventInit) {
+function wheelEvent(init: WheelEventInit) {
   const all = { clientX: 400, clientY: 225, ctrlKey: false, metaKey: false, ...init }
   const event = new WheelEvent('wheel', { bubbles: true, cancelable: true, ...all })
   // happy-dom's WheelEvent leaves out what a browser's has from MouseEvent.
   for (const key of ['clientX', 'clientY', 'ctrlKey', 'metaKey'] as const) {
     Object.defineProperty(event, key, { value: all[key] })
   }
+  return event
+}
+
+function wheel(target: HTMLElement, init: WheelEventInit) {
+  const event = wheelEvent(init)
   target.dispatchEvent(event)
   return event
 }
 const zoomIn = (target: HTMLElement, init: WheelEventInit = {}) => wheel(target, { deltaY: -100, ctrlKey: true, ...init })
 const zoomOut = (target: HTMLElement, init: WheelEventInit = {}) => wheel(target, { deltaY: 100, ctrlKey: true, ...init })
 
+function pointerEvent(type: string, id: number, x: number, y: number, pointerType = 'mouse') {
+  return new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: id, pointerType, clientX: x, clientY: y })
+}
+
 function pointer(target: HTMLElement, type: string, id: number, x: number, y: number, pointerType = 'mouse') {
-  target.dispatchEvent(
-    new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: id, pointerType, clientX: x, clientY: y }),
-  )
+  target.dispatchEvent(pointerEvent(type, id, x, y, pointerType))
+}
+
+/**
+ * `event` on `el`, an element in the overlay, as the stage hears it. A
+ * browser routes an event on a slotted element through its slot, so the
+ * stage's listeners hear it with `el` as its target. happy-dom does not, so
+ * here it is dispatched on the stage with `el` as its target.
+ */
+function fromOverlay<E extends Event>(viewport: HTMLElement, el: Element, event: E): E {
+  Object.defineProperty(event, 'target', { value: el })
+  viewport.dispatchEvent(event)
+  return event
 }
 
 /** Two fingers down at `a` and `b`. */
@@ -230,6 +249,77 @@ describe('double-click', () => {
     expect(viewport.title).toBe('双击恢复原始大小')
     viewport.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
     expect(viewport.title).toBe('')
+  })
+})
+
+describe("the host's own controls in the overlay", () => {
+  /** Zoomed to 2, with a transport marked data-match-tracker-keep, and a Play button in it, over the pitch. */
+  function zoomedWithTransport() {
+    const mounted = mount()
+    fingers(mounted.viewport, [400, 225], [500, 225])
+    pointer(mounted.viewport, 'pointermove', 12, 600, 225, 'touch')
+    pointer(mounted.viewport, 'pointerup', 12, 600, 225, 'touch')
+    pointer(mounted.viewport, 'pointerup', 11, 400, 225, 'touch')
+    expect(view().zoom).toBe(2)
+    const transport = document.createElement('div')
+    transport.setAttribute('data-match-tracker-keep', '')
+    const play = document.createElement('button')
+    transport.append(play)
+    mounted.tracker.overlay.append(transport)
+    const on = <E extends Event>(event: E) => fromOverlay(mounted.viewport, play, event)
+    return { ...mounted, play, on }
+  }
+
+  it('leaves a press and drag on one to it: no pan, no capture, and its click fires', () => {
+    const { viewport, play, on } = zoomedWithTransport()
+    const capture = vi.spyOn(viewport, 'setPointerCapture')
+    const clicks = vi.fn<() => void>()
+    play.addEventListener('click', clicks)
+    const zoomed = { ...view() }
+    const views = control.views.length
+    const releases = control.releases
+    on(pointerEvent('pointerdown', 1, 300, 200))
+    on(pointerEvent('pointermove', 1, 360, 150))
+    pointer(viewport, 'pointermove', 1, 200, 300)
+    on(pointerEvent('pointerup', 1, 300, 200))
+    play.click()
+    expect(control.views).toHaveLength(views)
+    expect(view()).toEqual(zoomed)
+    expect(control.releases).toBe(releases)
+    // Captured by the stage, the press's click would go to the pitch, not the button.
+    expect(capture).not.toHaveBeenCalled()
+    expect(clicks).toHaveBeenCalledOnce()
+    // A drag that starts on the pitch still pans.
+    pointer(viewport, 'pointerdown', 2, 300, 200)
+    pointer(viewport, 'pointermove', 2, 340, 170)
+    expect(view()).toEqual({ ...zoomed, panX: zoomed.panX + 40, panY: zoomed.panY - 30 })
+  })
+
+  it('leaves a double-click on one to it, and does not reset the zoom', () => {
+    const { host, on } = zoomedWithTransport()
+    const views = control.views.length
+    on(new MouseEvent('dblclick', { bubbles: true }))
+    expect(control.views).toHaveLength(views)
+    expect(view().zoom).toBe(2)
+    expect(badge(host)?.textContent).toBe('2.0x')
+  })
+
+  it('still zooms the pitch on a ctrl or ⌘ + wheel over one, and keeps the page from zooming', () => {
+    const { on } = zoomedWithTransport()
+    expect(on(wheelEvent({ deltaY: -100, ctrlKey: true })).defaultPrevented).toBe(true)
+    expect(view().zoom).toBeCloseTo(2.15, 12)
+    expect(on(wheelEvent({ deltaY: 100, metaKey: true })).defaultPrevented).toBe(true)
+    expect(view().zoom).toBeCloseTo(2, 12)
+  })
+
+  it('still pinches with a finger on one, without capturing that finger', () => {
+    const { viewport, on } = zoomedWithTransport()
+    const capture = vi.spyOn(viewport, 'setPointerCapture')
+    on(pointerEvent('pointerdown', 21, 400, 225, 'touch'))
+    expect(capture).not.toHaveBeenCalled()
+    pointer(viewport, 'pointerdown', 22, 500, 225, 'touch')
+    pointer(viewport, 'pointermove', 22, 600, 225, 'touch')
+    expect(view().zoom).toBe(4)
   })
 })
 

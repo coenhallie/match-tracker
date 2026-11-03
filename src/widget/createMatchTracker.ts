@@ -118,8 +118,10 @@ export interface MatchTracker {
    * the page's light DOM with `slot="overlay"`, so the page's CSS reaches it
    * and what is mounted in it. Pointer events pass through it unless the
    * host turns them on; pressing on it stops every moment, so what is drawn
-   * on is the data. A press inside an element marked
-   * `data-match-tracker-keep` (a transport bar, a frame badge) stops nothing.
+   * on is the data. An element marked `data-match-tracker-keep` (a
+   * transport bar, a frame badge) is the host's own: a press inside it stops
+   * nothing and starts no pan, and a double-click there leaves the zoom. A
+   * ctrl/⌘ + wheel or a pinch over it still zooms the pitch.
    */
   readonly overlay: HTMLElement
   /**
@@ -395,6 +397,7 @@ class Tracker implements MatchTracker {
         view: () => this.view,
         takeCamera: () => this.director.releaseCamera(),
         setView: this.setUserView,
+        keeps: (target) => this.keeps(target),
       },
       [dom.hudLayer],
     )
