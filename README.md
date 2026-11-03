@@ -119,6 +119,16 @@ message into the `TrackerRecord` that `present` takes.
 
   A layer that takes the pointer stops every moment on a press. Pan and zoom
   work through anything that leaves pointer events off.
+
+  Your own controls in the overlay, such as a transport bar or a frame badge,
+  can opt out: a press on an element marked `data-match-tracker-keep`, or on
+  anything inside one, leaves the moments running, so pressing Play does not
+  end a goal.
+
+  ```ts
+  transport.setAttribute('data-match-tracker-keep', '')
+  tracker.overlay.append(transport)
+  ```
 - **Demo buttons.** Disable a moment's button while `tracker.availability()`
   says it cannot be played, and follow the `availability` event:
 
@@ -198,7 +208,7 @@ destroyed on can have a new one.
 | `setOptions(options)` | Change any option but `mode` and `layersStorageKey`, which are fixed at mount. The HUD and the canvas follow at once, without a remount. Options that throw change nothing. |
 | `on(event, listener)` | Listen to an event. Returns a function that unsubscribes. |
 | `availability()` | Which moments `trigger` can play on the frame on screen: `{ goal, attack: { 0, 1 }, freeKick, throwIn }`, each a boolean (`MomentAvailability`). All false before the first frame and after a reset. A goal needs a ball, and an attack needs the direction that team attacks in, which needs the keepers. A fresh copy on every call. |
-| `overlay` | An element over the pitch, in the canvas's own box, for a host's drawing layer and anything it anchors to the pitch. It is a `div` child of the host, with `slot="overlay"`, so the page's CSS reaches it and its content. Its inline style fills the box and turns pointer events off. Pointer events pass through it unless you turn them on for your own elements. A press on it, or on anything in it, stops every moment. |
+| `overlay` | An element over the pitch, in the canvas's own box, for a host's drawing layer and anything it anchors to the pitch. It is a `div` child of the host, with `slot="overlay"`, so the page's CSS reaches it and its content. Its inline style fills the box and turns pointer events off. Pointer events pass through it unless you turn them on for your own elements. A press on it, or on anything in it, stops every moment, except inside an element in it marked `data-match-tracker-keep` (your transport, a frame badge). |
 | `box` | `{ left, top, width, height }`, the canvas's box in CSS px from the host's top-left corner, below the attacking/defending row (`TrackerBox`, frozen). Null until the widget has been laid out with a size, and after `destroy()`. |
 | `version` | The package version this tracker runs. |
 | `destroy()` | Stop everything, empty the shadow root and take the overlay out of the host, with whatever you mounted in it. Every method is a no-op after. |

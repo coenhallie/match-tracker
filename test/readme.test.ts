@@ -37,4 +37,10 @@ describe('the README', () => {
     expect(csp).toContain('font-src')
     expect(csp).toMatch(/style-src/)
   })
+
+  it('says how a host keeps its own controls in the overlay from stopping moments', () => {
+    const row = readme.split('\n').find((line) => line.startsWith('| `overlay` |')) ?? ''
+    expect(row).toContain('data-match-tracker-keep')
+    expect(section('### Replay')).toContain('data-match-tracker-keep')
+  })
 })

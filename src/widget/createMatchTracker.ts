@@ -6,8 +6,9 @@
  * Ported from PipelineOutputSurface.vue (video-annotation 6f14d1f): the
  * sizing and pixel-ratio watch (`:214-290`), font loading and the repaint
  * after it (`:1321-1345`), the overlay's pointerdown, which stops every
- * moment (`:1471`), and the moments that can be played (`:1020-1036`). Live
- * mode is the widget's own (spec, "Feeding it").
+ * moment (`:1471`) unless it lands in an element the host marked
+ * `data-match-tracker-keep`, and the moments that can be played
+ * (`:1020-1036`). Live mode is the widget's own (spec, "Feeding it").
  *
  * ## The loop
  *
@@ -114,7 +115,8 @@ export interface MatchTracker {
    * the page's light DOM with `slot="overlay"`, so the page's CSS reaches it
    * and what is mounted in it. Pointer events pass through it unless the
    * host turns them on; pressing on it stops every moment, so what is drawn
-   * on is the data.
+   * on is the data. A press inside an element marked
+   * `data-match-tracker-keep` (a transport bar, a frame badge) stops nothing.
    */
   readonly overlay: HTMLElement
   /**
@@ -809,10 +811,22 @@ class Tracker implements MatchTracker {
     this.loop.request()
   }
 
-  /** Someone wants the real frame, and their own view: every moment ends. */
-  private readonly onOverlayPointerDown = (): void => {
-    if (this.destroyed) return
+  /**
+   * Someone wants the real frame, and their own view: every moment ends.
+   * Not for a press in the host's own controls, marked
+   * `data-match-tracker-keep` within the overlay.
+   */
+  private readonly onOverlayPointerDown = (event: Event): void => {
+    if (this.destroyed || this.keeps(event.target)) return
     this.show(this.director.stopAll())
+  }
+
+  /** Whether `target` is in an element of the overlay marked `data-match-tracker-keep`, or is one. */
+  private keeps(target: EventTarget | null): boolean {
+    const closest = (target as Element | null)?.closest
+    if (typeof closest !== 'function') return false
+    const marked = closest.call(target, '[data-match-tracker-keep]')
+    return marked !== null && this.overlay.contains(marked)
   }
 }
 

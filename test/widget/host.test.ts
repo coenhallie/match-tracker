@@ -110,6 +110,48 @@ describe('the overlay', () => {
     expect(env.queued()).toBe(0)
   })
 
+  it('leaves a goal running when a press is inside an element marked data-match-tracker-keep', () => {
+    const { host, tracker } = mount()
+    env.resize(host, 1280, 760)
+    const log: string[] = []
+    tracker.on('moment', ({ moment, phase }) => log.push(`${moment}:${phase}`))
+    // A transport bar the host keeps its own, with a button in it, beside a plain layer.
+    const transport = document.createElement('div')
+    transport.setAttribute('data-match-tracker-keep', '')
+    const play = document.createElement('button')
+    transport.append(play)
+    const layer = document.createElement('div')
+    tracker.overlay.append(layer, transport)
+    tracker.push(message(0, { withBall: true }))
+    env.settle()
+    expect(tracker.trigger('goal')).toBe(true)
+    for (let i = 0; i < 10; i++) env.frame()
+    const press = (el: Element) => el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, composed: true }))
+    press(play)
+    press(transport)
+    for (let i = 0; i < 5; i++) env.frame()
+    expect(log).toEqual(['goal:start'])
+    press(layer)
+    expect(log).toEqual(['goal:start', 'goal:end'])
+  })
+
+  it('still stops moments when the mark is on an ancestor outside the overlay', () => {
+    const host = makeHost()
+    host.setAttribute('data-match-tracker-keep', '')
+    const { tracker } = mount({}, host)
+    env.resize(host, 1280, 760)
+    const log: string[] = []
+    tracker.on('moment', ({ moment, phase }) => log.push(`${moment}:${phase}`))
+    const layer = document.createElement('div')
+    tracker.overlay.append(layer)
+    tracker.push(message(0, { withBall: true }))
+    env.settle()
+    expect(tracker.trigger('goal')).toBe(true)
+    env.frame()
+    layer.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, composed: true }))
+    expect(log).toEqual(['goal:start', 'goal:end'])
+  })
+
   it('leaves the host on destroy, with whatever was mounted in it', () => {
     const { host, tracker } = mount()
     const layer = document.createElement('div')
