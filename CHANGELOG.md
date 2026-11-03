@@ -6,6 +6,68 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-11-03
+
+A new moment, the corner, which video-annotation does not have. The free kick
+now fades out the ball with everyone else, and the throw-in fades in where it
+stands instead of sliding in. Everything else is drawn as in 0.1.4. The
+goldens and snapshots are unchanged: none of their frames carries a corner
+label, and the parity test draws their free kicks and throw-ins as
+video-annotation draws them, the ball left in and the band sliding, so
+everything else in those paints is still checked against the reference call
+for call.
+
+### What you see
+
+- **The free kick fades out the ball and its trail** with the players, so
+  nothing of play is left under its card, and they fade back in with the
+  players as it goes. Before, as in video-annotation, the ball stayed.
+- **The throw-in fades in and out** where it stands, centred above the bottom
+  touchline. Before, as in video-annotation, it slid in from the side of the
+  ball's half and back out that way. Its layer's hint in the menu now reads
+  "A banner along the bottom touchline on a throw-in label".
+
+- **Corners.** On a corner label, "CORNER" (角球 in Chinese) is shown across
+  the middle of the pitch with a corner icon, on the free kick's card, and
+  everyone on the pitch fades out, the ball and its trail with them. The corner it is taken from lights up as a
+  cone of three sections fanning out from the flag (to 7, 15 and 24 m), each
+  lighting up after the one inside it, in a wave that runs out from the flag
+  every 1.6 s while it shows. The sections are told apart by their shading
+  alone, each fainter than the one inside it, with no lines between them. The corner is the one nearest the ball, or the
+  ball last tracked in the 5 s before. With no ball to go by, the card is
+  shown alone.
+- It is held as a free kick is: for at least 2 s, then for as long as the
+  label is on or play is stopped, and it fades out once play is back. It is
+  shown once per corner, only during playback. A goal takes over from it. It
+  takes over from an attack and a throw-in. A free kick and a corner never
+  take over from each other: the first one shown stays. Its label has to have
+  been off for 15 s before it counts as a new corner, where a free kick's
+  needs 5 s: in the one export with corners, the label is off for up to 9 s
+  within a corner, and the corners are minutes apart.
+- Played by hand, it is on screen for 4 s.
+- Under reduced motion it is shown whole and still, and goes without a fade.
+- **A Corner layer** in the layers menu, after Free kick, on by default. A
+  choice kept from an earlier version leaves it on.
+- The corner label is matched as "Corner", as the February export writes it,
+  and as "Corner kick", "EventType.CORNER" or "EventType.CORNER_KICK", in any
+  case, for exports that name it as they name the free kick.
+
+### For pages that embed it
+
+- `trigger('corner')` plays it now, on the frame on screen, and the `moment`
+  event says `'corner'` when it starts and ends.
+- `MomentAvailability` has a `corner` field, `ReplayMoment` and
+  `ReplayLayerKey` take `'corner'`, and `TrackerText` has `corner`, with a
+  `corner` entry in `layers`. Code that builds a whole `MomentAvailability` or
+  `TrackerText` itself has to add them. Text overrides are partial, as before.
+- On pages with a Content Security Policy, the corner's icon is an SVG
+  `data:` URL like the others, so `img-src data:` covers it.
+
+### Size
+
+- The widget is 34.9 kB gzipped (budget 60 kB), up from 33.7 kB, and the
+  fonts are still 81.7 kB.
+
 ## [0.1.4] - 2026-11-03
 
 A tiny `@coenhallie/match-tracker/banner` entry for the console banner, so a
