@@ -6,9 +6,7 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [0.1.0]
-
-The release date is set when 0.1.0 is tagged.
+## [0.1.0] - 2026-11-02
 
 The first release: video-annotation's 2D replay as a widget of its own, for
 this site's live matches and, next, for video-annotation itself.

@@ -370,7 +370,7 @@ To release:
    `package.json`, which the build injects as `MATCH_TRACKER_VERSION`, then
    commits and tags `v<version>`.
 3. `git push --follow-tags`. The GitHub Actions workflow on `v*` tags runs lint,
-   typecheck, tests and build, then publishes to GitHub Packages. The workflow
-   arrives with the first release.
+   typecheck, tests and build, checks the tag equals `v` plus the `package.json`
+   version, then publishes to GitHub Packages.
 4. In each app, `npm install --save-exact @coenhallie/match-tracker@<version>`.
    Check the page shows the new `data-match-tracker-version`.
