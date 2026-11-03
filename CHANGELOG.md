@@ -6,6 +6,42 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-11-03
+
+An attack shown over stretches where the pipeline loses most players, and a
+developer-mode badge that says when that's what is on screen. Everything else
+is drawn as in 0.1.6.
+
+### What you see
+
+- **An attack over lost players.** While the pipeline tracks fewer than 18
+  players (both teams' players, keepers included), which leaves the pitch
+  nearly empty, the tracker shows an attack instead, for the team the ball is
+  heading towards the other goal with, or else the team that last had the
+  ball. Everyone fades out, and the ball keeps moving under it. It starts
+  once the loss has lasted 0.3 s, stays while it lasts, and fades out once 18
+  or more players have been back for 0.5 s. It has its own layer, "Attack
+  over lost players", on by default. video-annotation has nothing like it.
+  The goldens and snapshots are unchanged: the goldens carry their own
+  layers, which don't have this one, so it stays off for them, although
+  their synthetic scenes have six players throughout.
+
+### For pages that embed it
+
+- **`debug`**, a new option, is developer mode: a red badge, top left of the
+  pitch, says "Player loss: 9 tracked" while too few players are tracked, and
+  ", covered by Red's attack" when the attack covers it. That's how to tell a
+  real attack from one shown over lost players. It's off by default, and can
+  be changed with `setOptions`. The Vue component takes it as a prop.
+- `ReplayLayerKey` takes `'playerLoss'`, and `TrackerText` has `playerLoss`
+  and `playerLossCover`, plus a `playerLoss` entry in `layers`. Code that
+  builds a whole `TrackerText` has to add them.
+
+### Size
+
+- The widget is 36.3 kB gzipped (budget 60 kB), up from 34.9 kB, and the
+  fonts are still 81.7 kB.
+
 ## [0.1.6] - 2026-11-03
 
 The corner's cone is easier to see. Nothing else changes for someone
