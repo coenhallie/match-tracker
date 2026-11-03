@@ -6,6 +6,49 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-03
+
+The free kick is gone. Everything else is drawn as in 0.1.7. This breaks the
+API for any page that names the free kick, so it is 0.2.0.
+
+### What you see
+
+- **No free kick.** A free kick label no longer brings up the "FREE KICK"
+  card, and no longer fades the players and the ball out. Play shows as it
+  is through a free kick, and an attack, a throw-in or the attack over lost
+  players can show during one, where the free kick used to hold them back.
+  The free kick's layer is gone from the layers menu.
+- The corner is unchanged: it keeps the card and the hold it took from the
+  free kick.
+
+### For pages that embed it
+
+- `'freeKick'` is gone from `ReplayMoment` and `ReplayLayerKey`, so
+  `trigger('freeKick')` no longer type-checks, and from plain JavaScript it
+  returns false. `availability()` has no `freeKick` field.
+- `TrackerText` has no `freeKick` title, and its `layers` no `freeKick`
+  entry. An override that still gives them is ignored.
+- A layer choice kept from an earlier version that includes `freeKick` is
+  read without it.
+- The free kick card's icon is no longer bundled, so the cards' icons are the
+  goal's and the corner's.
+
+### Parity
+
+- video-annotation's free kick is no longer matched. Its two goldens,
+  `real-free-kick` and `free-kick-held-through-cutaway`, recorded nothing
+  else, and are retired. `trigger-each-moment` is compared up to its free
+  kick trigger: the goal and both attacks. The throw-in after it keeps its
+  own four goldens. The other 15 goldens are unchanged and still pass.
+- The baseline snapshot that drew the free kick card with the throw-in and
+  the goal card now draws those two alone. The other four snapshots are
+  unchanged.
+
+### Size
+
+- The widget is 34.2 kB gzipped (budget 60 kB), down from 36.3 kB, and the
+  fonts are still 81.7 kB.
+
 ## [0.1.7] - 2026-11-03
 
 An attack shown over stretches where the pipeline loses most players, and a
