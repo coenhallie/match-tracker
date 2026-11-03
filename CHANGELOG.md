@@ -6,6 +6,47 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-02
+
+What a page needs to put its own content over the pitch, as video-annotation's
+replay does. Nothing changes for someone watching the tracker: the pitch, the
+moments and the HUD are drawn as in 0.1.0, and the goldens and snapshots are
+unchanged.
+
+### For pages that embed it
+
+- **The overlay takes the page's CSS.** `tracker.overlay` is now a `div` in the
+  host's light DOM, with `slot="overlay"`, projected into the pitch's box.
+  Tailwind classes and Vue scoped styles apply to what is mounted in it, so a
+  drawing layer with `absolute inset-0` fills the pitch and takes the pointer
+  when it asks for it. In 0.1.0 the overlay was in the shadow root, where the
+  page's CSS could not reach.
+  - Pointer events are still off on the overlay itself, so pan and zoom work
+    through it.
+  - A press on anything in it still stops every moment.
+  - It is the one node the widget adds to the host, and `destroy()` takes it
+    out.
+- **`tracker.box`** is the pitch's box, `{ left, top, width, height }`, in CSS
+  px from the host's top-left corner. It is null until the widget has a size.
+  A `box` event says when it changes.
+- **`tracker.availability()`** says which moments `trigger` can play on the
+  frame on screen (`{ goal, attack: { 0, 1 }, freeKick, throwIn }`), so demo
+  buttons can be disabled before a press. An `availability` event says when it
+  changes.
+- **New exports:**
+  - `REPLAY_LOOKBACK_S`, how many seconds of records to pass as `lookback`;
+  - `DEFAULT_PERSON_COLORS`, the default colours, frozen;
+  - the types `TrackerBox` and `MomentAvailability`.
+- **Vue.** The component's default slot is rendered into the overlay. Its ref
+  exposes `box` and `availability()`, both reactive, and it emits `box` and
+  `availability`.
+
+### Size
+
+- The widget is 33.6 kB gzipped (budget 60 kB). The Vue component adds 1.4 kB,
+  and the fonts are still 81.7 kB.
+- Nothing in the draw path changed, so the drawing times of 0.1.0 stand.
+
 ## [0.1.0] - 2026-11-02
 
 The first release: video-annotation's 2D replay as a widget of its own, for
