@@ -1,12 +1,13 @@
 # @coenhallie/match-tracker
 
 A live 2D match tracker for football streams. It draws players, ball and the
-match's moments (goals, attacks, free kicks, corners, throw-ins) on a pitch,
-from the tracking pipeline's frames, inside any element you give it. It is the
-2D replay from video-annotation, taken out of Vue: the same picture, timing and
+match's moments (goals, attacks, corners, throw-ins) on a pitch, from the
+tracking pipeline's frames, inside any element you give it. It is the 2D
+replay from video-annotation, taken out of Vue: the same picture, timing and
 behaviour for the same data, with zoom and pan, the attacking/defending row and
 the layers menu. The corner is the widget's own, as video-annotation has none,
-and so is the attack shown over a player loss.
+and so is the attack shown over a player loss. video-annotation's free kick
+isn't shown.
 
 - **Framework-free.** One function, `createMatchTracker`, and plain DOM. A thin
   Vue 3 component is a separate entry, `@coenhallie/match-tracker/vue`.
@@ -235,10 +236,10 @@ destroyed on can have a new one.
 | `push(message)` | Live: one websocket message. |
 | `present(state)` | Replay: `{ time, playing, record, lookback }` at the host's clock. |
 | `reset()` | Forget everything seen and end every moment. What comes next is a seek. The last picture stays until new data arrives. |
-| `trigger(moment, team?)` | Play `'goal'`, `'attack'`, `'freeKick'`, `'corner'` or `'throwIn'` now, on the frame on screen. `team` (0 home, 1 away, default 0) is for an attack. Returns false when the moment cannot be played on that frame (for example before the first frame, or a goal with no ball). |
+| `trigger(moment, team?)` | Play `'goal'`, `'attack'`, `'corner'` or `'throwIn'` now, on the frame on screen. `team` (0 home, 1 away, default 0) is for an attack. Returns false when the moment cannot be played on that frame (for example before the first frame, or a goal with no ball). |
 | `setOptions(options)` | Change any option but `mode` and `layersStorageKey`, which are fixed at mount. The HUD and the canvas follow at once, without a remount. Options that throw change nothing. |
 | `on(event, listener)` | Listen to an event. Returns a function that unsubscribes. |
-| `availability()` | Which moments `trigger` can play on the frame on screen: `{ goal, attack: { 0, 1 }, freeKick, corner, throwIn }`, each a boolean (`MomentAvailability`). All false before the first frame and after a reset. A goal needs a ball, and an attack needs the direction that team attacks in, which needs the keepers. A fresh copy on every call. |
+| `availability()` | Which moments `trigger` can play on the frame on screen: `{ goal, attack: { 0, 1 }, corner, throwIn }`, each a boolean (`MomentAvailability`). All false before the first frame and after a reset. A goal needs a ball, and an attack needs the direction that team attacks in, which needs the keepers. A fresh copy on every call. |
 | `overlay` | An element over the pitch, in the canvas's own box, for a host's drawing layer and anything it anchors to the pitch. It is a `div` child of the host, with `slot="overlay"`, so the page's CSS reaches it and its content. Its inline style fills the box and turns pointer events off. Pointer events pass through it unless you turn them on for your own elements. A press on it, or on anything in it, stops every moment, except inside an element in it marked `data-match-tracker-keep` (your transport, a frame badge), where a press starts no pan and a double-click leaves the zoom. |
 | `box` | `{ left, top, width, height }`, the canvas's box in CSS px from the host's top-left corner, below the attacking/defending row (`TrackerBox`, frozen). Null until the widget has been laid out with a size, and after `destroy()`. |
 | `version` | The package version this tracker runs. |
@@ -269,8 +270,8 @@ Also exported:
 | `formatAction` | `(actionType: string) => string` | as it comes | The bottom-left text for each of a frame's actions, from its `action_type` (for example `'EventType.FREE_KICK'` to `'Free kick'`). |
 | `debug` | `boolean` | `false` | Developer mode. A red badge, top left of the pitch, while fewer than 18 players are tracked on the frame on screen: how many are, and whose attack covers the loss when one does (see [Player loss](#player-loss)). For telling a real attack from one shown over lost players. Can be changed with `setOptions`. |
 
-The layers are `goal`, `attack`, `playerLoss`, `freeKick`, `corner`, `throwInBanner`,
-`ballTrail`, `phaseLabels`, `nearbyRings`, `farFade` and `ringFades`.
+The layers are `goal`, `attack`, `playerLoss`, `corner`, `throwInBanner`, `ballTrail`,
+`phaseLabels`, `nearbyRings`, `farFade` and `ringFades`.
 
 #### Player loss
 
@@ -288,12 +289,12 @@ default):
   the ball keeps moving, ringed in the team's colour.
 - It stays while the loss lasts, and fades out once 18 or more players have
   been tracked again for 0.5 s.
-- A goal, a free kick or a corner takes over from it. An attack the team
-  phase calls during a loss isn't shown on top of it.
+- A goal or a corner takes over from it. An attack the team phase calls
+  during a loss isn't shown on top of it.
 - With `debug` on, a badge says when this is happening.
 
 The `TrackerText` keys are:
-- on the canvas: `goal`, `freeKick`, `corner`, `throwIn`, `attack`;
+- on the canvas: `goal`, `corner`, `throwIn`, `attack`;
 - the row: `attacking`, `defending`, `versus`, `phaseTooltip`, `red` and `blue` (the default team names);
 - ARIA templates: `phaseAttackingAria` and `phaseDefendingAria` (with `{team}`), and `phaseAria` (with `{home}` and `{away}`);
 - the menu: `layersButton`, `layersTooltip`, `layersMenuLabel`, and `layers` (`{ label, hint }` per layer);
@@ -410,7 +411,7 @@ scripts and styles, several times on one page.
 ### Content Security Policy
 
 On a page with a Content Security Policy, the widget needs:
-- `img-src data:`, for the free kick, corner and goal cards' icons, which are SVG `data:` URLs
+- `img-src data:`, for the corner and goal cards' icons, which are SVG `data:` URLs
   drawn through an `Image`. Without it the cards are drawn without their icons.
 - `font-src` for wherever the package's files are served from: the fonts are
   woff2 files next to `dist/index.js`, loaded with `FontFace`. Bundled into your app

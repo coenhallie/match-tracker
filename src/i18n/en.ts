@@ -2,7 +2,7 @@ import type { TrackerText } from './text.js'
 
 /**
  * video-annotation's English at 6f14d1f, word for word: the canvas words
- * (goalBanner.ts, freeKick.ts, throwIn.ts, attackIndicator.ts), the HUD's
+ * (goalBanner.ts, throwIn.ts, attackIndicator.ts), the HUD's
  * (PipelineOutputSurface.vue's template, PHASE_TEAMS and STATE_TEXT) and the
  * layers menu's (replayLayers.ts). The phase row's ARIA templates give the
  * reference's `phaseDescription` ("Red attacking, Blue defending"), which
@@ -15,7 +15,6 @@ import type { TrackerText } from './text.js'
  */
 export const en: TrackerText = {
   goal: 'GOAL',
-  freeKick: 'FREE KICK',
   corner: 'CORNER',
   throwIn: 'THROW IN',
   attack: 'Attack',
@@ -41,7 +40,6 @@ export const en: TrackerText = {
     goal: { label: 'Goal animation', hint: 'A shot into the net on a goal label' },
     attack: { label: 'Attack', hint: 'Worked out from possession: shade and team name' },
     playerLoss: { label: 'Attack over lost players', hint: 'An attack while fewer than 18 players are tracked' },
-    freeKick: { label: 'Free kick', hint: 'A banner on a free kick label, held while play is stopped' },
     corner: { label: 'Corner', hint: 'A banner and the corner lit up on a corner label, held while play is stopped' },
     throwInBanner: { label: 'Throw-in', hint: 'A banner along the bottom touchline on a throw-in label' },
     ballTrail: { label: 'Ball trail', hint: "The ball's path, with a dot at each turn" },

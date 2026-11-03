@@ -27,7 +27,7 @@
  * while the data stalls on a frame with players missing.
  *
  * It only plays during playback. Anything that means someone wants the real
- * frame stops it, a goal, a free kick or a corner takes over from it, and an
+ * frame stops it, a goal or a corner takes over from it, and an
  * attack the phase calls is shown instead of it, not over it.
  */
 import { trackedPlayers, PLAYER_LOSS_BELOW } from '../analysis/playerLoss.js'

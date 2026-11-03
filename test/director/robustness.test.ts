@@ -74,7 +74,7 @@ describe('robustness', () => {
         { team_id: 1, players: [{ track_id: 11, person_type: 'PersonType.PLAYER', projected_coordinates: null }] },
       ]),
       frame([], ['EventType.THROW_IN']),
-      frame([ball(Number.POSITIVE_INFINITY, 0)], ['EventType.FREE_KICK']),
+      frame([ball(Number.POSITIVE_INFINITY, 0)], ['EventType.CORNER_KICK']),
       frame([ball(1, 1)], [], []),
       { pitch_dimensions: null, teams: null, balls: null, state: null, frame_data: [] } as unknown as Frame,
     ]
@@ -119,12 +119,12 @@ describe('robustness', () => {
       replay.set({ frame: frame([]) })
       replay.trigger('goal')
       replay.trigger('attack', 1)
-      replay.trigger('freeKick')
+      replay.trigger('corner')
       replay.set({ time: Number.NaN })
       replay.set({ time: 3, phase: BLUE_ATTACKING, frame: frame([ball(-20, 0)]) })
       replay.trigger('attack', 1)
       replay.animate(100)
-      replay.toggle({ attack: false, freeKick: false, goal: false, throwInBanner: false, ringFades: false })
+      replay.toggle({ attack: false, corner: false, goal: false, throwInBanner: false, ringFades: false })
       replay.director.reset()
       replay.animate(100)
       replay.stopAll()

@@ -5,21 +5,22 @@ import { resolvePitchDimensions, tracePlayingArea, worldToPx } from './pitchGeom
 import { DEFAULT_THEME, type RenderTheme } from './theme.js'
 
 /**
- * The corner: "CORNER" and the corner icon on the free kick's dark card
- * across the middle of the pitch, everyone and the ball faded out, and the corner it is
- * taken from lit up as a cone of sections fanning out from the flag, each
- * lighting up after the one inside it, again and again while it shows.
+ * The corner: "CORNER" and the corner icon on a dark card across the middle
+ * of the pitch, everyone and the ball faded out, and the corner it is taken
+ * from lit up as a cone of sections fanning out from the flag, each lighting
+ * up after the one inside it, again and again while it shows.
  *
- * The reference has no corner: this is the widget's own, built on the free
- * kick's card. A corner is prepared off camera as a free kick is, so it is
- * held the same way (freeKick.ts in director).
+ * The reference has no corner: this is the widget's own, built on the
+ * reference's free kick card (vp-pitch-1, node 5:22), which the widget no
+ * longer shows. A corner is usually prepared off camera, so it is held while
+ * play is stopped (setPiece.ts in director).
  */
 export interface CornerBanner {
   /** 0 to 1: how far the card and the cone have faded in, or, leaving, how much of them is left. */
   intensity: number
   /** 0 to 1: how far everyone on the pitch has faded out. */
   playersFade: number
-  /** 0 to 1: how far the ball and its trail have faded out, as the free kick's ballFade. */
+  /** 0 to 1: how far the ball and its trail have faded out, so nothing of play is left under the card. */
   ballFade: number
   /**
    * The corner the cone fans out from, by the signs of its x and y in pitch
@@ -51,8 +52,8 @@ export const CORNER_DEMO_MS = 4000
  * The label comes and goes around one corner, as it is set up, while the
  * broadcast cuts away, and as it is taken: it has to have been off for this
  * long, in seconds of replay time, before it counts as a new one. Longer than
- * the free kick's: in the February export it is off for up to 9 s within one
- * corner, and the corners themselves are minutes apart.
+ * the reference's free kick's 5 s: in the February export it is off for up to
+ * 9 s within one corner, and the corners themselves are minutes apart.
  */
 export const CORNER_REARM_S = 15
 
@@ -157,10 +158,11 @@ export function drawCornerCone(
 }
 
 /**
- * The corner's card: the free kick's, with "CORNER" (the theme's
- * text.corner) and the corner icon both centred on it. The icon is the size
- * of the free kick's (vp-pitch-1, node 5:22), at its height, which the
- * corner's drawing is made to fill.
+ * The corner's card: the reference's free kick card (vp-pitch-1, node 5:22),
+ * with "CORNER" (the theme's text.corner) and the corner icon both centred
+ * on it. The icon is the size of the free kick's, which the corner's drawing
+ * is made to fill: its 219 px slot, inset 14.06% left, 17.27% top, 14.84%
+ * right and 18.75% bottom.
  */
 const ICON_SLOT_PX = 219
 const ICON_WIDTH_PX = ICON_SLOT_PX * (1 - 0.1406 - 0.1484)

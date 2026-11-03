@@ -16,7 +16,7 @@
  *
  * Shown once per throw-in, as the label flickers (THROW_IN_REARM_S). It only
  * plays during playback, anything that means someone wants the real frame
- * stops it, and a free kick or a goal takes over from it.
+ * stops it, and a corner or a goal takes over from it.
  */
 import type { Frame } from '../model/types.js'
 import {
@@ -51,8 +51,8 @@ export class ThrowIn implements Moment {
   /**
    * `updateThrowIn`, up to its start: note where the ball is on `frame`, and
    * whether it is a throw-in that playback has just run into. Called for
-   * every new record, after the free kick has had its say; `blocked` is a
-   * goal or a free kick showing.
+   * every new record, after the corner has had its say; `blocked` is a
+   * goal or a corner showing.
    */
   detect(frame: Frame, now: number, blocked: boolean): boolean {
     const memory = this.ctx.memory()

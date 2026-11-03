@@ -69,7 +69,7 @@ function reportError(error: unknown): void {
 }
 
 /** In the order the director stops them. */
-const MOMENTS: readonly ReplayMoment[] = ['goal', 'attack', 'freeKick', 'corner', 'throwIn']
+const MOMENTS: readonly ReplayMoment[] = ['goal', 'attack', 'corner', 'throwIn']
 
 /**
  * Whether a paint shows `moment`. Each moment's value is drawn from its
@@ -83,8 +83,6 @@ function shows(layers: FrameLayers, moment: ReplayMoment): boolean {
       return layers.goal !== undefined || layers.goalBanner !== undefined
     case 'attack':
       return layers.attack !== undefined
-    case 'freeKick':
-      return layers.freeKick !== undefined
     case 'corner':
       return layers.corner !== undefined
     case 'throwIn':

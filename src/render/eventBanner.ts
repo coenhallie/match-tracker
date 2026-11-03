@@ -52,7 +52,7 @@ export function drawEventBand(
  * it, and is drawn smaller to fit if it would not (fitText.ts).
  */
 export interface TitleLayout {
-  /** The design's word ("GOAL", "FREE KICK", "THROW IN"). */
+  /** The design's word ("GOAL", "THROW IN", or the widget's own "CORNER"). */
   word: string
   /** The design's word's left edge. */
   leftPx: number
@@ -136,7 +136,7 @@ const CARD_TITLE_BASELINE_PX = CARD_TITLE_TOP_PX + CARD_TITLE_PX * INTER_ASCENT
 export const CARD_MIDDLE_PX = CARD_WIDTH_PX / 2
 
 /**
- * Draw a centred event card - the free kick's, the goal's - at `alpha`, in
+ * Draw a centred event card - the goal's, the corner's - at `alpha`, in
  * frame units through the context's current transform.
  */
 export function drawCentreCard(ctx: CanvasRenderingContext2D, t: Transform2D, card: CentreCard, alpha: number): void {

@@ -143,7 +143,6 @@ const MOMENTS: Array<{ label: string; moment: ReplayMoment; team?: TeamId }> = [
   { label: 'Goal', moment: 'goal' },
   { label: 'Home attack', moment: 'attack', team: 0 },
   { label: 'Away attack', moment: 'attack', team: 1 },
-  { label: 'Free kick', moment: 'freeKick' },
   { label: 'Corner', moment: 'corner' },
   { label: 'Throw-in', moment: 'throwIn' },
 ]

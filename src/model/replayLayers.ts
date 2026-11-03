@@ -10,7 +10,6 @@ export type ReplayLayerKey =
   | 'goal'
   | 'attack'
   | 'playerLoss'
-  | 'freeKick'
   | 'corner'
   | 'throwInBanner'
   | 'ballTrail'
@@ -26,7 +25,7 @@ export type ReplayLayers = Record<ReplayLayerKey, boolean>
  * label (or, for an attack, its phase) while its layer is on, and can be
  * played by hand from the demo controls whether or not it is.
  */
-export type ReplayMoment = 'goal' | 'attack' | 'freeKick' | 'corner' | 'throwIn'
+export type ReplayMoment = 'goal' | 'attack' | 'corner' | 'throwIn'
 
 /**
  * In the order the menu lists them. Each layer's name and hint are text, in
@@ -36,7 +35,6 @@ export const REPLAY_LAYERS: ReadonlyArray<{ key: ReplayLayerKey }> = [
   { key: 'goal' },
   { key: 'attack' },
   { key: 'playerLoss' },
-  { key: 'freeKick' },
   { key: 'corner' },
   // Not "throwIn": that was the removed throw-in zoom's key, and a browser
   // that switched it off would hide this without anyone choosing to.
@@ -52,7 +50,6 @@ export const DEFAULT_REPLAY_LAYERS: ReplayLayers = {
   goal: true,
   attack: true,
   playerLoss: true,
-  freeKick: true,
   corner: true,
   throwInBanner: true,
   ballTrail: true,

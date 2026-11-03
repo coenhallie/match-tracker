@@ -55,7 +55,7 @@ describe('throw-in', () => {
     animate(replay, 500)
     expect(lastThrowIn(replay)).toEqual({ intensity: 1, slide: 1, side: -1, inPlace: true })
     // Nothing else on the pitch changes for it: no fade, no zoom.
-    expect(replay.last()?.freeKick).toBeUndefined()
+    expect(replay.last()?.corner).toBeUndefined()
     expect(replay.outputs.slice(from).every((o) => o.camera === null)).toBe(true)
     expect(replay.lastView()).toMatchObject({ zoom: 1, panX: 0, panY: 0 })
   })
@@ -126,15 +126,16 @@ describe('throw-in', () => {
     expect(lastThrowIn(replay)).toBeUndefined()
   })
 
-  it('gives way to a free kick, and does not start while one shows', () => {
+  // The reference's case gives way to a free kick, which the widget no longer shows; the corner takes its place.
+  it('gives way to a corner, and does not start while one shows', () => {
     const replay = ready()
     record(replay, -30, THROW_IN)
     animate(replay, 200)
-    record(replay, -30, ['EventType.FREE_KICK'])
+    record(replay, -30, ['EventType.CORNER_KICK'])
     animate(replay, 100)
     expect(lastThrowIn(replay)).toBeUndefined()
-    expect(replay.last()?.freeKick).toBeDefined()
-    for (let i = 0; i < 130; i++) record(replay, -30, ['EventType.FREE_KICK'])
+    expect(replay.last()?.corner).toBeDefined()
+    for (let i = 0; i < 130; i++) record(replay, -30, ['EventType.CORNER_KICK'])
     record(replay, -30, THROW_IN)
     animate(replay, 100)
     expect(lastThrowIn(replay)).toBeUndefined()

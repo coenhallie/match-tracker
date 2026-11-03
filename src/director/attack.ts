@@ -73,8 +73,8 @@ export class Attack implements Moment {
   /**
    * `maybeStartAttack`, up to its start: whether to show the attack on
    * `frame`, which has just reached the other team's half during playback.
-   * Called for every new record, after the goal and the free kick. `blocked`
-   * is a goal or a free kick showing. Notes the attack as seen either way,
+   * Called for every new record, after the goal, the corner and the throw-in.
+   * `blocked` is a goal or a corner showing, or the attack over a player loss. Notes the attack as seen either way,
    * and gives the attack and the ball to hold when it is to start.
    */
   detect(frame: Frame, blocked: boolean): { target: AttackTarget; ball: { x: number; y: number } } | null {

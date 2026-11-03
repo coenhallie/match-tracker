@@ -80,7 +80,6 @@ describe('Director', () => {
       expect(replay.last()).toEqual({
         goal: undefined,
         attack: undefined,
-        freeKick: undefined,
         throwIn: undefined,
         goalBanner: undefined,
         rings: {
@@ -327,9 +326,10 @@ describe('Director', () => {
 // :517 'draws immediately when state flips to ready and the frame was already set': Vue watcher plumbing;
 //   the director has no replay state, and its first record always paints (ported :496 above).
 // The seek and pause cases of the moment groups are ported with their moments, under the same names:
-// goal :769, :777, :787, :797, :855 in goal.test.ts; attack :1089, :1098, :1108 in attack.test.ts; free kick
-// :1432, :1441, :1455, :1465 in freeKick.test.ts; throw-in :2058, :2067 in throwIn.test.ts; by hand :2336
-// in trigger.test.ts. So are the layers menu's goal cases, :2517 and :2528, in goal.test.ts.
+// goal :769, :777, :787, :797, :855 in goal.test.ts; attack :1089, :1098, :1108 in attack.test.ts; throw-in
+// :2058, :2067 in throwIn.test.ts; by hand :2336 in trigger.test.ts. So are the layers menu's goal cases, :2517
+// and :2528, in goal.test.ts. The free kick's, :1432, :1441, :1455 and :1465, went with the free kick, which
+// the widget no longer shows (CHANGELOG 0.2.0).
 // Layers menu cases that are not about what paint() draws:
 // :2441 'lists every layer, all shown by default': menu DOM, Task 11.
 // :2450 'hides the attacking and defending labels': HUD DOM, Task 11.

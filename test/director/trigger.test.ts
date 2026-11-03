@@ -37,45 +37,6 @@ const animate = (replay: FakeReplay, ms: number) => replay.animate(ms, true)
 const last = (replay: FakeReplay) => replay.last()!
 
 describe('playing moments by hand', () => {
-  // The flow for recording: the layer off, so it never plays by itself, and played by hand at the moment
-  // it should be seen.
-  it('plays the free kick by hand with its layer off and no label, even paused', () => {
-    const replay = ready()
-    replay.toggle({ freeKick: false })
-    replay.trigger('freeKick')
-    animate(replay, 600)
-    expect(last(replay).freeKick).toMatchObject({ intensity: 1 })
-  })
-
-  // Nothing to wait on when played by hand: no label, no cutaway.
-  it('shows a free kick played by hand for 4 s, whatever play does, then fades out', () => {
-    const replay = ready(null)
-    replay.play()
-    replay.trigger('freeKick')
-    // The ball is lost and nobody moves: a free kick off its label would hold.
-    for (let i = 0; i < 70; i++) {
-      replay.set({ time: replay.time + 0.04, frame: frameAt(null) })
-      animate(replay, 50)
-    }
-    expect(last(replay).freeKick).toMatchObject({ intensity: 1 })
-    animate(replay, 300)
-    const going = last(replay).freeKick!
-    expect(going.intensity).toBeGreaterThan(0)
-    expect(going.intensity).toBeLessThan(1)
-    // 4 s from its first frame, a frame after the button.
-    animate(replay, 250)
-    expect(last(replay).freeKick).toBeUndefined()
-  })
-
-  it('shows a free kick played by hand for 4 s under reduced motion too', () => {
-    const replay = ready(20, KNOWN_ENDS, true)
-    replay.trigger('freeKick')
-    animate(replay, 3950)
-    expect(last(replay).freeKick).toMatchObject({ intensity: 1 })
-    animate(replay, 100)
-    expect(last(replay).freeKick).toBeUndefined()
-  })
-
   it('plays the throw-in by hand, fading in where it stands, noting the ball’s half', () => {
     const replay = ready(-25)
     replay.trigger('throwIn')
@@ -113,10 +74,10 @@ describe('playing moments by hand', () => {
     const replay = ready()
     replay.trigger('throwIn')
     animate(replay, 300)
-    replay.trigger('freeKick')
+    replay.trigger('corner')
     animate(replay, 100)
     expect(last(replay).throwIn).toBeUndefined()
-    expect(last(replay).freeKick).toBeDefined()
+    expect(last(replay).corner).toBeDefined()
   })
 
   it('says what can be played: no goal without a ball, no attack without a direction', () => {
@@ -124,7 +85,6 @@ describe('playing moments by hand', () => {
     expect(withBall.director.availability()).toEqual({
       goal: true,
       attack: { 0: true, 1: true },
-      freeKick: true,
       corner: true,
       throwIn: true,
     })
@@ -140,10 +100,10 @@ describe('playing moments by hand', () => {
 
   it('is ended by a seek, as the others are', () => {
     const replay = ready()
-    replay.trigger('freeKick')
+    replay.trigger('corner')
     animate(replay, 300)
     replay.set({ time: 60 })
-    expect(last(replay).freeKick).toBeUndefined()
+    expect(last(replay).corner).toBeUndefined()
   })
 
   // Beyond the reference's cases: what trigger returns.
@@ -156,11 +116,10 @@ describe('playing moments by hand', () => {
         teamColor: () => '#e51a1a',
       })
       const input = { nowMs: 1000, time: 0, playing: false, playback: false, record: null, phase: null, trail: null }
-      expect(director.trigger('freeKick', 0, input, VIEW)).toBeNull()
+      expect(director.trigger('corner', 0, input, VIEW)).toBeNull()
       expect(director.availability()).toEqual({
         goal: false,
         attack: { 0: false, 1: false },
-        freeKick: false,
         corner: false,
         throwIn: false,
       })

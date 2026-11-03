@@ -208,7 +208,7 @@ describe('attack over a player loss', () => {
     expect(sought.attack()).toMatchObject({ team: 1 })
   })
 
-  it('gives way to a goal and a free kick', () => {
+  it('gives way to a goal and a corner', () => {
     const goal = new Pitch()
     goal.ball = { x: 40, y: 0 }
     goal.records(recordsFor(1), 9, { dx: 0.3 })
@@ -217,11 +217,11 @@ describe('attack over a player loss', () => {
     expect(goal.replay.last()!.goal ?? goal.replay.last()!.goalBanner).toBeDefined()
     expect(goal.attack()).toBeUndefined()
 
-    const kick = new Pitch()
-    kick.records(recordsFor(1), 9, { dx: 0.3 })
-    kick.record(9, { labels: ['Free kick'] })
-    expect(kick.replay.last()!.freeKick).toBeDefined()
-    expect(kick.attack()).toBeUndefined()
+    const corner = new Pitch()
+    corner.records(recordsFor(1), 9, { dx: 0.3 })
+    corner.record(9, { labels: ['Corner'] })
+    expect(corner.replay.last()!.corner).toBeDefined()
+    expect(corner.attack()).toBeUndefined()
   })
 
   it('stands in for an attack the phase calls during it, which is then not shown again', () => {

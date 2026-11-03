@@ -1,7 +1,7 @@
 /**
  * The seam between the director and its moments (goal.ts, attack.ts,
- * freeKick.ts, corner.ts, throwIn.ts): what a moment is to the director, and
- * what the director lends each moment to read and act through. See "The
+ * corner.ts, throwIn.ts, playerLoss.ts): what a moment is to the director,
+ * and what the director lends each moment to read and act through. See "The
  * moments" in director.ts.
  */
 import type { BallTrail } from '../analysis/ballTrail.js'
@@ -35,10 +35,8 @@ export interface ShownReplay {
   trail: BallTrail | null
 }
 
-/** What a seek forgets (`:574-579`), shared by the free kick, corner and throw-in modules. */
+/** What a seek forgets (`:574-579`), shared by the corner and throw-in modules. */
 export interface MomentMemory {
-  /** The replay time the free kick label was last seen at, or null. */
-  freeKickLabelAt: number | null
   /** The replay time the corner label was last seen at, or null. */
   cornerLabelAt: number | null
   /** The replay time the throw-in label was last seen at, or null. */

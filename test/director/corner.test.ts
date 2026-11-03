@@ -4,8 +4,9 @@ import type { Frame } from '../../src/model/types'
 import { CORNER_DEMO_MS, CORNER_REARM_S, CORNER_SHOW_MS, CORNER_SECTION_METRES } from '../../src/render/corner'
 import { FakeReplay } from './harness'
 
-// The corner is the widget's own: the reference has none. Built on the free kick, so its cases follow
-// free kick.test.ts, with what is its own: which corner, and the cone. Whole animation frames, as there.
+// The corner is the widget's own: the reference has none. Built on the reference's free kick, which the
+// widget no longer shows, so its cases follow that one's (pipelineOutputSurface.test.ts :1159-1544), with
+// what is its own: which corner, and the cone. Whole animation frames, as there.
 
 /** A record: someone at `x`, the ball at `ball` unless it is lost, and the labels it carries. */
 const frameAt = (x: number, labels: string[] = [], ball: { x: number; y: number } | null = { x: 48, y: 30 }): Frame =>
@@ -265,22 +266,18 @@ describe('corner', () => {
       expect(last.attack).toBeUndefined()
     })
 
-    it('neither takes over from a free kick nor gives way to one', () => {
+    // The widget no longer shows the free kick: its label changes nothing.
+    it('leaves a free kick label alone, showing or not', () => {
       const kick = new Pitch()
       kick.record(['Free kick'])
       kick.animate(100)
+      expect(kick.replay.last()).not.toHaveProperty('freeKick')
       kick.record(CORNER)
       kick.animate(100)
-      expect(kick.replay.last()!.freeKick).toBeDefined()
-      expect(kick.replay.last()!.corner).toBeUndefined()
-
-      const corner = new Pitch()
-      corner.record(CORNER)
-      corner.animate(100)
-      corner.record(['Free kick'])
-      corner.animate(100)
-      expect(corner.replay.last()!.corner).toBeDefined()
-      expect(corner.replay.last()!.freeKick).toBeUndefined()
+      expect(kick.replay.last()!.corner).toBeDefined()
+      kick.record(['Free kick'])
+      kick.animate(100)
+      expect(kick.replay.last()!.corner).toBeDefined()
     })
 
     it('gives way to a goal', () => {

@@ -12,8 +12,6 @@ import { zh } from './zh.js'
 export interface TrackerText {
   /** The goal card's title. */
   goal: string
-  /** The free kick card's title. */
-  freeKick: string
   /** The corner card's title. */
   corner: string
   /** The throw-in band's title. */

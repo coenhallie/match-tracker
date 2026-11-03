@@ -8,7 +8,6 @@ import type { TrackerText } from './text.js'
  */
 export const zh: TrackerText = {
   goal: '进球',
-  freeKick: '任意球',
   corner: '角球',
   throwIn: '界外球',
   attack: '进攻',
@@ -33,7 +32,6 @@ export const zh: TrackerText = {
     goal: { label: '进球动画', hint: '出现进球标签时，播放射门入网的动画' },
     attack: { label: '进攻', hint: '根据控球推算：阴影和球队名称' },
     playerLoss: { label: '球员丢失时显示进攻', hint: '跟踪到的球员少于 18 人时显示进攻动画' },
-    freeKick: { label: '任意球', hint: '出现任意球标签时显示横幅，比赛暂停期间一直显示' },
     corner: { label: '角球', hint: '出现角球标签时显示横幅并点亮角球区，比赛暂停期间一直显示' },
     throwInBanner: { label: '界外球', hint: '出现界外球标签时，在底边线上方显示横幅' },
     ballTrail: { label: '球的轨迹', hint: '球的移动路线，每次转向处标一个点' },

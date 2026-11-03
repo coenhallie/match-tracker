@@ -34,7 +34,6 @@ const overlaySlot = (host: HTMLElement) => host.shadowRoot!.querySelector<HTMLSl
 const NOTHING: MomentAvailability = {
   goal: false,
   attack: { 0: false, 1: false },
-  freeKick: false,
   corner: false,
   throwIn: false,
 }
@@ -251,7 +250,7 @@ describe('moment availability', () => {
     tracker.present({ time: 10, playing: false, record, lookback: [record] })
     env.frame()
     const now = tracker.availability()
-    expect(now).toMatchObject({ goal: true, freeKick: true, throwIn: true })
+    expect(now).toMatchObject({ goal: true, corner: true, throwIn: true })
     expect(seen).toEqual([now])
 
     // The same frame again changes nothing, and says nothing.
@@ -277,7 +276,6 @@ describe('moment availability', () => {
       ['goal', 0, available.goal],
       ['attack', 0, available.attack[0]],
       ['attack', 1, available.attack[1]],
-      ['freeKick', 0, available.freeKick],
       ['corner', 0, available.corner],
       ['throwIn', 0, available.throwIn],
     ] as const

@@ -35,7 +35,7 @@ describe('resolveText', () => {
     const text = resolveText('zh', { goal: 'GOAL!', versus: 'v' })
     expect(text.goal).toBe('GOAL!')
     expect(text.versus).toBe('v')
-    expect(text.freeKick).toBe('任意球')
+    expect(text.corner).toBe('角球')
   })
 
   it('takes a layer override word by word: a new label keeps the layer\'s own hint', () => {
@@ -91,7 +91,6 @@ describe('the built-in text', () => {
   it("is video-annotation's English, word for word", () => {
     expect(en).toMatchObject({
       goal: 'GOAL',
-      freeKick: 'FREE KICK',
       throwIn: 'THROW IN',
       attack: 'Attack',
       attacking: 'Attacking',
@@ -128,7 +127,6 @@ describe('the built-in text', () => {
     expect(referenceLayers).toEqual({
       goal: { label: 'Goal animation', hint: 'A shot into the net on a goal label' },
       attack: { label: 'Attack', hint: 'Worked out from possession: shade and team name' },
-      freeKick: { label: 'Free kick', hint: 'A banner on a free kick label, held while play is stopped' },
       ballTrail: { label: 'Ball trail', hint: "The ball's path, with a dot at each turn" },
       phaseLabels: { label: 'Attacking / defending', hint: 'Team labels above the pitch' },
       nearbyRings: { label: 'Players near the ball', hint: 'White rings within 15 m of the ball carrier' },
@@ -140,7 +138,6 @@ describe('the built-in text', () => {
   it('has the Chinese for the words given', () => {
     expect(zh).toMatchObject({
       goal: '进球',
-      freeKick: '任意球',
       corner: '角球',
       throwIn: '界外球',
       attack: '进攻',

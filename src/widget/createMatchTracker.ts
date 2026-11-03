@@ -159,7 +159,6 @@ function playable(availability: MomentAvailability, moment: ReplayMoment, team: 
 const NOTHING_AVAILABLE: MomentAvailability = {
   goal: false,
   attack: { 0: false, 1: false },
-  freeKick: false,
   corner: false,
   throwIn: false,
 }
@@ -170,7 +169,6 @@ const sameAvailability = (a: MomentAvailability, b: MomentAvailability) =>
   a.goal === b.goal &&
   a.attack[0] === b.attack[0] &&
   a.attack[1] === b.attack[1] &&
-  a.freeKick === b.freeKick &&
   a.corner === b.corner &&
   a.throwIn === b.throwIn
 
@@ -307,7 +305,7 @@ class Tracker implements MatchTracker {
   private readonly mode: MatchTrackerOptions['mode']
   private options: MutableOptions
   private resolved: Resolved
-  private icons: RenderTheme['icons'] = { freeKick: null, goal: null, corner: null }
+  private icons: RenderTheme['icons'] = { goal: null, corner: null }
   private layers: ReplayLayers
   private readonly doc: Document
   private readonly host: HTMLElement

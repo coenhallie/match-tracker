@@ -76,7 +76,8 @@ interface GoldenStep {
   lookback: number[]
   view: DirectorView
   userView: DirectorCamera
-  trigger?: { moment: ReplayMoment; team: TeamId }
+  /** The reference's moments, which had a free kick the widget no longer shows. */
+  trigger?: { moment: ReplayMoment | 'freeKick'; team: TeamId }
   input?: UserInput[]
   calls: unknown[]
 }
@@ -98,17 +99,14 @@ function readGolden(name: string): GoldenFile {
 }
 
 /**
- * The deliberate differences from the reference in what these scenarios draw
- * (CHANGELOG, Unreleased): the widget's free kick fades out the ball and its
- * trail with everyone else, where the reference's leaves them, and its
- * throw-in fades in where it stands, where the reference's slides in from the
- * ball's half. Drawn with the reference's free kick and throw-in, everything
- * else in a paint is still the reference's call for call; the widget's own
- * are covered in test/render/freeKick.test.ts and throwIn.test.ts.
+ * The deliberate difference from the reference in what these scenarios draw
+ * (CHANGELOG 0.1.5): the widget's throw-in fades in where it stands, where the
+ * reference's slides in from the ball's half. Drawn with the reference's
+ * throw-in, everything else in a paint is still the reference's call for
+ * call; the widget's own is covered in test/render/throwIn.test.ts.
  */
 const asReference = (layers: FrameLayers): FrameLayers => ({
   ...layers,
-  ...(layers.freeKick && { freeKick: { ...layers.freeKick, ballFade: 0 } }),
   ...(layers.throwIn && { throwIn: { ...layers.throwIn, inPlace: false } }),
 })
 
@@ -157,7 +155,7 @@ function replay(golden: GoldenFile) {
   const { ctx, ops } = recordingCtx()
   const canvas = { width: FRAME_W, height: FRAME_H, getContext: () => ctx } as unknown as HTMLCanvasElement
   // The parity theme: the reference's colours and English, its fonts, and no icons, as jsdom loads none.
-  const renderer = createRenderer(canvas, { ...DEFAULT_THEME, icons: { freeKick: null, goal: null, corner: null } })
+  const renderer = createRenderer(canvas, { ...DEFAULT_THEME, icons: { goal: null, corner: null } })
   const director = new Director({
     layers: golden.layers,
     reducedMotion: () => golden.reducedMotion,
@@ -240,6 +238,9 @@ function replay(golden: GoldenFile) {
       check(group, outputs)
     } else if (group.kind === 'trigger') {
       const { moment, team } = first.trigger!
+      // The widget no longer shows the free kick (CHANGELOG 0.2.0): what the reference drew from here on
+      // is its free kick and what followed it, so the scenario is compared up to it.
+      if (moment === 'freeKick') break
       const output = director.trigger(moment, team, lastInput!, view())
       check(group, output ? [output] : [])
     } else {
@@ -250,7 +251,7 @@ function replay(golden: GoldenFile) {
   }
 }
 
-/** Every fixture the recorder writes. */
+/** Every fixture the recorder writes, but the two of the free kick. */
 const FIXTURE_NAMES = [
   'goal',
   'goal-zoomed-takeover',
@@ -262,8 +263,8 @@ const FIXTURE_NAMES = [
   'attack-team0',
   'attack-team1',
   'pause-mid-attack',
-  'free-kick-held-through-cutaway',
-  'real-free-kick',
+  // 'free-kick-held-through-cutaway' and 'real-free-kick' are retired: the widget no longer shows the
+  // free kick (CHANGELOG 0.2.0), which is all they recorded.
   'throw-in-left',
   'throw-in-right',
   'throw-in-no-ball',

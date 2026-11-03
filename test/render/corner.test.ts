@@ -166,7 +166,7 @@ describe('corner card', () => {
     return ops
   }
 
-  it('lays the free kick’s band across the middle of the pitch', () => {
+  it('lays the card’s band across the middle of the pitch', () => {
     const [x, y, w, h] = draw().find((o) => o.op === 'fillRect')!.args as [number, number, number, number]
     expect(w).toBeCloseTo(736 * u, 6)
     expect(h).toBeCloseTo(373 * u, 6)

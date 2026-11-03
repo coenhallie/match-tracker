@@ -141,10 +141,10 @@ describe('renderFrame baseline', () => {
     expect(record(frame, { attack: { ...ATTACK, ball: { x: -10, y: 4 } }, rings: ringsOf(frame) })).toMatchSnapshot()
   })
 
-  it('draws the free kick banner, the throw-in indicator and the goal card together', () => {
+  // The reference drew its free kick banner in this one too; the widget no longer shows the free kick.
+  it('draws the throw-in indicator and the goal card together', () => {
     const frame = plainFrame(['EventType.FREE_KICK'])
     const layers: FrameLayers = {
-      freeKick: { intensity: 1, playersFade: 0.5, icon: ICON },
       throwIn: { intensity: 1, slide: 0.5, side: 1 },
       goalBanner: { intensity: 1, icon: ICON },
     }

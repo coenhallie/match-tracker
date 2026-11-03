@@ -106,9 +106,10 @@ export class FakeReplay {
 
   /**
    * Run animation frames for `ms`, as the reference tests' `animate` does:
-   * 60 a second from where the last left off. `whole` is the free kick,
-   * throw-in and by-hand blocks' loop, which stops a hair short of `ms` so a
-   * duration is a whole number of frames however it rounds.
+   * 60 a second from where the last left off. `whole` is the reference's
+   * free kick, throw-in and by-hand blocks' loop, which the corner's follow,
+   * and which stops a hair short of `ms` so a duration is a whole number of
+   * frames however it rounds.
    */
   animate(ms: number, whole = false): DirectorOutput[] {
     const end = this.nowMs + ms

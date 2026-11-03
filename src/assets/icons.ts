@@ -1,28 +1,10 @@
 /**
  * The event cards' icons, loaded from data URLs, so the widget fetches nothing
- * from the host. The free kick's and the goal's are video-annotation's
- * src/assets/free-kick.svg and src/assets/goal-net.svg at 6f14d1f, copied
- * byte for byte. The corner's is the widget's own, as the reference has no
- * corner (CORNER_SVG).
+ * from the host. The goal's is video-annotation's src/assets/goal-net.svg at
+ * 6f14d1f, copied byte for byte. The corner's is the widget's own, as the
+ * reference has no corner (CORNER_SVG). The reference's free kick card, and
+ * its icon, are not shown.
  */
-const FREE_KICK_SVG = `<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="45.5" height="40.9498" viewBox="0 0 45.5 40.9498" fill="none" xmlns="http://www.w3.org/2000/svg">
-<g id="free_kick">
-<g id="Group">
-<g id="Vector">
-</g>
-<path id="Vector_2" d="M39.5 11.9498C41.26 11.9498 42.7 13.3898 42.7 15.1498C42.7 16.2798 42.12 17.3098 41.14 17.8898L39.5 18.8698L37.86 17.8898C36.88 17.2998 36.3 16.2798 36.3 15.1498C36.3 13.3898 37.74 11.9498 39.5 11.9498ZM39.5 21.2298L41.87 21.5898C42.78 21.7298 43.45 22.4698 43.5 23.3698L41.92 36.7998V36.9198L41.91 37.0398C41.91 38.0998 41.05 38.9598 39.99 38.9598H39.03C37.97 38.9598 37.11 38.0998 37.11 37.0398V36.8098L35.51 23.3798C35.56 22.4798 36.23 21.7298 37.14 21.5998L39.51 21.2398M39.5 9.94982C36.63 9.94982 34.3 12.2798 34.3 15.1498C34.3 17.0498 35.32 18.6998 36.83 19.6098C34.95 19.8898 33.5 21.5098 33.5 23.4698L35.1 37.0298C35.1 39.1898 36.85 40.9498 39.02 40.9498H39.98C42.14 40.9498 43.9 39.1998 43.9 37.0298L45.5 23.4698C45.5 21.5098 44.05 19.8898 42.17 19.6098C43.69 18.6998 44.7 17.0498 44.7 15.1498C44.7 12.2798 42.37 9.94982 39.5 9.94982Z" fill="#E2E8F0"/>
-</g>
-<g id="Group_2">
-<g id="Vector_3">
-</g>
-<path id="Vector_4" d="M24.5 11.9498C26.26 11.9498 27.7 13.3898 27.7 15.1498C27.7 16.2798 27.12 17.3098 26.14 17.8898L24.5 18.8698L22.86 17.8898C21.88 17.2998 21.3 16.2798 21.3 15.1498C21.3 13.3898 22.74 11.9498 24.5 11.9498ZM24.5 21.2298L26.87 21.5898C27.78 21.7298 28.45 22.4698 28.5 23.3698L26.92 36.7998V36.9198L26.91 37.0398C26.91 38.0998 26.05 38.9598 24.99 38.9598H24.03C22.97 38.9598 22.11 38.0998 22.11 37.0398V36.8098L20.51 23.3798C20.56 22.4798 21.23 21.7298 22.14 21.5998L24.51 21.2398M24.5 9.94982C21.63 9.94982 19.3 12.2798 19.3 15.1498C19.3 17.0498 20.32 18.6998 21.83 19.6098C19.95 19.8898 18.5 21.5098 18.5 23.4698L20.1 37.0298C20.1 39.1898 21.85 40.9498 24.02 40.9498H24.98C27.14 40.9498 28.9 39.1998 28.9 37.0298L30.5 23.4698C30.5 21.5098 29.05 19.8898 27.17 19.6098C28.69 18.6998 29.7 17.0498 29.7 15.1498C29.7 12.2798 27.37 9.94982 24.5 9.94982Z" fill="#E2E8F0"/>
-</g>
-<path id="Vector_5" d="M4.5 40.9498C6.98528 40.9498 9 38.9351 9 36.4498C9 33.9645 6.98528 31.9498 4.5 31.9498C2.01472 31.9498 0 33.9645 0 36.4498C0 38.9351 2.01472 40.9498 4.5 40.9498Z" fill="#E2E8F0"/>
-<path id="Vector_6" d="M17.99 2.02982C17.99 2.02982 17.99 1.99982 17.99 1.97982C17.99 1.94982 17.99 1.91982 17.98 1.88982C17.98 1.87982 17.98 1.85982 17.98 1.84982C17.98 1.81982 17.97 1.78982 17.96 1.75982C17.96 1.74982 17.96 1.72982 17.95 1.71982C17.95 1.68982 17.93 1.65982 17.92 1.62982C17.92 1.60982 17.91 1.59982 17.9 1.57982C17.89 1.54982 17.88 1.52982 17.86 1.49982C17.86 1.47982 17.84 1.45982 17.83 1.44982C17.82 1.42982 17.81 1.39982 17.79 1.37982C17.78 1.35982 17.76 1.33982 17.75 1.31982C17.74 1.29982 17.73 1.28982 17.72 1.26982C17.71 1.24982 17.69 1.23982 17.68 1.21982C17.67 1.19982 17.65 1.17982 17.64 1.16982C17.63 1.15982 17.61 1.13982 17.6 1.12982C17.58 1.10982 17.56 1.08982 17.54 1.06982C17.54 1.06982 17.52 1.04982 17.51 1.04982C17.48 1.02982 17.46 1.00982 17.43 0.989816C17.43 0.989816 17.41 0.989816 17.41 0.979816C17.38 0.959816 17.35 0.939816 17.32 0.919816C17.32 0.919816 17.3 0.919816 17.29 0.909816C17.26 0.889816 17.23 0.879816 17.2 0.859816C17.19 0.859816 17.17 0.849816 17.16 0.839816C17.13 0.829816 17.1 0.819816 17.07 0.809816C17.05 0.809816 17.03 0.799816 17.02 0.789816C16.99 0.789816 16.97 0.769816 16.94 0.769816C16.92 0.769816 16.9 0.769817 16.88 0.759817C16.86 0.759817 16.83 0.759816 16.81 0.749816C16.81 0.749816 16.81 0.749816 16.8 0.749816L10.84 0.00981651C10.24 -0.0601835 9.68 0.249817 9.42 0.759817C9.34 0.899817 9.29 1.06982 9.27 1.23982C9.18 2.00982 9.72 2.70982 10.49 2.80982L13.18 3.13982C10.69 5.32982 8.58 7.70982 6.88 10.2598C6.22 11.2498 5.61 12.2698 5.08 13.2998C4.13 15.1298 3.38 17.0198 2.82 18.9498C1.34 24.1598 1.85 27.8998 1.87 28.0598C1.98 28.8298 2.69 29.3598 3.46 29.2498C4.23 29.1398 4.76 28.4298 4.66 27.6698C4.66 27.6398 4.22 24.2598 5.57 19.5798C7.1 14.2998 10.2 9.56982 14.78 5.46982L14.58 6.95982C14.48 7.72982 15.02 8.43982 15.79 8.53982C16.56 8.63982 17.27 8.09982 17.37 7.32982L18.02 2.31982C18.02 2.31982 18.02 2.28982 18.02 2.27982C18.02 2.24982 18.02 2.21982 18.02 2.18982C18.02 2.16982 18.02 2.14982 18.02 2.13982C18.02 2.10982 18.02 2.07982 18.02 2.04982L17.99 2.02982Z" fill="#FDE047"/>
-</g>
-</svg>
-`
-
 const GOAL_SVG = `<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="46.9868" height="44.9362" viewBox="0 0 46.9868 44.9362" fill="none" xmlns="http://www.w3.org/2000/svg">
 <g id="shot_on_goal">
 <path id="Vector" d="M42.7302 15.4362C41.5302 19.9362 36.8302 22.6361 32.2302 21.3362C27.6302 20.0362 25.0302 15.4362 26.3302 10.9362C27.6302 6.43615 32.2302 3.73615 36.8302 5.03615C41.4302 6.33615 44.0302 10.9362 42.7302 15.4362ZM41.1302 15.0362L40.0302 15.5362L38.5302 13.0362L39.8302 10.4362L40.9302 10.8362C40.4302 9.43615 39.5302 8.33615 38.2302 7.53615L38.4302 8.73615L35.6302 9.43615L33.5302 7.43615L34.2302 6.53615C32.7302 6.53615 31.3302 7.13615 30.2302 8.03615L31.4302 8.23615L31.2302 11.1362L28.6302 12.5362L27.9302 11.5362C27.5302 12.9362 27.6302 14.4362 28.1302 15.8362L28.7302 14.8362L31.4302 15.9362L31.9302 18.8362L30.7302 19.1362C31.9302 19.9362 33.4302 20.3362 34.8302 20.2362L34.0302 19.3362L35.9302 17.1362L38.8302 17.5362V18.7362C39.9302 17.8362 40.7302 16.6362 41.1302 15.2362V15.0362ZM32.3302 15.0362L32.1302 11.7362L35.2302 10.5362L37.3302 13.1362L35.5302 15.9362L32.3302 15.0362Z" fill="#FDE047"/>
@@ -37,10 +19,11 @@ const GOAL_SVG = `<svg preserveAspectRatio="none" overflow="visible" style="disp
 `
 
 /**
- * The corner's icon, drawn for the widget in the other two's style: the
- * corner of the pitch in their line colour, its arc, and the goal icon's ball
- * (GOAL_SVG's first path, moved and scaled) in their gold. Its box is the
- * free kick's, 45.5 by 40.95, so it sits in the card where that one does.
+ * The corner's icon, drawn for the widget in the goal icon's style: the
+ * corner of the pitch in its line colour, its arc, and the goal icon's ball
+ * (GOAL_SVG's first path, moved and scaled) in its gold. Its box is the one
+ * the reference's free kick icon had, 45.5 by 40.95, which the card's icon
+ * slot is laid out for (corner.ts in render).
  */
 const CORNER_SVG = `<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="45.5" height="40.95" viewBox="0 0 45.5 40.95" fill="none" xmlns="http://www.w3.org/2000/svg">
 <g id="corner">
@@ -54,7 +37,6 @@ const CORNER_SVG = `<svg preserveAspectRatio="none" overflow="visible" style="di
 const dataUrl = (svg: string) => `data:image/svg+xml,${encodeURIComponent(svg)}`
 
 export interface CardIcons {
-  freeKick: HTMLImageElement | null
   goal: HTMLImageElement | null
   corner: HTMLImageElement | null
 }
@@ -76,9 +58,7 @@ function load(svg: string): Promise<HTMLImageElement | null> {
  * its card is drawn without it, as video-annotation draws it until it loads.
  */
 export function loadIcons(): Promise<CardIcons> {
-  if (typeof Image === 'undefined') return Promise.resolve({ freeKick: null, goal: null, corner: null })
-  loading ??= Promise.all([load(FREE_KICK_SVG), load(GOAL_SVG), load(CORNER_SVG)]).then(
-    ([freeKick, goal, corner]) => ({ freeKick, goal, corner }),
-  )
+  if (typeof Image === 'undefined') return Promise.resolve({ goal: null, corner: null })
+  loading ??= Promise.all([load(GOAL_SVG), load(CORNER_SVG)]).then(([goal, corner]) => ({ goal, corner }))
   return loading
 }

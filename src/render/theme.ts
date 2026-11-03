@@ -13,14 +13,14 @@ export type PersonRole = 'home' | 'away' | 'goalkeeper' | 'official' | 'unknown'
 export interface RenderTheme {
   colors: Record<PersonRole, PersonColors>
   /** The event cards' titles, and the word under the team's name in the attack's label. */
-  text: { goal: string; freeKick: string; corner: string; throwIn: string; attack: string }
+  text: { goal: string; corner: string; throwIn: string; attack: string }
   /**
    * Family lists, fallbacks included: `label` for the attack's label,
    * `title` for the event cards' titles.
    */
   fonts: { label: string; title: string }
   /** The cards' icons, once loaded. A card is drawn without its icon until then. */
-  icons: { freeKick: CanvasImageSource | null; goal: CanvasImageSource | null; corner: CanvasImageSource | null }
+  icons: { goal: CanvasImageSource | null; corner: CanvasImageSource | null }
   /** The bottom-left text for one of the frame's actions, from its `action_type`. */
   formatAction: (actionType: string) => string
 }
@@ -51,8 +51,8 @@ export const DEFAULT_PERSON_COLORS: Readonly<Record<PersonRole, Readonly<PersonC
  */
 export const DEFAULT_THEME: Readonly<RenderTheme> = Object.freeze({
   colors: DEFAULT_PERSON_COLORS,
-  text: Object.freeze({ goal: 'GOAL', freeKick: 'FREE KICK', corner: 'CORNER', throwIn: 'THROW IN', attack: 'Attack' }),
+  text: Object.freeze({ goal: 'GOAL', corner: 'CORNER', throwIn: 'THROW IN', attack: 'Attack' }),
   fonts: Object.freeze({ label: familyList(LABEL_FAMILY), title: familyList(TITLE_FAMILY) }),
-  icons: Object.freeze({ freeKick: null, goal: null, corner: null }),
+  icons: Object.freeze({ goal: null, corner: null }),
   formatAction: (actionType: string) => actionType,
 })

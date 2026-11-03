@@ -48,7 +48,6 @@ const ATTACK = {
 
 const EVERY_MOMENT: FrameLayers = {
   attack: ATTACK,
-  freeKick: { intensity: 1, playersFade: 0 },
   corner: { intensity: 1, playersFade: 0, ballFade: 0, corner: { x: -1, y: 1 }, sections: [1, 1, 1] },
   throwIn: { intensity: 1, slide: 1, side: null },
   goalBanner: { intensity: 1 },
@@ -78,12 +77,11 @@ describe('DEFAULT_THEME', () => {
     expect(DEFAULT_THEME.colors).toEqual(PERSON_COLORS)
     expect(DEFAULT_THEME.text).toEqual({
       goal: 'GOAL',
-      freeKick: 'FREE KICK',
       corner: 'CORNER',
       throwIn: 'THROW IN',
       attack: 'Attack',
     })
-    expect(DEFAULT_THEME.icons).toEqual({ freeKick: null, goal: null, corner: null })
+    expect(DEFAULT_THEME.icons).toEqual({ goal: null, corner: null })
     expect(DEFAULT_THEME.formatAction('EventType.FREE_KICK')).toBe('EventType.FREE_KICK')
   })
 
@@ -120,7 +118,7 @@ describe('DEFAULT_THEME', () => {
     const ops = normalizeCalls(render(DEFAULT_THEME, frame(), EVERY_MOMENT)) as Op[]
     expect(textOf(ops, 'Home')!.font).toMatch(/^600 [\d.]+px Montserrat, sans-serif$/)
     expect(textOf(ops, 'Attack')!.font).toMatch(/^700 [\d.]+px Montserrat, sans-serif$/)
-    for (const title of ['FREE KICK', 'THROW IN', 'GOAL']) {
+    for (const title of ['CORNER', 'THROW IN', 'GOAL']) {
       expect(textOf(ops, title)!.font).toMatch(/^italic 900 [\d.]+px Inter, sans-serif$/)
     }
   })
@@ -145,11 +143,10 @@ describe('a custom theme', () => {
   })
 
   it("writes the theme's words on the cards and the attack label", () => {
-    const theme = custom({ text: { goal: '进球', freeKick: '任意球', corner: '角球', throwIn: '界外球', attack: '进攻' } })
+    const theme = custom({ text: { goal: '进球', corner: '角球', throwIn: '界外球', attack: '进攻' } })
     const words = texts(render(theme, frame(), EVERY_MOMENT)).map((o) => o.args[0])
-    expect(words).toEqual(expect.arrayContaining(['进球', '任意球', '角球', '界外球', '进攻']))
+    expect(words).toEqual(expect.arrayContaining(['进球', '角球', '界外球', '进攻']))
     expect(words).not.toContain('GOAL')
-    expect(words).not.toContain('FREE KICK')
     expect(words).not.toContain('CORNER')
     expect(words).not.toContain('THROW IN')
     expect(words).not.toContain('Attack')
@@ -178,25 +175,23 @@ describe('a custom theme', () => {
   it("draws the theme's icons on the cards, unless the layer brings its own", () => {
     const fromTheme = { from: 'theme' } as unknown as CanvasImageSource
     const fromLayer = { from: 'layer' } as unknown as CanvasImageSource
-    const theme = custom({ icons: { freeKick: fromTheme, goal: fromTheme, corner: fromTheme } })
+    const theme = custom({ icons: { goal: fromTheme, corner: fromTheme } })
     const images = (ops: Op[]) => ops.filter((o) => o.op === 'drawImage').map((o) => o.args[0])
     const corner = { intensity: 1, playersFade: 0, ballFade: 0, corner: null, sections: [] }
     const themed = images(
       render(theme, frame(), {
-        freeKick: { intensity: 1, playersFade: 0 },
         corner,
         goalBanner: { intensity: 1 },
       }),
     )
-    expect(themed.filter((i) => i === fromTheme)).toHaveLength(3)
+    expect(themed.filter((i) => i === fromTheme)).toHaveLength(2)
     const own = images(
       render(theme, frame(), {
-        freeKick: { intensity: 1, playersFade: 0, icon: fromLayer },
         corner: { ...corner, icon: fromLayer },
         goalBanner: { intensity: 1, icon: fromLayer },
       }),
     )
-    expect(own.filter((i) => i === fromLayer)).toHaveLength(3)
+    expect(own.filter((i) => i === fromLayer)).toHaveLength(2)
     expect(own).not.toContain(fromTheme)
   })
 })

@@ -1,7 +1,8 @@
 /**
- * The corner, which the reference does not have: built on the free kick
- * (freeKick.ts), whose card it shares, with the corner it is taken from lit
- * up as a cone (corner.ts in render).
+ * The corner, which the reference does not have: built on the reference's
+ * free kick, which the widget no longer shows, on its card and held as it
+ * was, with the corner it is taken from lit up as a cone (corner.ts in
+ * render).
  *
  * When playback runs into a frame the pipeline labels a corner, "CORNER" is
  * shown across the middle of the pitch, fading in as everyone on the pitch
@@ -13,9 +14,9 @@
  * the ball is often lost as it goes out. With no ball to go by, the card is
  * shown alone.
  *
- * A corner is prepared off camera as a free kick is, so it is held the same
- * way: for at least CORNER_SHOW_MS, and after that for as long as the label
- * is on or play is stopped (setPieceUnderWay). It is shown once per corner,
+ * A corner is usually prepared off camera, so it is held for at least
+ * CORNER_SHOW_MS, and after that for as long as the label is on or play is
+ * stopped (setPieceUnderWay, setPiece.ts). It is shown once per corner,
  * as the label flickers (CORNER_REARM_S), only during playback, and anything
  * that means someone wants the real frame stops it at once. Played by hand,
  * it is on screen for CORNER_DEMO_MS whatever play does.
@@ -32,7 +33,8 @@ import {
   type CornerBanner,
 } from '../render/corner.js'
 import { shownBall } from './ballRoll.js'
-import { setPieceUnderWay } from './freeKick.js'
+import { playMoved } from '../analysis/stoppage.js'
+import { setPieceUnderWay } from './setPiece.js'
 import type { Moment, MomentContext, MomentStep } from './moment.js'
 import { BALL_MEMORY_S } from './throwIn.js'
 
@@ -62,16 +64,19 @@ export class Corner implements Moment {
   }
 
   /**
-   * Whether `frame` is a corner that playback has just run into. Called for
-   * every new record, after the free kick has had its say; `blocked` is a
-   * goal or a free kick showing. The director stops the attack and the
-   * throw-in, then calls `start`.
+   * Note whether play moved on `frame`, and whether it is a corner that
+   * playback has just run into. Called for every new record, after the goal
+   * has had its say; `blocked` is a goal showing. The director stops the
+   * attack, the attack over a player loss and the throw-in, then calls
+   * `start`.
    */
-  detect(frame: Frame, now: number, blocked: boolean): boolean {
+  detect(frame: Frame, prevFrame: Frame | null, now: number, blocked: boolean): boolean {
     const memory = this.ctx.memory()
+    const playback = this.ctx.playback()
+    if (!playback || !prevFrame || playMoved(prevFrame, frame)) memory.playMovedAt = now
     const labelled = isCornerFrame(frame)
     // Landed on by a seek or a step: a corner under way has been seen.
-    if (!this.ctx.playback()) {
+    if (!playback) {
       memory.cornerLabelAt = labelled ? now : null
       return false
     }

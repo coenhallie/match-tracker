@@ -24,7 +24,7 @@ const gates = vi.hoisted(() => {
     }
     return g
   }
-  return { fonts: gate<void>(undefined), icons: gate({ freeKick: null, goal: null }) }
+  return { fonts: gate<void>(undefined), icons: gate({ goal: null, corner: null }) }
 })
 const { fonts, icons } = gates
 

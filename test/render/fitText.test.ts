@@ -146,7 +146,8 @@ describe('canvas text fits its card', () => {
   const cardLeft = CX - 368 * u
   const cardInnerLeft = cardLeft + 13 * u
   const cardInnerRight = cardLeft + (736 - 13) * u
-  const freeKick: FrameLayers = { freeKick: { intensity: 1, playersFade: 0 } }
+  // The corner's card, without its cone: the reference's free kick card, which the widget no longer shows.
+  const corner: FrameLayers = { corner: { intensity: 1, playersFade: 0, ballFade: 0, corner: null, sections: [] } }
   const goal: FrameLayers = { goalBanner: { intensity: 1 } }
   const throwIn: FrameLayers = { throwIn: { intensity: 1, slide: 1, side: null } }
   // The throw-in band is 501 design px wide, centred, with 16 px kept clear.
@@ -154,19 +155,20 @@ describe('canvas text fits its card', () => {
   const bandInnerRight = CX + (501 / 2 - 16) * u
 
   it('draws the English titles exactly where the reference does', () => {
-    const [freeKickTitle] = textAt(1280, {}, freeKick)
+    const [cornerTitle] = textAt(1280, {}, corner)
     const [goalTitle] = textAt(1280, {}, goal)
     const [throwInTitle] = textAt(1280, {}, throwIn)
-    expect(leftOf(freeKickTitle!)).toBe(cardLeft + (368 - 232) * u)
+    // The corner's own word, centred by its measured width in the bundled face.
+    expect(leftOf(cornerTitle!)).toBe(cardLeft + (368 - 391.18 / 2) * u)
     expect(leftOf(goalTitle!)).toBe(cardLeft + (368 - 133) * u)
     expect(leftOf(throwInTitle!)).toBe(CX - (501 / 2) * u + (501 / 2 - 165.5) * u)
-    for (const title of [freeKickTitle!, goalTitle!]) expect(sizePx(title)).toBe(92)
+    for (const title of [cornerTitle!, goalTitle!]) expect(sizePx(title)).toBe(92)
     expect(sizePx(throwInTitle!)).toBe(64)
   })
 
   it('centres the Chinese titles where the design centres its words', () => {
     for (const [text, layers] of [
-      [{ freeKick: '任意球' }, freeKick],
+      [{ corner: '角球' }, corner],
       [{ goal: '进球' }, goal],
       [{ throwIn: '界外球' }, throwIn],
     ] as const) {
@@ -177,14 +179,14 @@ describe('canvas text fits its card', () => {
   })
 
   it('keeps the baseline and the size of a Chinese title that fits', () => {
-    const [english] = textAt(1280, {}, freeKick)
-    const [chinese] = textAt(1280, { freeKick: '任意球' }, freeKick)
+    const [english] = textAt(1280, {}, corner)
+    const [chinese] = textAt(1280, { corner: '角球' }, corner)
     expect(chinese!.args[2]).toBe(english!.args[2])
     expect(sizePx(chinese!)).toBeCloseTo(92, 6)
   })
 
-  it('draws the free kick title in Chinese at full size, within the card, in a 320 px box', () => {
-    const [title] = textAt(320, { freeKick: '任意球' }, freeKick)
+  it('draws the corner title in Chinese at full size, within the card, in a 320 px box', () => {
+    const [title] = textAt(320, { corner: '角球' }, corner)
     expect(sizePx(title!)).toBeCloseTo(92, 6)
     expect(leftOf(title!)).toBeGreaterThanOrEqual(cardInnerLeft)
     expect(rightOf(title!)).toBeLessThanOrEqual(cardInnerRight + 1e-6)
@@ -192,7 +194,7 @@ describe('canvas text fits its card', () => {
 
   it('shrinks a title too long for the card until it fills it, centred', () => {
     // 14 characters at 92 px: 773 design px, against the 710 inside the card.
-    const [title] = textAt(320, { freeKick: 'FREISTOSS-TOR!' }, freeKick)
+    const [title] = textAt(320, { corner: 'ECKSTOSS-TORE!' }, corner)
     expect(sizePx(title!)).toBeLessThan(92)
     expect(sizePx(title!)).toBeGreaterThan(92 * 0.6)
     expect(leftOf(title!)).toBeCloseTo(cardInnerLeft, 6)
@@ -200,7 +202,7 @@ describe('canvas text fits its card', () => {
   })
 
   it('stops shrinking a title at 60% of the size', () => {
-    const [title] = textAt(320, { freeKick: 'CALCIO DI PUNIZIONE DIRETTO' }, freeKick)
+    const [title] = textAt(320, { corner: 'CALCIO D ANGOLO DIRETTISSIMO' }, corner)
     expect(sizePx(title!)).toBeCloseTo(92 * 0.6, 6)
     expect(Math.abs(centreOf(title!) - CX) / u).toBeLessThan(1)
   })

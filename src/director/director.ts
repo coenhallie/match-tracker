@@ -3,9 +3,9 @@
  * PipelineOutputSurface.vue (video-annotation 6f14d1f) with no framework
  * under it. Given what is on screen, the playback clock and whether play is
  * running, it decides what is drawn over the data: the moments (goal, attack,
- * free kick, corner, throw-in, and the attack over a player loss), the rings
- * and the "received" covers, how the ball is turned, and where the view is
- * while a goal moves it. It owns no DOM and no
+ * corner, throw-in, and the attack over a player loss), the rings and the
+ * "received" covers, how the ball is turned, and where the view is while a
+ * goal moves it. The reference's free kick is not shown. It owns no DOM and no
  * clock; its caller drives it.
  *
  * ## One update is one flush of the reference's watchers
@@ -25,9 +25,10 @@
  *     given the new view and it paints.
  *  4. The frame watcher (`:1268-1309`, flush post). When the record, phase,
  *     time or trail changed and there is a record: on a new record, label
- *     detection (in the reference's order: goal, free kick, throw-in, attack,
- *     with the corner, which the reference does not have, after the free kick,
- *     and the attack over a player loss, which it does not have either, last);
+ *     detection (in the reference's order: goal, throw-in, attack, with the
+ *     corner, which the reference does not have, after the goal, where the
+ *     reference's free kick was, and the attack over a player loss, which it
+ *     does not have either, last);
  *     then the rings and covers move on by `dt = time - previous time` on a
  *     playback step while playing without reduced motion, or settle; then it
  *     paints if the record, phase or trail changed, or a fade was or is
@@ -92,8 +93,8 @@
  *
  * ## The moments
  *
- * Each moment is a module of its own (`goal.ts`, `attack.ts`, `freeKick.ts`,
- * `corner.ts`, `throwIn.ts`, `playerLoss.ts`) behind the narrow interface in
+ * Each moment is a module of its own (`goal.ts`, `attack.ts`, `corner.ts`,
+ * `throwIn.ts`, `playerLoss.ts`) behind the narrow interface in
  * moment.ts, reading and acting through the `MomentContext` the director
  * lends it. The director holds one
  * of each, and does what crosses between them: which takes over from which,
@@ -125,7 +126,6 @@ import { viewFromCamera, type Camera } from '../render/viewTransform.js'
 import { Attack } from './attack.js'
 import { BallRoll, shownBall } from './ballRoll.js'
 import { Corner } from './corner.js'
-import { FreeKick } from './freeKick.js'
 import { Goal } from './goal.js'
 import { PlayerLoss, type PlayerLossState } from './playerLoss.js'
 import type { Moment, MomentContext, MomentMemory, ShownReplay } from './moment.js'
@@ -200,7 +200,6 @@ export interface MomentAvailability {
   goal: boolean
   /** Without a direction there is no telling which goal a team attacks. */
   attack: Record<TeamId, boolean>
-  freeKick: boolean
   corner: boolean
   throwIn: boolean
 }
@@ -209,7 +208,6 @@ export interface MomentAvailability {
 const NOTHING_SEEN: ShownReplay = { time: 0, playing: false, record: null, phase: null, trail: null }
 
 const freshMemory = (): MomentMemory => ({
-  freeKickLabelAt: null,
   cornerLabelAt: null,
   throwInLabelAt: null,
   lastBall: null,
@@ -239,7 +237,6 @@ export class Director {
   private readonly context: MomentContext
   private readonly goal: Goal
   private readonly attack: Attack
-  private readonly freeKick: FreeKick
   private readonly corner: Corner
   private readonly throwIn: ThrowIn
   private readonly playerLoss: PlayerLoss
@@ -289,7 +286,6 @@ export class Director {
     }
     this.goal = new Goal(this.context)
     this.attack = new Attack(this.context)
-    this.freeKick = new FreeKick(this.context)
     this.corner = new Corner(this.context)
     this.throwIn = new ThrowIn(this.context)
     this.playerLoss = new PlayerLoss(this.context)
@@ -335,10 +331,9 @@ export class Director {
   /**
    * Play `moment` now, by hand (`triggerMoment`, `:1038-1063`); for an
    * attack, `team`'s. It takes over from whatever is showing and runs as it
-   * would on its label, during playback or not, except the free kick and the
-   * corner: with no label or cutaway to wait on, they are on screen for
-   * FREE_KICK_DEMO_MS and CORNER_DEMO_MS. A seek or a step ends any of them,
-   * as it ends the others.
+   * would on its label, during playback or not, except the corner: with no
+   * label or cutaway to wait on, it is on screen for CORNER_DEMO_MS. A seek
+   * or a step ends any of them, as it ends the others.
    *
    * `input` and `view` are the replay and the view as they are now, taken in
    * first as an update would, but not as an animation frame. Null when there
@@ -365,11 +360,6 @@ export class Director {
       this.attack.markSeen(team, direction)
       this.attack.start({ team, direction, color: this.options.teamColor(team) }, shownBall(frame, undefined))
       this.request(this.attack)
-    } else if (moment === 'freeKick') {
-      this.stopSequences()
-      this.memory.freeKickLabelAt = now
-      this.freeKick.start(true)
-      this.request(this.freeKick)
     } else if (moment === 'corner') {
       this.stopSequences()
       this.memory.cornerLabelAt = now
@@ -393,7 +383,6 @@ export class Director {
     return {
       goal: ready && planGoal(record.frame) !== null,
       attack: { 0: ready && phase?.attacks[0] != null, 1: ready && phase?.attacks[1] != null },
-      freeKick: ready,
       corner: ready,
       throwIn: ready,
     }
@@ -420,7 +409,6 @@ export class Director {
     if (before.goal && !layers.goal) this.stopMoment(this.goal)
     if (before.attack && !layers.attack) this.stopMoment(this.attack)
     if (before.playerLoss && !layers.playerLoss) this.stopMoment(this.playerLoss)
-    if (before.freeKick && !layers.freeKick) this.stopMoment(this.freeKick)
     if (before.corner && !layers.corner) this.stopMoment(this.corner)
     if (before.throwInBanner && !layers.throwInBanner) this.stopMoment(this.throwIn)
     if (before.ringFades && !layers.ringFades) this.rings.settle(this.shown.record?.frame ?? null)
@@ -446,7 +434,7 @@ export class Director {
    */
   reset(): void {
     this.goal.stop()
-    for (const moment of [this.goal, this.attack, this.playerLoss, this.freeKick, this.corner, this.throwIn]) {
+    for (const moment of [this.goal, this.attack, this.playerLoss, this.corner, this.throwIn]) {
       moment.reset()
     }
     this.requests = []
@@ -511,7 +499,6 @@ export class Director {
     this.stopSequences()
     // Wherever the clock went, nothing seen before counts from here: the
     // frame watcher notes the labels and the ball again from the new record.
-    this.memory.freeKickLabelAt = null
     this.memory.cornerLabelAt = null
     this.memory.throwInLabelAt = null
     this.memory.lastBall = null
@@ -532,34 +519,24 @@ export class Director {
         // The goal takes over from any other moment still showing.
         this.stopMoment(this.attack)
         this.stopMoment(this.playerLoss)
-        this.stopMoment(this.freeKick)
         this.stopMoment(this.corner)
         this.stopMoment(this.throwIn)
         if (this.goal.start(frame)) this.request(this.goal)
       }
-      // A free kick and a corner never take over from each other: the first one shown stays.
-      if (this.freeKick.detect(frame, before.record?.frame ?? null, time, this.goal.active || this.corner.active)) {
-        // A free kick takes over from an attack, the attack over a player loss, and a throw-in.
-        this.stopMoment(this.attack)
-        this.stopMoment(this.playerLoss)
-        this.stopMoment(this.throwIn)
-        this.freeKick.start()
-        this.request(this.freeKick)
-      }
-      if (this.corner.detect(frame, time, this.goal.active || this.freeKick.active)) {
-        // So does a corner.
+      if (this.corner.detect(frame, before.record?.frame ?? null, time, this.goal.active)) {
+        // A corner takes over from an attack, the attack over a player loss, and a throw-in.
         this.stopMoment(this.attack)
         this.stopMoment(this.playerLoss)
         this.stopMoment(this.throwIn)
         this.corner.start(frame, time)
         this.request(this.corner)
       }
-      const setPiece = this.goal.active || this.freeKick.active || this.corner.active
+      const setPiece = this.goal.active || this.corner.active
       if (this.throwIn.detect(frame, time, setPiece)) {
         this.throwIn.start(time)
         this.request(this.throwIn)
       }
-      // An attack shows alongside a throw-in, but not over a goal, a free kick or a corner,
+      // An attack shows alongside a throw-in, but not over a goal or a corner,
       // nor over the attack covering a player loss: the one there is stands in for it.
       const attack = this.attack.detect(frame, setPiece || this.playerLoss.active)
       if (attack) {
@@ -634,7 +611,6 @@ export class Director {
     this.stopMoment(this.goal)
     this.stopMoment(this.attack)
     this.stopMoment(this.playerLoss)
-    this.stopMoment(this.freeKick)
     this.stopMoment(this.corner)
     this.stopMoment(this.throwIn)
   }
@@ -708,7 +684,6 @@ export class Director {
     const layers: FrameLayers = {
       goal,
       attack: attackShown,
-      freeKick: this.freeKick.value(),
       corner: this.corner.value(),
       throwIn: this.throwIn.value(),
       goalBanner: this.goal.banner(),
@@ -727,7 +702,7 @@ export class Director {
 
   /** True while any moment or fade needs another tick: `animating` of the next output. */
   get animating(): boolean {
-    const moments = [this.goal, this.attack, this.playerLoss, this.freeKick, this.corner, this.throwIn]
+    const moments = [this.goal, this.attack, this.playerLoss, this.corner, this.throwIn]
     return moments.some((m) => m.active) || this.rings.fading()
   }
 

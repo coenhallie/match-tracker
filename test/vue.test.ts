@@ -407,7 +407,6 @@ describe('the Vue component over the pitch', () => {
     expect(exposed.availability()).toEqual({
       goal: false,
       attack: { 0: false, 1: false },
-      freeKick: false,
       corner: false,
       throwIn: false,
     })
