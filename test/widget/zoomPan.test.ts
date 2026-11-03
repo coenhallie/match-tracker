@@ -113,6 +113,21 @@ describe('the wheel', () => {
     expect(view().panY).toBeCloseTo(0 - scale * (0 - before.panY), 12)
   })
 
+  it('zooms with ctrl or ⌘ over the HUD too, so the page never zooms there', () => {
+    const { host, viewport } = mount()
+    const phase = host.shadowRoot!.querySelector<HTMLElement>('.mt-phase')!
+    const layers = host.shadowRoot!.querySelector<HTMLElement>('.mt-layers-toggle')!
+    expect(viewport.contains(phase) || viewport.contains(layers)).toBe(false)
+    expect(zoomIn(phase).defaultPrevented).toBe(true)
+    expect(view().zoom).toBeCloseTo(1.15, 12)
+    expect(zoomIn(layers, { ctrlKey: false, metaKey: true }).defaultPrevented).toBe(true)
+    expect(view().zoom).toBeCloseTo(1.3, 12)
+    // A plain wheel over them still scrolls the page.
+    const views = control.views.length
+    expect(wheel(phase, { deltaY: -100 }).defaultPrevented).toBe(false)
+    expect(control.views).toHaveLength(views)
+  })
+
   it('holds to the zoom limits, and gives the whole pitch back at 1', () => {
     const { host, viewport, zooms } = mount()
     for (let i = 0; i < 40; i++) zoomIn(viewport, { clientX: 520, clientY: 260 })
@@ -321,18 +336,22 @@ describe('listening', () => {
     const added = vi.spyOn(HTMLElement.prototype, 'addEventListener')
     mount()
     const onWheel = added.mock.calls.filter(([type]) => type === 'wheel')
-    expect(onWheel).toHaveLength(1)
-    expect(onWheel[0]?.[2]).toMatchObject({ passive: false })
+    // On the pitch and on the HUD over it.
+    expect(onWheel).toHaveLength(2)
+    for (const call of onWheel) expect(call[2]).toMatchObject({ passive: false })
   })
 
   it('hears nothing after destroy', () => {
-    const { tracker, viewport } = mount()
+    const { host, tracker, viewport } = mount()
     const removed = vi.spyOn(viewport, 'removeEventListener')
+    const hudLayer = host.shadowRoot!.querySelector<HTMLElement>('.mt-hud-layer')!
+    const removedFromHud = vi.spyOn(hudLayer, 'removeEventListener')
     tracker.destroy()
     const types = removed.mock.calls.map(([type]) => type)
     for (const type of ['wheel', 'pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'dblclick']) {
       expect(types).toContain(type)
     }
+    expect(removedFromHud.mock.calls.map(([type]) => type)).toContain('wheel')
     const views = control.views.length
     expect(() => {
       zoomIn(viewport)

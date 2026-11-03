@@ -127,6 +127,35 @@ function playable(availability: MomentAvailability, moment: ReplayMoment, team: 
 const sameView = (a: DirectorView, b: DirectorView | null) =>
   b !== null && a.zoom === b.zoom && a.panX === b.panX && a.panY === b.panY && a.renderedWidth === b.renderedWidth
 
+/** The shadow roots trackers made, which a tracker may mount in again once the one before is destroyed. */
+const ownRoots = new WeakSet<ShadowRoot>()
+/** The shadow roots a tracker is mounted in now. */
+const mountedRoots = new WeakSet<ShadowRoot>()
+
+/**
+ * The shadow root to mount in on `host`: one a tracker made there before, or
+ * a new one. Never someone else's, which mounting would wipe.
+ */
+function shadowRootFor(host: HTMLElement): ShadowRoot {
+  const existing = host.shadowRoot
+  if (existing && mountedRoots.has(existing)) {
+    throw new Error('match-tracker: this host already has a match tracker. Destroy it before mounting another.')
+  }
+  if (existing && ownRoots.has(existing)) return existing
+  const notPlain =
+    'match-tracker: the host must be a plain element without a shadow root, as the tracker mounts in a shadow root of its own.'
+  if (existing) throw new Error(notPlain)
+  let root: ShadowRoot
+  try {
+    root = host.attachShadow({ mode: 'open' })
+  } catch (cause) {
+    // A closed shadow root, or an element that cannot have one.
+    throw new Error(notPlain, { cause })
+  }
+  ownRoots.add(root)
+  return root
+}
+
 /** The widget's stylesheet, made once and shared by every instance, where the browser can. */
 let sharedSheet: CSSStyleSheet | null = null
 
@@ -158,6 +187,8 @@ function build(shadow: ShadowRoot) {
   const viewport = div('mt-viewport')
   const canvas = document.createElement('canvas')
   canvas.className = 'mt-canvas'
+  // One picture to a screen reader, named in the locale (renderHud).
+  canvas.setAttribute('role', 'img')
   const overlayLayer = div('mt-overlay-layer')
   const overlay = div('mt-overlay')
   overlayLayer.append(overlay)
@@ -173,7 +204,7 @@ function build(shadow: ShadowRoot) {
     nodes.unshift(style)
   }
   shadow.replaceChildren(...nodes)
-  return { root, viewport, canvas, overlay, hud }
+  return { root, viewport, canvas, overlay, hudLayer, hud }
 }
 
 function rendererFor(canvas: HTMLCanvasElement, theme: RenderTheme): Renderer | null {
@@ -244,6 +275,8 @@ class Tracker implements MatchTracker {
   private stale = false
 
   constructor(host: HTMLElement, options: MatchTrackerOptions) {
+    // First, before anything is changed: a host the tracker cannot mount on throws as it is.
+    const shadow = shadowRootFor(host)
     const { mode, ...rest } = options
     this.mode = mode
     this.options = rest
@@ -252,7 +285,8 @@ class Tracker implements MatchTracker {
     this.doc = host.ownerDocument
     this.wasHidden = this.doc.visibilityState === 'hidden'
 
-    this.shadow = host.shadowRoot ?? host.attachShadow({ mode: 'open' })
+    this.shadow = shadow
+    mountedRoots.add(shadow)
     const dom = build(this.shadow)
     this.viewport = dom.viewport
     this.canvas = dom.canvas
@@ -273,11 +307,15 @@ class Tracker implements MatchTracker {
     this.loop = new FrameLoop(this.tick, () => this.director.animating)
 
     this.overlay.addEventListener('pointerdown', this.onOverlayPointerDown, { capture: true })
-    this.zoomPan = new ZoomPan(this.viewport, {
-      view: () => this.view,
-      takeCamera: () => this.director.releaseCamera(),
-      setView: this.setUserView,
-    })
+    this.zoomPan = new ZoomPan(
+      this.viewport,
+      {
+        view: () => this.view,
+        takeCamera: () => this.director.releaseCamera(),
+        setView: this.setUserView,
+      },
+      [dom.hudLayer],
+    )
     this.doc.addEventListener('visibilitychange', this.onVisibilityChange)
     if (typeof ResizeObserver !== 'undefined') {
       this.resizeObserver = new ResizeObserver(this.measure)
@@ -336,6 +374,9 @@ class Tracker implements MatchTracker {
     this.adoptCamera(this.director.view)
     this.lastInput = null
     this.resumed = true
+    // No phase until the next record: the row of the match before goes.
+    this.phase = null
+    this.renderHud()
     // The director stops its moments without a paint.
     for (const change of this.moments.clear()) this.emitter.emit('moment', change)
   }
@@ -358,15 +399,19 @@ class Tracker implements MatchTracker {
     if (this.destroyed) return
     // The mode is fixed at mount; a caller passing it anyway is ignored.
     const { mode: _mode, ...rest } = options as Partial<MatchTrackerOptions>
-    const menuWas = layersMenuOn(this.options)
-    this.options = { ...this.options, ...rest }
-    this.resolved = resolveOptions(this.options)
-    this.renderer?.setTheme(themeFor(this.resolved, this.icons))
+    // Everything that can throw is worked out before anything changes, so
+    // options that throw leave the tracker as it was, and it takes the next.
+    const next = { ...this.options, ...rest }
+    const resolved = resolveOptions(next)
+    const theme = themeFor(resolved, this.icons)
+    const layers = this.layersAfter(next, rest)
+    this.options = next
+    this.resolved = resolved
+    this.renderer?.setTheme(theme)
     this.director.setOptions(directorOptions(this.resolved))
     this.layersMenu.setText(this.resolved.text)
     this.layersMenu.setShown(this.hud, layersMenuOn(this.options))
     this.renderHud()
-    const layers = this.layersAfter(rest, menuWas)
     if (Object.entries(layers).some(([key, on]) => this.layers[key as keyof ReplayLayers] !== on)) {
       this.applyLayers(layers, false)
     } else {
@@ -375,14 +420,15 @@ class Tracker implements MatchTracker {
   }
 
   /**
-   * The layers in force after `changed` went into the options. Without the
-   * menu they are always the canonical ones. Switching the menu on reads the
-   * kept choice as at mount; otherwise new `layers` go over the ones in force.
+   * The layers in force once the options are `next`, `changed` among them.
+   * Without the menu they are always the canonical ones. Switching the menu
+   * on reads the kept choice as at mount; otherwise new `layers` go over the
+   * ones in force.
    */
-  private layersAfter(changed: Partial<MutableOptions>, menuWas: boolean): ReplayLayers {
-    const menuIs = layersMenuOn(this.options)
-    if (menuIs !== menuWas) return initialLayers(this.options)
-    if (!menuIs) return canonicalLayers(this.options)
+  private layersAfter(next: MutableOptions, changed: Partial<MutableOptions>): ReplayLayers {
+    const menuIs = layersMenuOn(next)
+    if (menuIs !== layersMenuOn(this.options)) return initialLayers(next)
+    if (!menuIs) return canonicalLayers(next)
     return changed.layers ? { ...this.layers, ...changed.layers } : this.layers
   }
 
@@ -408,6 +454,7 @@ class Tracker implements MatchTracker {
     this.presented = null
     this.shadow.replaceChildren()
     if ('adoptedStyleSheets' in this.shadow) this.shadow.adoptedStyleSheets = []
+    mountedRoots.delete(this.shadow)
   }
 
   /**
@@ -430,10 +477,12 @@ class Tracker implements MatchTracker {
     this.applyLayers({ ...this.layers, [key]: !this.layers[key] }, true)
   }
 
-  /** The HUD as the phase, the layers, the view and the options are now. */
+  /** The HUD as the phase, the layers, the view and the options are now, and the pitch's name. */
   private renderHud(): void {
     this.phaseRow.update(this.phase, this.layers.phaseLabels, this.resolved)
     this.renderZoom()
+    const name = this.resolved.text.pitchLabel
+    if (this.canvas.getAttribute('aria-label') !== name) this.canvas.setAttribute('aria-label', name)
   }
 
   /**
@@ -652,7 +701,11 @@ class Tracker implements MatchTracker {
   }
 }
 
-/** Mount a match tracker in `host`'s shadow root. */
+/**
+ * Mount a match tracker in a shadow root on `host`, which must be a plain
+ * element without one: a shadow root of the page's own is never taken over.
+ * A host a tracker was destroyed on can have a new one.
+ */
 export function createMatchTracker(host: HTMLElement, options: MatchTrackerOptions): MatchTracker {
   return new Tracker(host, options)
 }

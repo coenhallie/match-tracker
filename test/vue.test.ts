@@ -111,7 +111,7 @@ describe('the Vue component', () => {
     expect(layers.at(-1)).toMatchObject({ ballTrail: false })
     await wrapper.setProps({ locale: 'zh' })
     const item = host.shadowRoot!.querySelector<HTMLButtonElement>('[data-layer="ballTrail"]')!
-    expect(item.getAttribute('aria-checked')).toBe('false')
+    expect(item.getAttribute('aria-pressed')).toBe('false')
   })
 
   it('leaves the layers menu on when the layersMenu prop is left out, and hides it when false', async () => {

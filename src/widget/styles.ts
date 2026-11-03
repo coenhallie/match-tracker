@@ -37,9 +37,20 @@ canvas {
  * overflow-hidden bg-black". Text the page sets on the host (font, colour,
  * spacing) would be inherited into the shadow root; "all: initial" stops it,
  * and leaves the custom properties, which "all" does not reset.
+ *
+ * "isolation: isolate" makes the root a stacking context of its own, so the
+ * menu's z-index orders it within the widget and never against the page's.
+ *
+ * "all" leaves direction and unicode-bidi alone, so a right-to-left page
+ * would flip the HUD (and the canvas text, whose direction is inherited):
+ * the widget is laid out left to right wherever it is, its text isolated
+ * from the page's.
  */
 .mt-root {
   all: initial;
+  direction: ltr;
+  unicode-bidi: isolate;
+  isolation: isolate;
   position: relative;
   display: flex;
   width: 100%;
@@ -105,7 +116,8 @@ svg {
  * (LABEL_ROW_PX). The reference places the row itself "absolute inset-x-0
  * bottom-full mx-auto w-max"; here a box spanning the HUD does the placing,
  * so the row can ask how wide the HUD is (a container query) without the HUD
- * itself becoming a container, which would trap the layers menu's backdrop.
+ * itself becoming a container, which would make it the containing block of
+ * everything in it, the layers menu among them.
  */
 .mt-phase-box {
   position: absolute;
@@ -150,6 +162,8 @@ svg {
   min-width: 152px;
   align-items: center;
   gap: 12px;
+  /* The widget's own: nothing it holds ever shows past its border. */
+  overflow: hidden;
   white-space: nowrap;
   border-radius: 6px;
   border-width: 2px;
@@ -206,6 +220,25 @@ svg {
     padding-right: 6px;
   }
 }
+/*
+ * Narrower still, the states ("Attacking", "Defending") leave no room for a
+ * name, so they go: the attacking team is still the one filled in its
+ * colour, and the row's ARIA label still says both states.
+ */
+@container (width < 260px) {
+  .mt-phase-state {
+    display: none;
+  }
+}
+/* At the narrowest, "vs" goes too, and the two names share the row. */
+@container (width < 200px) {
+  .mt-phase {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .mt-phase-vs {
+    display: none;
+  }
+}
 
 /* The layers menu: "pointer-events-auto absolute right-2 top-2". */
 .mt-layers {
@@ -257,12 +290,6 @@ svg {
 .mt-layers-icon {
   width: 14px;
   height: 14px;
-}
-/* "fixed inset-0 z-40": a click anywhere outside the menu closes it. */
-.mt-layers-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
 }
 /*
  * "absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-md
@@ -332,13 +359,13 @@ svg {
   width: 12px;
   height: 12px;
 }
-.mt-layer-option[aria-checked="true"] .mt-layer-check {
+.mt-layer-option[aria-pressed="true"] .mt-layer-check {
   border-color: #fff;
   background-color: #fff;
   color: rgb(16 24 40);
   color: oklch(21% 0.034 264.665);
 }
-.mt-layer-option[aria-checked="false"] .mt-layer-check svg {
+.mt-layer-option[aria-pressed="false"] .mt-layer-check svg {
   display: none;
 }
 /* "min-w-0", then "block text-[12px] leading-tight" and "block text-[10px] leading-tight text-white/50". */

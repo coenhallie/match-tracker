@@ -39,11 +39,10 @@ function mount(options: Partial<MatchTrackerOptions> = {}, host = makeHost()) {
 const shadow = (host: HTMLElement) => host.shadowRoot!
 const button = (host: HTMLElement) => shadow(host).querySelector<HTMLButtonElement>('.mt-layers-toggle')!
 const menu = (host: HTMLElement) => shadow(host).querySelector<HTMLElement>('.mt-layers-menu')
-const backdrop = (host: HTMLElement) => shadow(host).querySelector<HTMLElement>('.mt-layers-backdrop')
 const options = (host: HTMLElement) => [...shadow(host).querySelectorAll<HTMLButtonElement>('.mt-layer-option')]
 const option = (host: HTMLElement, key: string) =>
   shadow(host).querySelector<HTMLButtonElement>(`.mt-layer-option[data-layer="${key}"]`)!
-const checked = (host: HTMLElement, key: string) => option(host, key).getAttribute('aria-checked')
+const checked = (host: HTMLElement, key: string) => option(host, key).getAttribute('aria-pressed')
 
 function open(host: HTMLElement) {
   if (!menu(host)) button(host).click()
@@ -74,16 +73,22 @@ describe('the layers menu', () => {
     const { host } = mount()
     expect(button(host).textContent?.trim()).toBe('Layers')
     expect(button(host).getAttribute('title')).toBe(en.layersTooltip)
-    expect(button(host).getAttribute('aria-haspopup')).toBe('menu')
+    // A disclosure: the button says whether what it shows is open, and which it is while it is.
+    expect(button(host).hasAttribute('aria-haspopup')).toBe(false)
     expect(button(host).getAttribute('aria-expanded')).toBe('false')
+    expect(button(host).hasAttribute('aria-controls')).toBe(false)
     expect(menu(host)).toBeNull()
     button(host).click()
     expect(button(host).getAttribute('aria-expanded')).toBe('true')
-    expect(menu(host)?.getAttribute('role')).toBe('menu')
+    const id = button(host).getAttribute('aria-controls')
+    expect(id).toBeTruthy()
+    expect(shadow(host).getElementById(id!)).toBe(menu(host))
+    expect(menu(host)?.getAttribute('role')).toBe('group')
     expect(menu(host)?.getAttribute('aria-label')).toBe(en.layersMenuLabel)
     button(host).click()
     expect(menu(host)).toBeNull()
     expect(button(host).getAttribute('aria-expanded')).toBe('false')
+    expect(button(host).hasAttribute('aria-controls')).toBe(false)
   })
 
   it('lists every layer in order, all shown by default, with its name and hint', () => {
@@ -91,8 +96,10 @@ describe('the layers menu', () => {
     open(host)
     const listed = options(host)
     expect(listed.map((o) => o.dataset.layer)).toEqual(REPLAY_LAYERS.map((l) => l.key))
-    expect(listed.every((o) => o.getAttribute('role') === 'menuitemcheckbox')).toBe(true)
-    expect(listed.every((o) => o.getAttribute('aria-checked') === 'true')).toBe(true)
+    // Toggle buttons, each pressed while its layer is on.
+    expect(listed.every((o) => o.tagName === 'BUTTON' && !o.hasAttribute('role'))).toBe(true)
+    expect(listed.every((o) => !o.hasAttribute('aria-checked'))).toBe(true)
+    expect(listed.every((o) => o.getAttribute('aria-pressed') === 'true')).toBe(true)
     for (const o of listed) {
       const { label, hint } = en.layers[o.dataset.layer as keyof ReplayLayers]
       expect(o.querySelector('.mt-layer-label')?.textContent).toBe(label)
@@ -183,19 +190,19 @@ describe('the layers menu', () => {
     localStorage.setItem('match-tracker.layers', JSON.stringify({ goal: false, attack: 'no', attackArrows: false }))
     const first = mount({ layersStorageKey: undefined })
     open(first.host)
-    expect(options(first.host).map((o) => [o.dataset.layer, o.getAttribute('aria-checked')])).toEqual(
+    expect(options(first.host).map((o) => [o.dataset.layer, o.getAttribute('aria-pressed')])).toEqual(
       REPLAY_LAYERS.map((l) => [l.key, l.key === 'goal' ? 'false' : 'true']),
     )
 
     localStorage.setItem('match-tracker.layers', '{not json')
     const second = mount({ layersStorageKey: undefined })
     open(second.host)
-    expect(options(second.host).every((o) => o.getAttribute('aria-checked') === 'true')).toBe(true)
+    expect(options(second.host).every((o) => o.getAttribute('aria-pressed') === 'true')).toBe(true)
 
     localStorage.setItem('match-tracker.layers', JSON.stringify(['goal']))
     const third = mount({ layersStorageKey: undefined })
     open(third.host)
-    expect(options(third.host).every((o) => o.getAttribute('aria-checked') === 'true')).toBe(true)
+    expect(options(third.host).every((o) => o.getAttribute('aria-pressed') === 'true')).toBe(true)
   })
 
   it('stops a goal that is playing when it is switched off, view and all', () => {
@@ -225,6 +232,25 @@ describe('the layers menu', () => {
     expect(shadow(host).activeElement).toBe(button(host))
   })
 
+  it('keeps an Escape it closes on from the host page', () => {
+    const { host } = mount()
+    const heard: Event[] = []
+    const listener = (event: Event) => heard.push(event)
+    document.addEventListener('keydown', listener)
+    try {
+      open(host)
+      options(host)[0]!.focus()
+      options(host)[0]!.dispatchEvent(escape())
+      expect(menu(host)).toBeNull()
+      expect(heard).toEqual([])
+      // With the menu closed, Escape is the page's.
+      button(host).dispatchEvent(escape())
+      expect(heard).toHaveLength(1)
+    } finally {
+      document.removeEventListener('keydown', listener)
+    }
+  })
+
   it('stays open on an Escape the page gets with focus outside the widget', () => {
     const { host } = mount()
     const outside = document.createElement('button')
@@ -236,12 +262,104 @@ describe('the layers menu', () => {
     expect(menu(host)).not.toBeNull()
   })
 
-  it('closes on a click outside it', () => {
+  it('lets a click on the host page through while it is open, and closes', () => {
+    const { host } = mount()
+    const outside = document.createElement('button')
+    document.body.append(outside)
+    const clicks: Event[] = []
+    outside.addEventListener('click', (event) => clicks.push(event))
+    open(host)
+    const down = new PointerEvent('pointerdown', { bubbles: true, composed: true, cancelable: true })
+    outside.dispatchEvent(down)
+    outside.click()
+    expect(menu(host)).toBeNull()
+    expect(down.defaultPrevented).toBe(false)
+    expect(clicks).toHaveLength(1)
+    expect(clicks[0]!.defaultPrevented).toBe(false)
+  })
+
+  it('covers nothing outside itself: nothing in the widget is fixed over the page', async () => {
     const { host } = mount()
     open(host)
-    backdrop(host)!.click()
+    const { STYLES } = await import('../../src/widget/styles')
+    expect(STYLES.replace(/\/\*[\s\S]*?\*\//g, '')).not.toMatch(/position:\s*fixed/)
+    // Only the button and the menu itself are in it.
+    expect([...shadow(host).querySelector('.mt-layers')!.children].map((el) => el.className)).toEqual([
+      'mt-layers-toggle',
+      'mt-layers-menu',
+    ])
+    // Its z-index is the widget's own, and never competes with the page's.
+    expect(getComputedStyle(shadow(host).querySelector('.mt-root')!).isolation).toBe('isolate')
+  })
+
+  it('closes on a press elsewhere in the widget, but not on one in it or on its button', () => {
+    const { host } = mount()
+    open(host)
+    const press = (el: Element) =>
+      el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, composed: true, cancelable: true }))
+    press(option(host, 'goal'))
+    expect(menu(host)).not.toBeNull()
+    option(host, 'goal').click()
+    expect(checked(host, 'goal')).toBe('false')
+    expect(menu(host)).not.toBeNull()
+    press(button(host))
+    expect(menu(host)).not.toBeNull()
+    press(shadow(host).querySelector('canvas')!)
     expect(menu(host)).toBeNull()
-    expect(backdrop(host)).toBeNull()
+  })
+
+  it('stays usable inside a closed shadow root the page cannot see into', () => {
+    const outer = makeHost()
+    const closed = outer.attachShadow({ mode: 'closed' })
+    const host = document.createElement('div')
+    const sibling = document.createElement('button')
+    closed.append(host, sibling)
+    const { tracker } = mount({}, host)
+    expect(tracker).toBeDefined()
+    const press = (el: Element) =>
+      el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, composed: true, cancelable: true }))
+    open(host)
+    press(option(host, 'goal'))
+    expect(menu(host)).not.toBeNull()
+    press(shadow(host).querySelector('canvas')!)
+    expect(menu(host)).toBeNull()
+    open(host)
+    const outside = document.createElement('button')
+    document.body.append(outside)
+    press(outside)
+    expect(menu(host)).toBeNull()
+  })
+
+  it('closes when the focus leaves it for the page, and not while it moves inside it', () => {
+    const { host } = mount()
+    const outside = document.createElement('button')
+    document.body.append(outside)
+    open(host)
+    options(host)[0]!.focus()
+    options(host)[1]!.focus()
+    button(host).focus()
+    expect(menu(host)).not.toBeNull()
+    outside.focus()
+    expect(menu(host)).toBeNull()
+  })
+
+  it('listens on the page only while it is open', () => {
+    const { host, tracker } = mount()
+    const added = vi.spyOn(document, 'addEventListener')
+    const removed = vi.spyOn(document, 'removeEventListener')
+    const downs = (spy: typeof added) => spy.mock.calls.filter(([type]) => type === 'pointerdown').map(([, fn]) => fn)
+    open(host)
+    expect(downs(added)).toHaveLength(1)
+    button(host).click()
+    expect(downs(removed)).toEqual(downs(added))
+    open(host)
+    tracker.setOptions({ layersMenu: false })
+    expect(downs(removed)).toEqual(downs(added))
+    tracker.setOptions({ layersMenu: true })
+    open(host)
+    tracker.destroy()
+    expect(downs(added)).toHaveLength(3)
+    expect(downs(removed)).toEqual(downs(added))
   })
 
   it('keeps inside the pitch box, scrolling if it has to', () => {
@@ -258,14 +376,18 @@ describe('the layers menu', () => {
 
   it('leaves no listener on its shadow root after destroy, and works again on a remount', () => {
     const host = makeHost()
-    const root = host.attachShadow({ mode: 'open' })
-    const added = vi.spyOn(root, 'addEventListener')
-    const removed = vi.spyOn(root, 'removeEventListener')
+    const added = vi.spyOn(ShadowRoot.prototype, 'addEventListener')
+    const removed = vi.spyOn(ShadowRoot.prototype, 'removeEventListener')
     const first = mount({}, host)
+    open(host)
     first.tracker.destroy()
-    const keydowns = (spy: typeof added) => spy.mock.calls.filter(([type]) => type === 'keydown')
-    expect(keydowns(added).length).toBeGreaterThan(0)
-    expect(keydowns(removed).map(([, fn]) => fn)).toEqual(keydowns(added).map(([, fn]) => fn))
+    // The listeners on this host's root, by type: keydown always, pointerdown while the menu is open.
+    const on = (spy: typeof added, type: string) =>
+      spy.mock.calls.filter(([t], i) => t === type && spy.mock.contexts[i] === host.shadowRoot).map(([, fn]) => fn)
+    for (const type of ['keydown', 'pointerdown']) {
+      expect(on(added, type).length).toBeGreaterThan(0)
+      expect(on(removed, type)).toEqual(on(added, type))
+    }
 
     mount({}, host)
     open(host)
@@ -330,7 +452,6 @@ describe('the layersMenu option', () => {
     open(host)
     tracker.setOptions({ layersMenu: false })
     expect(menu(host)).toBeNull()
-    expect(backdrop(host)).toBeNull()
     tracker.setOptions({ layersMenu: true })
     expect(menu(host)).toBeNull()
     expect(button(host).getAttribute('aria-expanded')).toBe('false')

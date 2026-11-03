@@ -158,6 +158,15 @@ describe('the team phase row', () => {
     expect(row(host)).not.toBeNull()
   })
 
+  it('goes on a reset, and comes back with the next record', () => {
+    const { host, tracker } = withPhase(RED_ATTACKING)
+    expect(row(host)).not.toBeNull()
+    tracker.reset()
+    expect(row(host)).toBeNull()
+    show(tracker, BLUE_ATTACKING)
+    expect(row(host)?.getAttribute('aria-label')).toBe('Red defending, Blue attacking')
+  })
+
   it('follows the phase in place, so a fill fades in as the reference does', () => {
     const { host, tracker } = withPhase(NOBODY)
     const before = { row: row(host), home: label(host, 0), away: label(host, 1) }
@@ -193,6 +202,35 @@ describe('the team phase row', () => {
     expect(row(host)).toBe(before)
     tracker.setOptions({ locale: 'en' })
     expect(label(host, 0)?.textContent).toMatch(/Red\s*Attacking/)
+  })
+
+  it('mounts in English for a locale it has no text for, and reads a language tag as its language', () => {
+    const { host, tracker } = withPhase(RED_ATTACKING, { locale: 'fr' as 'en' })
+    expect(label(host, 0)?.textContent).toMatch(/Red\s*Attacking/)
+    tracker.setOptions({ locale: 'zh-CN' as 'zh' })
+    expect(label(host, 0)?.textContent).toMatch(/红队\s*进攻中/)
+    tracker.setOptions({ locale: 'en-GB' as 'en' })
+    expect(label(host, 0)?.textContent).toMatch(/Red\s*Attacking/)
+  })
+
+  it('is left as it was by options that throw, and takes the next ones', () => {
+    const { host, tracker } = withPhase(RED_ATTACKING)
+    const poisoned = {} as { goal: string }
+    Object.defineProperty(poisoned, 'goal', {
+      enumerable: true,
+      get() {
+        throw new Error('a text the host cannot give')
+      },
+    })
+    expect(() => tracker.setOptions({ text: poisoned, teams: { home: { name: 'Ajax' } } })).toThrow(
+      'a text the host cannot give',
+    )
+    // Nothing of the bad call took: not the text, not the team name that came with it.
+    expect(label(host, 0)?.textContent).toMatch(/Red\s*Attacking/)
+    tracker.setOptions({ locale: 'zh' })
+    expect(label(host, 0)?.textContent).toMatch(/红队\s*进攻中/)
+    show(tracker, BLUE_ATTACKING)
+    expect(label(host, 1)?.textContent).toMatch(/进攻中\s*蓝队/)
   })
 
   it('takes a text override for the ARIA label', () => {
@@ -235,6 +273,52 @@ describe('the team phase row', () => {
     expect(label(host, 0)?.getAttribute('title')).toBe(long)
     expect(phase.getAttribute('aria-label')).toBe(`${long} attacking, Blue defending`)
     expect(label(host, 0)?.querySelector('.mt-phase-name')?.textContent).toBe(long)
+  })
+})
+
+/** The rules of STYLES inside `@container (<query>)`, by selector, comments left out. */
+async function containerRules(query: string): Promise<Map<string, string>> {
+  const { STYLES } = await import('../../src/widget/styles')
+  const css = STYLES.replace(/\/\*[\s\S]*?\*\//g, '')
+  const start = css.indexOf(`@container (${query}) {`)
+  if (start < 0) return new Map()
+  let depth = 0
+  let end = start
+  for (let i = css.indexOf('{', start); i < css.length; i++) {
+    if (css[i] === '{') depth++
+    if (css[i] === '}' && --depth === 0) {
+      end = i
+      break
+    }
+  }
+  const body = css.slice(css.indexOf('{', start) + 1, end)
+  return new Map([...body.matchAll(/([^{}]+)\{([^}]*)\}/g)].map((m) => [m[1]!.trim(), m[2]!.replace(/\s+/g, ' ').trim()]))
+}
+
+describe('the team phase row on a narrow widget', () => {
+  // happy-dom lays nothing out: what is pinned here is the CSS the row fits
+  // by, and the markup it keeps for screen readers. The fit itself is
+  // checked in a browser at 160, 200, 240 and 320 px, in English and Chinese.
+  it('drops the state words below 260 px, and keeps them for screen readers', async () => {
+    const rules = await containerRules('width < 260px')
+    expect(rules.get('.mt-phase-state')).toContain('display: none')
+    const { host } = withPhase(RED_ATTACKING)
+    expect(row(host)?.getAttribute('aria-label')).toBe('Red attacking, Blue defending')
+    expect(label(host, 0)?.querySelector('.mt-phase-state')?.textContent).toBe('Attacking')
+  })
+
+  it('drops "vs" too below 200 px, the two names sharing the row', async () => {
+    const rules = await containerRules('width < 200px')
+    expect(rules.get('.mt-phase-vs')).toContain('display: none')
+    expect(rules.get('.mt-phase')).toContain('grid-template-columns: minmax(0, 1fr) minmax(0, 1fr)')
+  })
+
+  it('cuts the names short in their labels rather than letting them overflow', async () => {
+    const rules = await containerRules('width < 360px')
+    expect(rules.get('.mt-phase-team')).toContain('min-width: 0')
+    const { STYLES } = await import('../../src/widget/styles')
+    expect(STYLES).toMatch(/\.mt-phase-name \{[^}]*min-width: 0;[^}]*text-overflow: ellipsis;/)
+    expect(STYLES).toMatch(/\.mt-phase-team \{[^}]*overflow: hidden;/)
   })
 })
 

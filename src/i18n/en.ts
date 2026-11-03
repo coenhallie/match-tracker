@@ -6,8 +6,9 @@ import type { TrackerText } from './text.js'
  * (PipelineOutputSurface.vue's template, PHASE_TEAMS and STATE_TEXT) and the
  * layers menu's (replayLayers.ts). The phase row's ARIA templates give the
  * reference's `phaseDescription` ("Red attacking, Blue defending"), which
- * lowercases the state words into it. zoomReset is the widget's own: the
- * reference has no tooltip for the zoom.
+ * lowercases the state words into it. zoomReset and pitchLabel are the
+ * widget's own: the reference has no tooltip for the zoom, and no label on
+ * its canvas.
  */
 export const en: TrackerText = {
   goal: 'GOAL',
@@ -29,6 +30,7 @@ export const en: TrackerText = {
   layersMenuLabel: 'Layers',
   zoomLevel: '{zoom}x',
   zoomReset: 'Double-click to reset the zoom',
+  pitchLabel: 'Match tracker',
   layers: {
     goal: { label: 'Goal animation', hint: 'A shot into the net on a goal label' },
     attack: { label: 'Attack', hint: 'Worked out from possession: shade and team name' },

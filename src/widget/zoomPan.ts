@@ -5,7 +5,9 @@
  * camera.ts's takesCamera rules it), with the spec's deliberate change 6:
  *
  *  - A plain wheel scrolls the page; only ctrl/⌘ + wheel zooms, which is
- *    also what a trackpad pinch sends.
+ *    also what a trackpad pinch sends. It zooms over the HUD too (the phase
+ *    row, the layers button and menu), which would otherwise let the
+ *    browser zoom the whole page there.
  *  - Two fingers pinch, about their midpoint, by the ratio of how far apart
  *    they are now to how far apart they started (this site's PitchView.vue,
  *    its `pointers` map and `pinch` state). A pinch hands the view over too.
@@ -57,12 +59,17 @@ export class ZoomPan {
   /** A pan under way: the pointer, where it went down, and the pan then. */
   private pan: { pointerId: number; start: Point; origin: Point } | null = null
 
+  /**
+   * `el` is the stage, which every gesture is on and measured against;
+   * `wheelToo` are the elements over it that a ctrl/⌘ + wheel zooms from as well.
+   */
   constructor(
     private readonly el: HTMLElement,
     private readonly target: ZoomPanTarget,
+    private readonly wheelToo: readonly HTMLElement[] = [],
   ) {
     // Not passive: a ctrl/⌘ + wheel has to be kept from zooming the page.
-    el.addEventListener('wheel', this.onWheel, { passive: false })
+    for (const wheeled of [el, ...wheelToo]) wheeled.addEventListener('wheel', this.onWheel, { passive: false })
     el.addEventListener('pointerdown', this.onPointerDown)
     el.addEventListener('pointermove', this.onPointerMove)
     el.addEventListener('pointerup', this.onPointerEnd)
@@ -71,7 +78,7 @@ export class ZoomPan {
   }
 
   destroy(): void {
-    this.el.removeEventListener('wheel', this.onWheel)
+    for (const wheeled of [this.el, ...this.wheelToo]) wheeled.removeEventListener('wheel', this.onWheel)
     this.el.removeEventListener('pointerdown', this.onPointerDown)
     this.el.removeEventListener('pointermove', this.onPointerMove)
     this.el.removeEventListener('pointerup', this.onPointerEnd)

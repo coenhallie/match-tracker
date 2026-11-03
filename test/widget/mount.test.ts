@@ -115,6 +115,36 @@ describe('mounting', () => {
     expect(b.host.shadowRoot!.querySelector('canvas')!.width).toBe(640)
   })
 
+  it('will not mount on a host with a shadow root of its own, and leaves that root as it was', () => {
+    const host = makeHost()
+    const theirs = host.attachShadow({ mode: 'open' })
+    theirs.innerHTML = '<p>the page\'s own</p>'
+    expect(() => createMatchTracker(host, { mode: 'live' })).toThrow(/plain element without a shadow root/)
+    expect(theirs.innerHTML).toBe('<p>the page\'s own</p>')
+
+    const closed = makeHost()
+    closed.attachShadow({ mode: 'closed' })
+    expect(() => createMatchTracker(closed, { mode: 'live' })).toThrow(/plain element without a shadow root/)
+  })
+
+  it('will not mount a second tracker on a host whose first is still mounted', () => {
+    const { host } = mount()
+    const canvas = host.shadowRoot!.querySelector('canvas')
+    expect(() => createMatchTracker(host, { mode: 'live' })).toThrow(/already has a match tracker/)
+    expect(host.shadowRoot!.querySelector('canvas')).toBe(canvas)
+  })
+
+  it('names the pitch for screen readers, in the locale, and as the host words it', () => {
+    const { host, tracker } = mount()
+    const canvas = host.shadowRoot!.querySelector('canvas')!
+    expect(canvas.getAttribute('role')).toBe('img')
+    expect(canvas.getAttribute('aria-label')).toBe('Match tracker')
+    tracker.setOptions({ locale: 'zh' })
+    expect(canvas.getAttribute('aria-label')).toBe('比赛追踪')
+    tracker.setOptions({ text: { pitchLabel: 'Ajax v PSV, live' } })
+    expect(canvas.getAttribute('aria-label')).toBe('Ajax v PSV, live')
+  })
+
   it("is not reached by the host page's CSS", () => {
     const style = document.createElement('style')
     style.dataset.testStyle = ''
@@ -130,6 +160,23 @@ describe('mounting', () => {
     // Styles are computed in the shadow root at all: its own sheet places the canvas.
     expect(getComputedStyle(canvas).position).toBe('absolute')
     expect(getComputedStyle(canvas).display).toBe('block')
+  })
+})
+
+describe('on a right-to-left page', () => {
+  it('lays the HUD and the canvas out left to right, as on any other page', () => {
+    const host = makeHost()
+    host.setAttribute('dir', 'rtl')
+    // happy-dom does not map dir to direction; the page's own CSS would.
+    host.style.direction = 'rtl'
+    mount(host)
+    const root = host.shadowRoot!.querySelector('.mt-root')!
+    expect(getComputedStyle(host).direction).toBe('rtl')
+    expect(getComputedStyle(root).direction).toBe('ltr')
+    expect(getComputedStyle(root).unicodeBidi).toBe('isolate')
+    // The 2D context's direction is "inherit", from the canvas.
+    expect(getComputedStyle(host.shadowRoot!.querySelector('canvas')!).direction).toBe('ltr')
+    expect(getComputedStyle(host.shadowRoot!.querySelector('.mt-layers-toggle')!).direction).toBe('ltr')
   })
 })
 

@@ -141,6 +141,9 @@ describe('destroy', () => {
     env.setVisibility('hidden')
     env.setVisibility('visible')
     env.settle()
+    // Destroyed with the layers menu open, which listens on the document while it is.
+    host.shadowRoot!.querySelector<HTMLButtonElement>('.mt-layers-toggle')!.click()
+    expect(onDocument.added.some(([type]) => type === 'pointerdown')).toBe(true)
     expect(onDocument.added.length + mediaListeners()).toBeGreaterThan(0)
 
     tracker.destroy()

@@ -26,11 +26,24 @@ describe('resolveText', () => {
     expect(resolveText('zh')).toEqual(zh)
   })
 
+  it('reads a language tag as the built-in text for its language, and anything else as English', () => {
+    for (const tag of ['zh-CN', 'zh-TW', 'zh-Hans', 'zh-Hant-HK', 'ZH', 'zh_CN']) expect(resolveText(tag)).toEqual(zh)
+    for (const tag of ['en-GB', 'en-US', 'EN', 'fr', 'de-DE', '', 'zhx', 'english']) expect(resolveText(tag)).toEqual(en)
+  })
+
   it('lets overrides win over the locale', () => {
     const text = resolveText('zh', { goal: 'GOAL!', versus: 'v' })
     expect(text.goal).toBe('GOAL!')
     expect(text.versus).toBe('v')
     expect(text.freeKick).toBe('任意球')
+  })
+
+  it('takes a layer override word by word: a new label keeps the layer\'s own hint', () => {
+    const text = resolveText('zh', { layers: { goal: { label: 'Goals' }, ballTrail: { hint: 'Where it went' } } })
+    expect(text.layers.goal).toEqual({ label: 'Goals', hint: zh.layers.goal.hint })
+    expect(text.layers.ballTrail).toEqual({ label: zh.layers.ballTrail.label, hint: 'Where it went' })
+    expect(text.layers.attack).toEqual(zh.layers.attack)
+    expect(zh.layers.goal.label).not.toBe('Goals')
   })
 
   it('leaves the built-in text unchanged', () => {

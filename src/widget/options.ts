@@ -4,7 +4,7 @@
  */
 import type { TeamId } from '../analysis/teamPhase.js'
 import type { DirectorOptions } from '../director/director.js'
-import { resolveText, type TrackerLocale, type TrackerText } from '../i18n/text.js'
+import { resolveText, type TrackerLocale, type TrackerText, type TrackerTextOverrides } from '../i18n/text.js'
 import {
   DEFAULT_REPLAY_LAYERS,
   readReplayLayers,
@@ -25,10 +25,13 @@ export interface TeamOptions {
 export interface MatchTrackerOptions {
   /** `live`: fed with `push`, on the widget's own clock. `replay`: fed with `present`, on the host's. */
   mode: 'live' | 'replay'
-  /** The built-in text. Default 'en'. */
-  locale?: TrackerLocale
-  /** Any of the text, in place of the locale's. */
-  text?: Partial<TrackerText>
+  /**
+   * The built-in text: 'en' or 'zh', or a language tag, read by its language
+   * ('zh-CN', 'zh-TW' and 'zh-Hans' are 'zh'). Anything else is 'en'. Default 'en'.
+   */
+  locale?: TrackerLocale | (string & {})
+  /** Any of the text, in place of the locale's; for the layers menu, any word of any layer. */
+  text?: TrackerTextOverrides
   /** Team 0 is home, team 1 away. */
   teams?: { home?: TeamOptions; away?: TeamOptions }
   /** The people's colours, by role, over video-annotation's. A team's `color` wins over its `fill` here. */

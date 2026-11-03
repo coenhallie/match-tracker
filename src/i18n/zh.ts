@@ -23,6 +23,7 @@ export const zh: TrackerText = {
   layersMenuLabel: '图层',
   zoomLevel: '{zoom}x',
   zoomReset: '双击恢复原始大小',
+  pitchLabel: '比赛追踪',
   layers: {
     goal: { label: '进球动画', hint: '出现进球标签时，播放射门入网的动画' },
     attack: { label: '进攻', hint: '根据控球推算：阴影和球队名称' },

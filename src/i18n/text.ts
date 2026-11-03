@@ -48,22 +48,55 @@ export interface TrackerText {
   zoomLevel: string
   /** The tooltip on the pitch while it is zoomed in: how to go back to the whole of it. */
   zoomReset: string
+  /** What a screen reader calls the pitch: the canvas's ARIA label. */
+  pitchLabel: string
   /** Each layer's name and hint in the layers menu, listed in REPLAY_LAYERS order. */
-  layers: Record<ReplayLayerKey, { label: string; hint: string }>
+  layers: Record<ReplayLayerKey, LayerText>
 }
 
+/** A layer's words in the layers menu. */
+export interface LayerText {
+  label: string
+  hint: string
+}
+
+/**
+ * Text a host gives in place of the locale's: any of TrackerText, and for
+ * the layers menu any word of any layer, each kept from the locale where it
+ * is not given.
+ */
+export type TrackerTextOverrides = Partial<Omit<TrackerText, 'layers'>> & {
+  layers?: Partial<Record<ReplayLayerKey, Partial<LayerText>>>
+}
+
+/** The languages the widget has its own text in. */
 export type TrackerLocale = 'en' | 'zh'
 
 const BUILT_IN: Record<TrackerLocale, TrackerText> = { en, zh }
 
 /**
- * The text for `locale`, with any of `overrides` in place of its own. A
- * `layers` override replaces only the layers it names. The result is a copy:
- * changing it leaves the built-in text alone.
+ * The built-in text a locale reads as: a language tag by its language, so
+ * 'zh-CN', 'zh-TW' and 'zh-Hans' are 'zh' and 'en-GB' is 'en', in any case;
+ * anything the widget has no text for is 'en'.
  */
-export function resolveText(locale: TrackerLocale, overrides: Partial<TrackerText> = {}): TrackerText {
-  const base = structuredClone(BUILT_IN[locale])
-  return { ...base, ...overrides, layers: { ...base.layers, ...overrides.layers } }
+export function localeOf(tag: string): TrackerLocale {
+  const language = String(tag).toLowerCase().split(/[-_]/)[0]
+  return language === 'zh' ? 'zh' : 'en'
+}
+
+/**
+ * The text for `locale` (as localeOf reads it), with any of `overrides` in
+ * place of its own. A `layers` override replaces only the words it gives,
+ * layer by layer. The result is a copy: changing it leaves the built-in text
+ * alone.
+ */
+export function resolveText(locale: string, overrides: TrackerTextOverrides = {}): TrackerText {
+  const base = structuredClone(BUILT_IN[localeOf(locale)])
+  const layers = { ...base.layers }
+  for (const key of Object.keys(layers) as ReplayLayerKey[]) {
+    layers[key] = { ...layers[key], ...overrides.layers?.[key] }
+  }
+  return { ...base, ...overrides, layers }
 }
 
 /**

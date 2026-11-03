@@ -138,7 +138,10 @@ socket.addEventListener('message', (event) => tracker.value?.push(event.data))
 
 ### `createMatchTracker(host, options): MatchTracker`
 
-Mounts a tracker in `host`'s shadow root. It reuses one already there, so a host can be mounted again after `destroy`.
+Mounts a tracker in a shadow root of its own on `host`, which must be a plain
+element without one. It throws, and changes nothing, on a host that has a
+shadow root of the page's own, or a tracker still mounted. A host a tracker was
+destroyed on can have a new one.
 
 | Member | |
 |---|---|
@@ -161,8 +164,8 @@ Also exported: `MATCH_TRACKER_VERSION`, `parseRecord(message): TrackerRecord | n
 | Option | Type | Default | |
 |---|---|---|---|
 | `mode` | `'live' \| 'replay'` | (required) | Fixed at mount. |
-| `locale` | `'en' \| 'zh'` | `'en'` | The built-in text. |
-| `text` | `Partial<TrackerText>` | | Any string, in place of the locale's. `layers` replaces only the layers it names. |
+| `locale` | `'en' \| 'zh'`, or a language tag | `'en'` | The built-in text. A tag is read by its language: `'zh-CN'`, `'zh-TW'` and `'zh-Hans'` are `'zh'`, `'en-GB'` is `'en'`. Anything else is English. |
+| `text` | `TrackerTextOverrides` | | Any string, in place of the locale's. In `layers`, any `label` or `hint` of any layer: what you leave out stays the locale's. |
 | `teams` | `{ home?: { name?, color? }, away?: { name?, color? } }` | | Team 0 is home and team 1 is away. A name defaults to the localised "Red" and "Blue". A `color` is the team's fill, on its players, its attack and its label. |
 | `colors` | `Partial<Record<PersonRole, Partial<PersonColors>>>` | video-annotation's | `fill`, `outline` and `text` per role: `home`, `away`, `goalkeeper`, `official`, `unknown`. A team's `color` wins over `fill` here. |
 | `layers` | `Partial<ReplayLayers>` | all on | The layers shown until the viewer chooses in the menu. |
@@ -178,7 +181,8 @@ The `TrackerText` keys are:
 - the row: `attacking`, `defending`, `versus`, `phaseTooltip`, `red` and `blue` (the default team names);
 - ARIA templates: `phaseAttackingAria` and `phaseDefendingAria` (with `{team}`), and `phaseAria` (with `{home}` and `{away}`);
 - the menu: `layersButton`, `layersTooltip`, `layersMenuLabel`, and `layers` (`{ label, hint }` per layer);
-- the zoom: `zoomLevel` (with `{zoom}`) and `zoomReset`.
+- the zoom: `zoomLevel` (with `{zoom}`) and `zoomReset`;
+- for screen readers: `pitchLabel`, the pitch's name ("Match tracker").
 
 ### Events
 
@@ -220,7 +224,10 @@ A listener that throws is reported (`reportError`) and does not stop the widget.
   License, and their licences ship next to them in `dist`.
 - **Text fits.** Every piece of canvas text is measured and shrunk to fit its
   card when it would overflow. Long team names are cut short with an ellipsis,
-  and keep their full names in the tooltip and for screen readers.
+  and keep their full names in the tooltip and for screen readers. Below 260 px
+  wide the row drops the words "Attacking" and "Defending" (the attacking team
+  is still filled in its colour, and screen readers still hear both), and below
+  200 px it drops "vs" too.
 
 ## Embedding
 
@@ -237,9 +244,16 @@ scripts and styles, several times on one page.
   - There are no globals, no polyfills and no network requests: fonts and icons are in the bundle.
 - **Listeners outside the widget:**
   - the resolution media query and the reduced-motion query;
-  - one `visibilitychange` listener on the host's document, to stop drawing in a hidden tab.
+  - one `visibilitychange` listener on the host's document, to stop drawing in a hidden tab;
+  - while the layers menu is open, and only then, one `pointerdown` listener on the
+    host's document, so a press on the page closes the menu. It listens in capture,
+    and never stops or cancels the press, which goes on to the page as it would have.
 
   All are removed on `destroy()`. No other listener goes on `document` or `window`.
+- **Left to right** on a right-to-left page too: the HUD and the canvas text keep
+  their layout whatever `dir` the page sets.
+- **Stacking.** The widget is a stacking context of its own, so nothing in it
+  competes with the page's `z-index`.
 - **Several on one page.** Each instance has its own state. Nothing is shared but the font registration and the stylesheet.
 - **Clean teardown.** `destroy()` cancels every animation frame and removes every observer, listener and timer.
 - **Accurate.** Players and ball are drawn where the data puts them, with no
@@ -257,7 +271,10 @@ scripts and styles, several times on one page.
   - A plain wheel scrolls the page. Ctrl or ⌘ + wheel (also what a trackpad pinch sends) zooms about the cursor, from 1x to 6x.
   - On touch, two fingers pinch-zoom, and one finger pans once zoomed in. At 1x, a vertical drag scrolls the page.
   - A mouse drag pans when zoomed in, and a double-click resets the view.
-  - Escape closes the layers menu only while focus is inside the widget.
+  - Escape closes the layers menu only while focus is inside the widget, and the page
+    does not get that Escape too.
+  - A press anywhere outside the layers menu, on the pitch or on the page, closes it.
+    So does the focus leaving it. Nothing covers the page while it is open.
 - **Reduced motion** is honoured, in every branch where video-annotation honours it.
 
 ### Bundlers
