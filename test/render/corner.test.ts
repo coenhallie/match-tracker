@@ -34,7 +34,7 @@ const banner = (over: Partial<CornerBanner> = {}): CornerBanner => ({
 
 describe('corner label', () => {
   const frame = (labels: string[]) =>
-    ({ teams: [], state: { actions: labels.map((action_type) => ({ action_type })) } }) as unknown as Frame
+    ({ teams: [], state: { actions: labels.map((action_type) => ({ action_type, action_origin: 'human' })) } }) as unknown as Frame
 
   it('matches however the export writes it', () => {
     expect(isCornerFrame(frame(['EventType.CORNER_KICK']))).toBe(true)

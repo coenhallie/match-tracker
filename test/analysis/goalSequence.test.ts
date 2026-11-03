@@ -20,7 +20,7 @@ function frame(opts: { actions?: string[]; ball?: { x: number; y: number } | nul
     pitch_dimensions: PITCH,
     teams: [],
     balls: opts.ball ? [{ projected_coordinates: opts.ball }] : [],
-    state: { actions: (opts.actions ?? []).map((action_type) => ({ action_type })) },
+    state: { actions: (opts.actions ?? []).map((action_type) => ({ action_type, action_origin: 'human' })) },
   } as unknown as Frame
 }
 

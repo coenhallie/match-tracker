@@ -95,7 +95,17 @@ interface GoldenFile {
 const FIXTURES = resolve(process.cwd(), 'test/fixtures/goldens')
 
 function readGolden(name: string): GoldenFile {
-  return JSON.parse(brotliDecompressSync(readFileSync(resolve(FIXTURES, `${name}.json.br`))).toString('utf8'))
+  const golden = JSON.parse(
+    brotliDecompressSync(readFileSync(resolve(FIXTURES, `${name}.json.br`))).toString('utf8'),
+  ) as GoldenFile
+  // The moments play only on human labels (CHANGELOG 0.2.1), and the goldens' labels predate the
+  // origin field: the reference played every label. Marked human, each plays as the reference played
+  // it, and the bottom-left action text, which reads only the label's name, is drawn as it drew it.
+  for (const record of golden.records) {
+    const actions = record.frame.state?.actions
+    if (actions) record.frame.state!.actions = actions.map((a) => ({ ...a, action_origin: a.action_origin ?? 'human' }))
+  }
+  return golden
 }
 
 /**

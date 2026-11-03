@@ -273,6 +273,15 @@ Also exported:
 The layers are `goal`, `attack`, `playerLoss`, `corner`, `throwInBanner`, `ballTrail`,
 `phaseLabels`, `nearbyRings`, `farFade` and `ringFades`.
 
+#### Labels
+
+The goal, the corner and the throw-in play when playback runs into the
+pipeline's label for them, in a frame's `state.actions`, and only when a
+human gave it: its `action_origin` is `"human"`. A label from the pipeline's
+AI (`"ai"`), or one from an older export with no `action_origin`, plays
+nothing. The bottom-left action text still lists every label, as the export
+has it, and a moment played with `trigger` needs no label at all.
+
 #### Player loss
 
 Now and then the pipeline loses track of most players for a few seconds, and

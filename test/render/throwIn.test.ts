@@ -29,7 +29,7 @@ const title = (ops: Op[]) => ops.find((o) => o.op === 'fillText')
 
 describe('throw-in label', () => {
   const frame = (labels: string[]) =>
-    ({ teams: [], state: { actions: labels.map((action_type) => ({ action_type })) } }) as unknown as Frame
+    ({ teams: [], state: { actions: labels.map((action_type) => ({ action_type, action_origin: 'human' })) } }) as unknown as Frame
 
   it('matches however the export writes it', () => {
     expect(isThrowInFrame(frame(['EventType.THROW_IN']))).toBe(true)

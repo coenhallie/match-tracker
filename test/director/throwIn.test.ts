@@ -17,7 +17,7 @@ const frameAt = (ballX: number | null, labels: string[] = []): Frame =>
       },
     ],
     balls: ballX === null ? [] : [{ projected_coordinates: { x: ballX, y: 33 } }],
-    state: { actions: labels.map((action_type) => ({ action_type })) },
+    state: { actions: labels.map((action_type) => ({ action_type, action_origin: 'human' })) },
     frame_data: [{ frame_count: 1 }],
   }) as Frame
 const THROW_IN = ['EventType.THROW_IN']

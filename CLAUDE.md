@@ -10,6 +10,8 @@ The reference is video-annotation's 2D replay. What a viewer sees must match it.
 - `test/fixtures/goldens` and the baseline snapshots must keep passing.
 - A change to what viewers see is deliberate, and is described in `CHANGELOG.md`.
 - Never update a snapshot or golden without saying why, in the commit message.
+- Moments play only on human labels (`action_origin: 'human'`). The goldens' labels have no
+  origin, so the parity test marks them human as it loads them.
 
 ## Layers
 

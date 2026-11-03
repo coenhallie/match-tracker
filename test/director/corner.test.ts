@@ -19,7 +19,7 @@ const frameAt = (x: number, labels: string[] = [], ball: { x: number; y: number 
       },
     ],
     balls: ball ? [{ projected_coordinates: ball }] : [],
-    state: { actions: labels.map((action_type) => ({ action_type })) },
+    state: { actions: labels.map((action_type) => ({ action_type, action_origin: 'human' })) },
     frame_data: [{ frame_count: 1 }],
   }) as Frame
 const CORNER = ['EventType.CORNER_KICK']

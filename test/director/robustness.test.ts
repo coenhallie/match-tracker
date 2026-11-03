@@ -31,7 +31,7 @@ const frame = (balls: unknown[], labels: string[] = [], teams?: unknown[]): Fram
       { team_id: 1, players: [player(11, 6, -2)] },
     ],
     balls,
-    state: { actions: labels.map((action_type) => ({ action_type })) },
+    state: { actions: labels.map((action_type) => ({ action_type, action_origin: 'human' })) },
     frame_data: [{ frame_count: 1 }],
   }) as Frame
 

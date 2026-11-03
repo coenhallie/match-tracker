@@ -1,4 +1,4 @@
-import type { Frame } from '../model/types.js'
+import type { Frame, FrameAction } from '../model/types.js'
 
 /**
  * A pipeline action label reduced to its bare name, so the same label matches
@@ -17,9 +17,20 @@ export function actionName(actionType: unknown): string {
 }
 
 /**
- * Whether the pipeline gave this frame the label `name` (a bare name, see
- * actionName). Matched whole, so "goal" never matches a goal kick.
+ * Whether a human analyst gave the label: its `action_origin` is "human".
+ * The pipeline marks its own labels "ai", and older exports carry no origin
+ * at all; neither counts, so nothing the AI labelled plays a moment.
+ */
+export function isHumanLabel(action: FrameAction): boolean {
+  return String(action.action_origin ?? '').trim().toLowerCase() === 'human'
+}
+
+/**
+ * Whether a human gave this frame the label `name` (a bare name, see
+ * actionName). Matched whole, so "goal" never matches a goal kick. The
+ * moments (goal, corner, throw-in) play only on these; a label from the AI,
+ * or one without an origin, is ignored (isHumanLabel).
  */
 export function frameHasAction(frame: Frame, name: string): boolean {
-  return (frame.state?.actions ?? []).some((a) => actionName(a.action_type) === name)
+  return (frame.state?.actions ?? []).some((a) => isHumanLabel(a) && actionName(a.action_type) === name)
 }

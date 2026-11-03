@@ -18,7 +18,7 @@ const goalFrame = (labels: string[], ball: { x: number; y: number } | null = { x
     pitch_dimensions: { length: 105, width: 68, goal_width: 7.32 },
     teams: [],
     balls: ball ? [{ projected_coordinates: ball }] : [],
-    state: { actions: labels.map((action_type) => ({ action_type })) },
+    state: { actions: labels.map((action_type) => ({ action_type, action_origin: 'human' })) },
     frame_data: [{ frame_count: 1 }],
   }) as Frame
 

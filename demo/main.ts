@@ -110,6 +110,12 @@ async function loadSource(name: string): Promise<Source> {
     records: TrackerRecord[]
     teamNames: [string, string]
   }
+  // Its labels predate the origin field, and the moments play only on a human's labels: made up as it is,
+  // the recording stands for an analyst's, so its labels are marked human.
+  for (const r of golden.records) {
+    const actions = r.frame.state?.actions
+    if (actions) r.frame.state!.actions = actions.map((a) => ({ ...a, action_origin: a.action_origin ?? 'human' }))
+  }
   // The recording's frames carry no frame_uuid, which is where a socket message has its time.
   const messages = golden.records.map((r) =>
     JSON.stringify({
