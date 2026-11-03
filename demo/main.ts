@@ -169,8 +169,31 @@ function log(id: string, line: string, kind = line): void {
 /** Every moment event, for the checks: which widget, what, and when (performance.now). */
 const events: Array<{ widget: string; moment: ReplayMoment; phase: 'start' | 'end'; at: number }> = []
 
+/** The trigger buttons of each widget, which its moment availability enables. */
+const buttons: Record<keyof typeof draws, HTMLButtonElement[]> = { live: [], replay: [] }
+
 function mount(host: HTMLElement, mode: 'live' | 'replay', status: string, key: keyof typeof draws): MatchTracker {
   const tracker = createMatchTracker(host, { mode, locale, teams: teams(), layersStorageKey: null })
+  // Mounted in the overlay and styled by this page's stylesheet: the pitch's box, as the tracker reports it.
+  const badge = document.createElement('div')
+  badge.className = 'demo-badge'
+  badge.dataset.testid = 'overlay-badge'
+  const showBox = () => {
+    const box = tracker.box
+    badge.textContent = box ? `box ${Math.round(box.width)}×${Math.round(box.height)} at ${Math.round(box.left)},${Math.round(box.top)}` : 'no box'
+  }
+  showBox()
+  tracker.overlay.append(badge)
+  tracker.on('box', showBox)
+  const enable = () => {
+    const can = tracker.availability()
+    for (const button of buttons[key]) {
+      const [moment, team] = (button.dataset.moment ?? '').split('-') as [ReplayMoment, string | undefined]
+      button.disabled = !(moment === 'attack' ? can.attack[Number(team) as TeamId] : can[moment])
+    }
+  }
+  enable()
+  tracker.on('availability', enable)
   tracker.on('moment', ({ moment, phase }) => {
     events.push({ widget: key, moment, phase, at: performance.now() })
     log(status, `${moment} ${phase}`)
@@ -189,6 +212,8 @@ function triggers(key: keyof typeof draws, tracker: () => MatchTracker | null): 
     button.type = 'button'
     button.textContent = label
     button.dataset.moment = team === undefined ? moment : `${moment}-${team}`
+    button.disabled = true
+    buttons[key].push(button)
     button.addEventListener('click', () => {
       pressed[key] = performance.now()
       const played = tracker()?.trigger(moment, team) ?? false

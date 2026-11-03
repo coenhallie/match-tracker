@@ -290,3 +290,120 @@ describe('the Vue component', () => {
     expect(instance.version).toBe(last().tracker.version)
   })
 })
+
+describe('the Vue component over the pitch', () => {
+  it('renders its default slot into the tracker’s overlay', async () => {
+    const wrapper = mount(MatchTracker, {
+      props: { mode: 'live', layersStorageKey: null },
+      slots: { default: () => h('div', { class: 'drawing absolute inset-0' }, 'drawn') },
+      attachTo: document.body,
+    })
+    wrappers.push(wrapper)
+    await nextTick()
+    const { tracker, host } = last()
+    const drawing = host.querySelector('.drawing')
+    expect(drawing?.parentElement).toBe(tracker.overlay)
+    expect(drawing?.textContent).toBe('drawn')
+    expect(tracker.overlay.parentElement).toBe(host)
+    const slot = host.shadowRoot!.querySelector<HTMLSlotElement>('slot[name="overlay"]')!
+    expect(slot.assignedElements()).toEqual([tracker.overlay])
+  })
+
+  it('keeps the slot reactive, and moves it to the new overlay when the mode changes', async () => {
+    const label = ref('one')
+    const mode = ref<'live' | 'replay'>('live')
+    const Parent = defineComponent({
+      setup: () => () =>
+        h(MatchTracker, { mode: mode.value, layersStorageKey: null }, { default: () => h('span', { class: 'badge' }, label.value) }),
+    })
+    const wrapper = mount(Parent, { attachTo: document.body })
+    wrappers.push(wrapper)
+    await nextTick()
+    const host = wrapper.element as HTMLElement
+    expect(host.querySelector('.badge')?.parentElement).toBe(last().tracker.overlay)
+    label.value = 'two'
+    await nextTick()
+    expect(host.querySelector('.badge')?.textContent).toBe('two')
+
+    const first = last().tracker
+    mode.value = 'replay'
+    await nextTick()
+    await nextTick()
+    expect(made).toHaveLength(2)
+    const second = last().tracker
+    expect(first.overlay.isConnected).toBe(false)
+    expect(host.querySelectorAll('.badge')).toHaveLength(1)
+    expect(host.querySelector('.badge')?.parentElement).toBe(second.overlay)
+    expect([...host.children]).toEqual([second.overlay])
+  })
+
+  it('takes the slot away with the tracker on unmount', async () => {
+    const wrapper = mount(MatchTracker, {
+      props: { mode: 'live', layersStorageKey: null },
+      slots: { default: () => h('div', { class: 'drawing' }) },
+      attachTo: document.body,
+    })
+    await nextTick()
+    const host = wrapper.element as HTMLElement
+    wrapper.unmount()
+    expect(host.querySelector('.drawing')).toBeNull()
+    expect(host.children).toHaveLength(0)
+  })
+
+  it('exposes the box and the availability, and emits both as they change', async () => {
+    const boxes: unknown[] = []
+    const availability: unknown[] = []
+    const { handle } = mountTracker({
+      onBox: (v: unknown) => boxes.push(v),
+      onAvailability: (v: unknown) => availability.push(v),
+    })
+    const { tracker } = last()
+    expect(handle.box).toEqual(tracker.box)
+    expect(handle.box).toMatchObject({ width: 728, height: 410 })
+    expect(boxes).toEqual([tracker.box])
+    expect(handle.availability()).toEqual(tracker.availability())
+    expect(handle.availability().goal).toBe(false)
+
+    handle.push(message(0, { withBall: true }))
+    env.settle()
+    expect(handle.availability().goal).toBe(true)
+    expect(availability.at(-1)).toEqual(tracker.availability())
+  })
+
+  it('makes a template that reads the box and the availability render again', async () => {
+    const handle = ref<MatchTrackerHandle | null>(null)
+    const Parent = defineComponent({
+      setup: () => () =>
+        h('div', [
+          h(MatchTracker, { mode: 'live', layersStorageKey: null, ref: handle }),
+          h('p', { class: 'width' }, String(handle.value?.box?.width ?? 'none')),
+          h('p', { class: 'goal' }, String(handle.value?.availability().goal ?? 'none')),
+        ]),
+    })
+    const wrapper = mount(Parent, { attachTo: document.body })
+    wrappers.push(wrapper)
+    await nextTick()
+    expect(wrapper.find('.width').text()).toBe('none')
+    expect(wrapper.find('.goal').text()).toBe('false')
+    const host = wrapper.element.firstElementChild as HTMLElement
+    env.resize(host, 800, 450)
+    await nextTick()
+    expect(wrapper.find('.width').text()).toBe('728')
+    handle.value!.push(message(0, { withBall: true }))
+    env.settle()
+    await nextTick()
+    expect(wrapper.find('.goal').text()).toBe('true')
+  })
+
+  it('has no box and nothing available before mount and after unmount', () => {
+    const handle = ref<MatchTrackerHandle | null>(null)
+    const Parent = defineComponent({
+      setup: () => () => h(MatchTracker, { mode: 'live', layersStorageKey: null, ref: handle }),
+    })
+    const wrapper = mount(Parent, { attachTo: document.body })
+    const exposed = handle.value!
+    wrapper.unmount()
+    expect(exposed.box).toBeNull()
+    expect(exposed.availability()).toEqual({ goal: false, attack: { 0: false, 1: false }, freeKick: false, throwIn: false })
+  })
+})

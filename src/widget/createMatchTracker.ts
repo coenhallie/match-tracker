@@ -5,8 +5,9 @@
  *
  * Ported from PipelineOutputSurface.vue (video-annotation 6f14d1f): the
  * sizing and pixel-ratio watch (`:214-290`), font loading and the repaint
- * after it (`:1321-1345`), and the overlay's pointerdown, which stops every
- * moment (`:1471`). Live mode is the widget's own (spec, "Feeding it").
+ * after it (`:1321-1345`), the overlay's pointerdown, which stops every
+ * moment (`:1471`), and the moments that can be played (`:1020-1036`). Live
+ * mode is the widget's own (spec, "Feeding it").
  *
  * ## The loop
  *
@@ -39,6 +40,15 @@
  * Over the pitch box: the attacking/defending row above it, the layers menu
  * top right and the zoom badge bottom right (hud.ts, layersMenu.ts). The row
  * follows the phase of each update; all of it follows the options, in place.
+ *
+ * ## The overlay
+ *
+ * The one node the widget puts in the host's light DOM: a div with
+ * `slot="overlay"`, which the shadow root's overlay box (the canvas's box)
+ * projects. Being the page's own, it and what the host mounts in it take the
+ * page's CSS (Tailwind, Vue scoped styles), as they did in the reference's
+ * slot. Its inline style, set through the CSSOM, fills the box and lets
+ * pointer events through, against whatever the page's CSS says of divs.
  */
 import { deriveAt, windowAt } from '../analysis/derive.js'
 import type { BallTrail } from '../analysis/ballTrail.js'
@@ -63,7 +73,7 @@ import { createRenderer } from '../render/renderer.js'
 import type { RenderTheme } from '../render/theme.js'
 import type { FrameBox } from '../render/viewTransform.js'
 import { MATCH_TRACKER_VERSION } from '../version.js'
-import { Emitter, MomentWatch, type TrackerEvents } from './events.js'
+import { Emitter, MomentWatch, type TrackerBox, type TrackerEvents } from './events.js'
 import { measureBox, pixelRatio, place, sameBox, sizeBitmap } from './layout.js'
 import { PhaseRow, ZoomBadge } from './hud.js'
 import { LayersMenu } from './layersMenu.js'
@@ -100,10 +110,21 @@ export interface MatchTracker {
   readonly version: string
   /**
    * An element over the pitch, in the canvas's own box, for a host's drawing
-   * layer. Pointer events pass through it unless the host turns them on;
-   * pressing on it stops every moment, so what is drawn on is the data.
+   * layer and anything it anchors to the pitch. It is a child of the host, in
+   * the page's light DOM with `slot="overlay"`, so the page's CSS reaches it
+   * and what is mounted in it. Pointer events pass through it unless the
+   * host turns them on; pressing on it stops every moment, so what is drawn
+   * on is the data.
    */
   readonly overlay: HTMLElement
+  /**
+   * The canvas's box, in CSS px from the host's top-left corner, below the
+   * attacking/defending row. Null until the widget has been laid out with a
+   * size, and after destroy. `box` says when it changes.
+   */
+  readonly box: TrackerBox | null
+  /** Which moments `trigger` can play on the frame on screen. `availability` says when it changes. */
+  availability(): MomentAvailability
   /** Live: one websocket message, in any form parseRecord reads. Anything unreadable is ignored. */
   push(message: unknown): void
   /** Replay: the state at the host's clock. */
@@ -125,6 +146,21 @@ type Renderer = ReturnType<typeof createRenderer>
 function playable(availability: MomentAvailability, moment: ReplayMoment, team: TeamId): boolean {
   return moment === 'attack' ? availability.attack[team] : availability[moment]
 }
+
+/** Nothing can be played: before the first frame, and after a reset. */
+const NOTHING_AVAILABLE: MomentAvailability = { goal: false, attack: { 0: false, 1: false }, freeKick: false, throwIn: false }
+
+const copyAvailability = (a: MomentAvailability): MomentAvailability => ({ ...a, attack: { ...a.attack } })
+
+const sameAvailability = (a: MomentAvailability, b: MomentAvailability) =>
+  a.goal === b.goal &&
+  a.attack[0] === b.attack[0] &&
+  a.attack[1] === b.attack[1] &&
+  a.freeKick === b.freeKick &&
+  a.throwIn === b.throwIn
+
+const samePublicBox = (a: TrackerBox, b: TrackerBox | null) =>
+  b !== null && a.left === b.left && a.top === b.top && a.width === b.width && a.height === b.height
 
 const sameView = (a: DirectorView, b: DirectorView | null) =>
   b !== null && a.zoom === b.zoom && a.panX === b.panX && a.panY === b.panY && a.renderedWidth === b.renderedWidth
@@ -182,6 +218,31 @@ function div(className: string): HTMLDivElement {
   return el
 }
 
+/**
+ * The overlay, for the host's light DOM: projected into the shadow root's
+ * overlay box by its slot, and filling it. Styled inline through the CSSOM,
+ * which a Content Security Policy does not block, so the page's rules for
+ * divs cannot move it, size it or have it take the pointer.
+ */
+function lightOverlay(doc: Document): HTMLDivElement {
+  const el = doc.createElement('div')
+  el.slot = 'overlay'
+  const { style } = el
+  style.position = 'absolute'
+  style.top = '0px'
+  style.right = '0px'
+  style.bottom = '0px'
+  style.left = '0px'
+  style.width = 'auto'
+  style.height = 'auto'
+  style.margin = '0px'
+  style.padding = '0px'
+  style.border = '0px none'
+  style.display = 'block'
+  style.pointerEvents = 'none'
+  return el
+}
+
 /** The widget's DOM, in `shadow`, as the reference's template lays out the stage. */
 function build(shadow: ShadowRoot) {
   const root = div('mt-root')
@@ -192,8 +253,12 @@ function build(shadow: ShadowRoot) {
   // One picture to a screen reader, named in the locale (renderHud).
   canvas.setAttribute('role', 'img')
   const overlayLayer = div('mt-overlay-layer')
-  const overlay = div('mt-overlay')
-  overlayLayer.append(overlay)
+  // The host's overlay element is projected here, in the canvas's box.
+  const overlayBox = div('mt-overlay')
+  const slot = document.createElement('slot')
+  slot.name = 'overlay'
+  overlayBox.append(slot)
+  overlayLayer.append(overlayBox)
   viewport.append(canvas, overlayLayer)
   const hudLayer = div('mt-hud-layer')
   const hud = div('mt-hud')
@@ -206,7 +271,7 @@ function build(shadow: ShadowRoot) {
     nodes.unshift(style)
   }
   shadow.replaceChildren(...nodes)
-  return { root, viewport, canvas, overlay, hudLayer, hud }
+  return { root, viewport, canvas, overlayBox, hudLayer, hud }
 }
 
 function rendererFor(canvas: HTMLCanvasElement, theme: RenderTheme): Renderer | null {
@@ -230,9 +295,12 @@ class Tracker implements MatchTracker {
   private icons: RenderTheme['icons'] = { freeKick: null, goal: null }
   private layers: ReplayLayers
   private readonly doc: Document
+  private readonly host: HTMLElement
   private readonly shadow: ShadowRoot
   private readonly viewport: HTMLElement
   private readonly canvas: HTMLCanvasElement
+  /** The shadow root's box the overlay's slot is in, placed with the canvas. */
+  private readonly overlayBox: HTMLElement
   private readonly hud: HTMLElement
   private readonly phaseRow = new PhaseRow()
   private readonly layersMenu: LayersMenu
@@ -250,7 +318,11 @@ class Tracker implements MatchTracker {
   private dprQuery: MediaQueryList | null = null
   private destroyed = false
 
-  private box: FrameBox | null = null
+  private frameBox: FrameBox | null = null
+  /** The frame box as the host sees it, from its own top-left corner. */
+  private hostBox: TrackerBox | null = null
+  /** What `trigger` could play on the frame of the last update. */
+  private available: MomentAvailability = NOTHING_AVAILABLE
   /** The user's zoom and pan, or where a sequence has moved them. */
   private view: DirectorCamera = { zoom: 1, panX: 0, panY: 0 }
   /** The view the renderer was last given, or null before it was given one. */
@@ -287,12 +359,15 @@ class Tracker implements MatchTracker {
     this.doc = host.ownerDocument
     this.wasHidden = this.doc.visibilityState === 'hidden'
 
+    this.host = host
     this.shadow = shadow
     mountedRoots.add(shadow)
     const dom = build(this.shadow)
     this.viewport = dom.viewport
     this.canvas = dom.canvas
-    this.overlay = dom.overlay
+    this.overlayBox = dom.overlayBox
+    this.overlay = lightOverlay(this.doc)
+    host.append(this.overlay)
     this.hud = dom.hud
     this.layersMenu = new LayersMenu(this.shadow, this.onLayerToggle)
     this.zoomBadge = new ZoomBadge(this.hud)
@@ -379,6 +454,7 @@ class Tracker implements MatchTracker {
     // No phase until the next record: the row of the match before goes.
     this.phase = null
     this.renderHud()
+    this.updateAvailability()
     // The director stops its moments without a paint.
     for (const change of this.moments.clear()) this.emitter.emit('moment', change)
   }
@@ -439,6 +515,22 @@ class Tracker implements MatchTracker {
     return this.emitter.on(event, listener)
   }
 
+  get box(): TrackerBox | null {
+    return this.destroyed ? null : this.hostBox
+  }
+
+  availability(): MomentAvailability {
+    return copyAvailability(this.destroyed ? NOTHING_AVAILABLE : this.available)
+  }
+
+  /** What the director can play now, said to the host when it changed. */
+  private updateAvailability(): void {
+    const next = this.director.availability()
+    if (sameAvailability(next, this.available)) return
+    this.available = copyAvailability(next)
+    this.emitter.emit('availability', copyAvailability(next))
+  }
+
   destroy(): void {
     if (this.destroyed) return
     this.destroyed = true
@@ -456,6 +548,8 @@ class Tracker implements MatchTracker {
     this.presented = null
     this.shadow.replaceChildren()
     if ('adoptedStyleSheets' in this.shadow) this.shadow.adoptedStyleSheets = []
+    // Taken out with what the host mounted in it, which stays the host's.
+    this.overlay.remove()
     mountedRoots.delete(this.shadow)
   }
 
@@ -512,6 +606,8 @@ class Tracker implements MatchTracker {
     if (this.destroyed) return
     this.phase = input.phase
     this.renderHud()
+    this.updateAvailability()
+    if (this.destroyed) return
     if (this.stale) this.repaint()
   }
 
@@ -570,7 +666,7 @@ class Tracker implements MatchTracker {
   /** Draw `paint` as the director made it: its frame and layers, in its view. */
   private draw(paint: DirectorPaint): void {
     if (!this.renderer) return
-    if (!this.box || !this.visible()) {
+    if (!this.frameBox || !this.visible()) {
       this.stale = true
       return
     }
@@ -585,7 +681,7 @@ class Tracker implements MatchTracker {
   /** Draw again what is on screen, through the director, as the reference's pushView paints. */
   private readonly repaint = (): void => {
     if (this.destroyed || !this.renderer) return
-    if (!this.box || !this.visible()) {
+    if (!this.frameBox || !this.visible()) {
       this.stale = true
       return
     }
@@ -599,7 +695,7 @@ class Tracker implements MatchTracker {
   // ── The view ──────────────────────────────────────────────────────────────
 
   private directorView(): DirectorView {
-    return { ...this.view, renderedWidth: this.box?.width ?? 0 }
+    return { ...this.view, renderedWidth: this.frameBox?.width ?? 0 }
   }
 
   /**
@@ -636,17 +732,34 @@ class Tracker implements MatchTracker {
 
   private readonly measure = (): void => {
     if (this.destroyed) return
-    const next = measureBox(this.viewport.getBoundingClientRect(), pixelRatio())
+    const rect = this.viewport.getBoundingClientRect()
+    const next = measureBox(rect, pixelRatio())
     // A hidden widget measures as nothing: the box it had stands.
     if (!next) return
-    const moved = !sameBox(next, this.box)
-    this.box = next
-    for (const el of [this.canvas, this.overlay, this.hud]) place(el, next)
+    const moved = !sameBox(next, this.frameBox)
+    this.frameBox = next
+    for (const el of [this.canvas, this.overlayBox, this.hud]) place(el, next)
     this.layersMenu.setBox(next)
     const cleared = this.renderer ? sizeBitmap(this.canvas, next) : false
     // A new width changes how a pan in screen pixels lands, so it goes in as
     // a view change, which pushes the view and paints.
     if (moved || cleared) this.show(this.director.setView(this.directorView()))
+    this.updateHostBox(rect, next)
+  }
+
+  /** The frame box from the host's top-left corner, said to the host when it moved or changed size. */
+  private updateHostBox(viewport: DOMRect, box: FrameBox): void {
+    if (this.destroyed) return
+    const host = this.host.getBoundingClientRect()
+    const next: TrackerBox = Object.freeze({
+      left: viewport.left - host.left + box.left,
+      top: viewport.top - host.top + box.top,
+      width: box.width,
+      height: box.height,
+    })
+    if (samePublicBox(next, this.hostBox)) return
+    this.hostBox = next
+    this.emitter.emit('box', next)
   }
 
   /**

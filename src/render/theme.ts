@@ -35,6 +35,13 @@ function frozenColors(): Readonly<Record<PersonRole, Readonly<PersonColors>>> {
 }
 
 /**
+ * The colours the people are drawn in without `colors` or a team's `color`,
+ * as the package exports them: video-annotation's, frozen all the way down.
+ * The default theme reads this one object.
+ */
+export const DEFAULT_PERSON_COLORS: Readonly<Record<PersonRole, Readonly<PersonColors>>> = frozenColors()
+
+/**
  * video-annotation's look, exactly: its colours (PERSON_COLORS), its English,
  * the action types as the export writes them, and its fonts, under the
  * bundled faces' private names with a CJK fallback after each.
@@ -43,7 +50,7 @@ function frozenColors(): Readonly<Record<PersonRole, Readonly<PersonColors>>> {
  * this one object, so nothing may change it in place.
  */
 export const DEFAULT_THEME: Readonly<RenderTheme> = Object.freeze({
-  colors: frozenColors(),
+  colors: DEFAULT_PERSON_COLORS,
   text: Object.freeze({ goal: 'GOAL', freeKick: 'FREE KICK', throwIn: 'THROW IN', attack: 'Attack' }),
   fonts: Object.freeze({ label: familyList(LABEL_FAMILY), title: familyList(TITLE_FAMILY) }),
   icons: Object.freeze({ freeKick: null, goal: null }),

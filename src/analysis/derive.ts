@@ -6,6 +6,13 @@ import { TRAIL_LOOKBACK_S, ballTrailAt, type BallTrail } from './ballTrail.js'
 export const HISTORY_S = Math.max(PHASE_LOOKBACK_S, TRAIL_LOOKBACK_S)
 
 /**
+ * HISTORY_S, as the package exports it: how many seconds of records before
+ * the one on screen a replay host passes as `lookback`. Fewer is drawn with
+ * less phase and trail than the reference has; more is trimmed.
+ */
+export const REPLAY_LOOKBACK_S: number = HISTORY_S
+
+/**
  * The records the frames before `at` decide its phase and trail from: those from
  * HISTORY_S before it up to it, de-duplicated by frame number with `at` itself
  * winning over any copy of it, and in time order.

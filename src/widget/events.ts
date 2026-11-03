@@ -2,8 +2,17 @@
  * The widget's events, and how it tells a moment starting or ending from the
  * director's paints.
  */
+import type { MomentAvailability } from '../director/director.js'
 import type { ReplayLayers, ReplayMoment } from '../model/replayLayers.js'
 import type { FrameLayers } from '../render/renderer.js'
+
+/** Where the pitch is drawn: the canvas's box, in CSS px from the host element's top-left corner. */
+export interface TrackerBox {
+  readonly left: number
+  readonly top: number
+  readonly width: number
+  readonly height: number
+}
 
 export interface TrackerEvents {
   /** The view's zoom changed: by the user, or by a sequence's camera. */
@@ -12,6 +21,10 @@ export interface TrackerEvents {
   layers: ReplayLayers
   /** A moment came on screen, or went. */
   moment: { moment: ReplayMoment; phase: 'start' | 'end' }
+  /** The pitch's box moved or changed size (`MatchTracker.box`). */
+  box: TrackerBox
+  /** Which moments can be played on the frame on screen changed (`MatchTracker.availability`). */
+  availability: MomentAvailability
 }
 
 type Listener<T> = (value: T) => void

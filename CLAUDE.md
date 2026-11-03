@@ -53,6 +53,9 @@ Lint, type errors and flaky tests are defects, not noise.
 
 The README's Embedding section is the full list. Never regress these:
 - All DOM and CSS live in one shadow root; nothing goes into `document.head`.
+  The one exception is the overlay, a `div` with `slot="overlay"` the widget
+  appends to the host (so the page's CSS reaches what is mounted in it), and
+  removes on `destroy()`. Nothing else goes in the light DOM.
 - No globals, no polyfills, no network requests. Several instances per page.
 - Document listeners only as the README lists them (`visibilitychange`, and
   `pointerdown` in capture while the layers menu is open), all removed on `destroy()`.

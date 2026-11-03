@@ -83,8 +83,9 @@ canvas {
 }
 /*
  * "pointer-events-none absolute inset-0": the overlay's and the HUD's layers.
- * The overlay inherits pointer-events: none, so zoom and pan still work
- * through it; a drawing layer mounted in it turns them back on for itself.
+ * The host's overlay element, slotted into .mt-overlay, sets pointer-events:
+ * none on itself (createMatchTracker.ts), so zoom and pan still work through
+ * it; a drawing layer mounted in it turns them back on for itself.
  */
 .mt-overlay-layer,
 .mt-hud-layer {

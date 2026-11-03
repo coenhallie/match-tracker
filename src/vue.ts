@@ -9,9 +9,13 @@
  *
  * - The component renders one `div`, the tracker's host. The tracker fills
  *   it, so give it a size (a class or style on the component lands on it).
+ * - The default slot is rendered into the tracker's overlay (a Teleport), so
+ *   its content lies over the pitch, in the canvas's box, styled by the
+ *   page's CSS and the parent's scoped styles.
  * - `mode` is fixed for a tracker's life: changing it makes a new tracker,
- *   so the exposed `overlay` is then a new element. `layersStorageKey` is
- *   fixed at mount too, and a change to it is ignored.
+ *   so the exposed `overlay` is then a new element, and the slot's content
+ *   moves into it. `layersStorageKey` is fixed at mount too, and a change to
+ *   it is ignored.
  * - Every other prop is a `MatchTrackerOptions` field. A change, in place or
  *   not, goes to `setOptions` with that one field, so a change to one prop
  *   never takes back what another set, nor the layers chosen in the menu.
@@ -19,19 +23,38 @@
  *   renders an inline object again (`:layers="{ ballTrail: true }"`) has
  *   changed nothing, and setOptions is not called. The tracker is given a
  *   copy of each, never the parent's reactive object.
- * - The tracker's `zoom`, `layers` and `moment` events are emitted as they are.
- * - `push`, `present`, `reset`, `trigger` and `overlay` are exposed on the
- *   component's ref (see MatchTrackerHandle). Before mount and after unmount
- *   they do nothing, `trigger` returns false and `overlay` is null.
+ * - The tracker's `zoom`, `layers`, `moment`, `box` and `availability`
+ *   events are emitted as they are. `box` and `availability` are also
+ *   emitted when a new tracker starts with values other than the last ones
+ *   emitted, so a parent hears of the box the tracker measured at mount.
+ * - `push`, `present`, `reset`, `trigger`, `availability`, `overlay` and
+ *   `box` are exposed on the component's ref (see MatchTrackerHandle).
+ *   `box` and `availability()` are reactive: a template or computed that
+ *   reads them follows them. Before mount and after unmount they do nothing,
+ *   `trigger` returns false, `overlay` and `box` are null, and nothing is
+ *   available.
  */
-import { defineComponent, h, onBeforeUnmount, onMounted, ref, toRaw, watch, type PropType } from 'vue'
+import {
+  defineComponent,
+  h,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  shallowRef,
+  Teleport,
+  toRaw,
+  watch,
+  type PropType,
+} from 'vue'
 import {
   createMatchTracker,
   type MatchTracker as Tracker,
   type MatchTrackerOptions,
+  type MomentAvailability,
   type ReplayMoment,
   type ReplayState,
   type TeamId,
+  type TrackerBox,
   type TrackerEvents,
 } from './index.js'
 
@@ -39,15 +62,25 @@ import {
 // component: the tracker instance is `MatchTrackerInstance` in both.
 export type * from './index.js'
 
-/** What the component's ref exposes: the tracker's input, and its overlay once mounted. */
+/** What the component's ref exposes: the tracker's input, and its overlay and box once mounted. */
 export interface MatchTrackerHandle {
   push(message: unknown): void
   present(state: ReplayState): void
   reset(): void
   trigger(moment: ReplayMoment, team?: TeamId): boolean
+  /** Which moments `trigger` can play now; nothing while there is no tracker. Reactive. */
+  availability(): MomentAvailability
   /** The tracker's overlay element, or null while there is no tracker. */
   readonly overlay: HTMLElement | null
+  /** The pitch's box from the host's top-left corner, or null while there is none. Reactive. */
+  readonly box: TrackerBox | null
 }
+
+const NOTHING_AVAILABLE: MomentAvailability = { goal: false, attack: { 0: false, 1: false }, freeKick: false, throwIn: false }
+
+const sameBox = (a: TrackerBox | null, b: TrackerBox | null) =>
+  a === b ||
+  (a !== null && b !== null && a.left === b.left && a.top === b.top && a.width === b.width && a.height === b.height)
 
 type OptionKey = Exclude<keyof MatchTrackerOptions, 'mode'>
 
@@ -109,10 +142,42 @@ export const MatchTracker = defineComponent({
     zoom: (_value: TrackerEvents['zoom']) => true,
     layers: (_value: TrackerEvents['layers']) => true,
     moment: (_value: TrackerEvents['moment']) => true,
+    box: (_value: TrackerEvents['box']) => true,
+    availability: (_value: TrackerEvents['availability']) => true,
   },
-  setup(props, { emit, expose }) {
+  setup(props, { emit, expose, slots }) {
     const host = ref<HTMLElement | null>(null)
     let tracker: Tracker | null = null
+    /** The tracker's overlay, where the default slot is teleported, and its box and availability, for the ref. */
+    const overlay = shallowRef<HTMLElement | null>(null)
+    const box = shallowRef<TrackerBox | null>(null)
+    const availability = shallowRef<MomentAvailability>(NOTHING_AVAILABLE)
+    /** What was last emitted, so a new tracker with the same box or availability says nothing. */
+    let emittedBox: TrackerBox | null = null
+    let emittedAvailability: MomentAvailability = NOTHING_AVAILABLE
+
+    function takeBox(value: TrackerBox | null): void {
+      box.value = value
+      if (value === null || sameBox(value, emittedBox)) return
+      emittedBox = value
+      emit('box', value)
+    }
+
+    function takeAvailability(value: MomentAvailability): void {
+      availability.value = value
+      const was = emittedAvailability
+      if (
+        value.goal === was.goal &&
+        value.attack[0] === was.attack[0] &&
+        value.attack[1] === was.attack[1] &&
+        value.freeKick === was.freeKick &&
+        value.throwIn === was.throwIn
+      ) {
+        return
+      }
+      emittedAvailability = value
+      emit('availability', value)
+    }
     /** What the tracker was last given for each option: what a prop is compared with. */
     let sent: Partial<Record<OptionKey, unknown>> = {}
 
@@ -130,11 +195,19 @@ export const MatchTracker = defineComponent({
       tracker.on('zoom', (value) => emit('zoom', value))
       tracker.on('layers', (value) => emit('layers', value))
       tracker.on('moment', (value) => emit('moment', value))
+      tracker.on('box', takeBox)
+      tracker.on('availability', takeAvailability)
+      overlay.value = tracker.overlay
+      takeBox(tracker.box)
+      takeAvailability(tracker.availability())
     }
 
     function stop(): void {
       tracker?.destroy()
       tracker = null
+      overlay.value = null
+      box.value = null
+      availability.value = NOTHING_AVAILABLE
     }
 
     onMounted(start)
@@ -167,12 +240,25 @@ export const MatchTracker = defineComponent({
       present: (state) => tracker?.present(state),
       reset: () => tracker?.reset(),
       trigger: (moment, team) => tracker?.trigger(moment, team) ?? false,
+      availability: () => {
+        const { attack, ...rest } = availability.value
+        return { ...rest, attack: { ...attack } }
+      },
       get overlay() {
         return tracker?.overlay ?? null
+      },
+      get box() {
+        return box.value
       },
     }
     expose(handle)
 
-    return () => h('div', { ref: host })
+    // The default slot goes into the overlay, which the tracker put in the
+    // host: Vue owns only the Teleport's anchors among the host's children.
+    return () => {
+      const target = overlay.value
+      const content = slots.default && target ? [h(Teleport, { to: target }, slots.default())] : []
+      return h('div', { ref: host }, content)
+    }
   },
 })

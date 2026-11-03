@@ -9,9 +9,10 @@ the layers menu.
 
 - **Framework-free.** One function, `createMatchTracker`, and plain DOM. A thin
   Vue 3 component is a separate entry, `@coenhallie/match-tracker/vue`.
-- **Contained.** Everything lives in a shadow root. Fonts and icons come with
-  the package, so the widget needs nothing from the host page and leaves
-  nothing in it.
+- **Contained.** Everything lives in a shadow root, except the overlay: one
+  element in the host, for the host's own content over the pitch. Fonts and
+  icons come with the package, so the widget needs nothing from the host page
+  and leaves nothing in it.
 - **Two inputs.** In live mode you push websocket messages as they arrive. In
   replay mode you present the state at your own clock (play, pause, seek).
 - **English and Chinese,** and any text you want to override.
@@ -102,6 +103,31 @@ A step of 0 to 0.5 s while playing counts as playback. Anything else counts as
 a seek, which stops every moment. Pausing also stops them. `parseRecord` turns a
 message into the `TrackerRecord` that `present` takes.
 
+- **The lookback.** `REPLAY_LOOKBACK_S` is how many seconds of records before
+  `time` the phase row and the ball trail read: pass the records from
+  `time - REPLAY_LOOKBACK_S` up to `time`. Fewer show less phase and trail than
+  the reference does, and more are ignored.
+- **Over the pitch.** Mount a drawing layer, a frame badge or a transport in
+  `tracker.overlay`. It sits exactly over the pitch, and the page's CSS
+  (Tailwind, Vue scoped styles) styles what is in it:
+
+  ```ts
+  const layer = document.createElement('div')
+  layer.className = 'absolute inset-0 pointer-events-none' // pointer-events-auto while drawing
+  tracker.overlay.append(layer)
+  ```
+
+  A layer that takes the pointer stops every moment on a press. Pan and zoom
+  work through anything that leaves pointer events off.
+- **Demo buttons.** Disable a moment's button while `tracker.availability()`
+  says it cannot be played, and follow the `availability` event:
+
+  ```ts
+  const update = () => (goalButton.disabled = !tracker.availability().goal)
+  update()
+  tracker.on('availability', update)
+  ```
+
 ### Vue
 
 ```vue
@@ -131,10 +157,25 @@ socket.addEventListener('message', (event) => tracker.value?.push(event.data))
   object such as `:teams="{ home: { name: home } }"` that renders again with
   the same contents changes nothing. A new `:layers` with other contents does
   go over the viewer's choice in the menu, as `setOptions` does.
-- `mode` is fixed for a tracker's life. Changing it makes a new tracker.
-- The component emits `zoom`, `layers` and `moment`.
-- The ref exposes `push`, `present`, `reset`, `trigger` and `overlay`. They
-  do nothing until the component is mounted.
+- `mode` is fixed for a tracker's life. Changing it makes a new tracker, and
+  the slot's content moves into its overlay.
+- The default slot is rendered into the tracker's overlay, so it lies over the
+  pitch and is styled by the page's CSS and the parent's scoped styles:
+
+  ```vue
+  <MatchTracker ref="tracker" mode="replay">
+    <DrawingCanvas class="absolute inset-0" :class="drawing ? 'pointer-events-auto' : 'pointer-events-none'" />
+  </MatchTracker>
+  ```
+
+- The component emits `zoom`, `layers`, `moment`, `box` and `availability`.
+  It emits `box` and `availability` at mount too, when a tracker starts with
+  values other than the last ones emitted.
+- The ref exposes `push`, `present`, `reset`, `trigger`, `availability()`,
+  `overlay` and `box`. They do nothing until the component is mounted.
+  `box` and `availability()` are reactive, so a template or computed that
+  reads them follows them. Before mount and after unmount, `box` is null and
+  nothing is available.
 - All the types of the main entry are re-exported from `/vue`. There
   `MatchTracker` is the component, so the tracker instance's type is
   `MatchTrackerInstance`, a name both entries export.
@@ -156,14 +197,20 @@ destroyed on can have a new one.
 | `trigger(moment, team?)` | Play `'goal'`, `'attack'`, `'freeKick'` or `'throwIn'` now, on the frame on screen. `team` (0 home, 1 away, default 0) is for an attack. Returns false when the moment cannot be played on that frame (for example before the first frame, or a goal with no ball). |
 | `setOptions(options)` | Change any option but `mode` and `layersStorageKey`, which are fixed at mount. The HUD and the canvas follow at once, without a remount. Options that throw change nothing. |
 | `on(event, listener)` | Listen to an event. Returns a function that unsubscribes. |
-| `overlay` | An element over the pitch, in the canvas's own box, for a host's drawing layer. Pointer events pass through it unless you turn them on for your own elements. A press on it stops every moment. |
+| `availability()` | Which moments `trigger` can play on the frame on screen: `{ goal, attack: { 0, 1 }, freeKick, throwIn }`, each a boolean (`MomentAvailability`). All false before the first frame and after a reset. A goal needs a ball, and an attack needs the direction that team attacks in, which needs the keepers. A fresh copy on every call. |
+| `overlay` | An element over the pitch, in the canvas's own box, for a host's drawing layer and anything it anchors to the pitch. It is a `div` child of the host, with `slot="overlay"`, so the page's CSS reaches it and its content. Its inline style fills the box and turns pointer events off. Pointer events pass through it unless you turn them on for your own elements. A press on it, or on anything in it, stops every moment. |
+| `box` | `{ left, top, width, height }`, the canvas's box in CSS px from the host's top-left corner, below the attacking/defending row (`TrackerBox`, frozen). Null until the widget has been laid out with a size, and after `destroy()`. |
 | `version` | The package version this tracker runs. |
-| `destroy()` | Stop everything and empty the shadow root. Every method is a no-op after. |
+| `destroy()` | Stop everything, empty the shadow root and take the overlay out of the host, with whatever you mounted in it. Every method is a no-op after. |
 
-Also exported: `MATCH_TRACKER_VERSION`, `parseRecord(message): TrackerRecord | null`, and the types
-(`MatchTrackerOptions`, `SettableOptions`, `MatchTrackerInstance`, `ReplayState`, `TrackerEvents`,
-`TrackerRecord`, `Frame`, `ReplayLayers`, `ReplayMoment`, `TrackerText`, `TrackerTextOverrides`,
-`PersonColors`, `PersonRole` and the rest).
+Also exported:
+- `MATCH_TRACKER_VERSION`;
+- `parseRecord(message): TrackerRecord | null`;
+- `REPLAY_LOOKBACK_S`, the seconds of records a replay host passes as `lookback`;
+- `DEFAULT_PERSON_COLORS`, the default `fill`, `outline` and `text` per role, frozen;
+- the types: `MatchTrackerOptions`, `SettableOptions`, `MatchTrackerInstance`, `ReplayState`,
+  `TrackerEvents`, `TrackerBox`, `MomentAvailability`, `TrackerRecord`, `Frame`, `ReplayLayers`,
+  `ReplayMoment`, `TrackerText`, `TrackerTextOverrides`, `PersonColors`, `PersonRole` and the rest.
 
 ### Options
 
@@ -197,6 +244,8 @@ The `TrackerText` keys are:
 | `zoom` | `{ zoom }` | The view's zoom changed, by the viewer or by a goal's camera. |
 | `layers` | `ReplayLayers` | The layers in force changed, from the menu or from `setOptions`. |
 | `moment` | `{ moment, phase: 'start' \| 'end' }` | A moment came on screen, or went. |
+| `box` | `TrackerBox` | The pitch's box moved or changed size. The box measured at mount is not sent, because no listener exists yet: read `tracker.box` for it. |
+| `availability` | `MomentAvailability` | What can be played changed: a new frame, or a reset. |
 
 A listener that throws is reported (`reportError`) and does not stop the widget.
 
@@ -241,11 +290,21 @@ The widget is built to sit in pages we do not control, next to their own
 scripts and styles, several times on one page.
 
 - **Contained.**
-  - All DOM and CSS live in one shadow root under the host element. The
-    stylesheet is adopted, not injected, so nothing goes into `document.head`.
+  - All DOM and CSS live in one shadow root under the host element, except the
+    overlay. The stylesheet is adopted, not injected, so nothing goes into
+    `document.head`.
+  - The overlay is the one light-DOM node the widget adds to its host: a
+    `div` with `slot="overlay"`, projected into the pitch's box, and removed
+    on `destroy()`. It is in the light DOM so that the page's CSS reaches what
+    the host mounts in it. Its own inline style (position, size, margins,
+    pointer events) holds against the page's rules for divs. Its content
+    inherits text properties (font, colour, line height) from the widget, not
+    from the page, but every page rule that targets it applies. It stacks
+    under the widget's row, layers menu and zoom badge.
+  - Any other child of the host is not shown, as before.
   - The page gets only the `FontFace` registrations, made once however many
     widgets there are.
-  - Host CSS cannot reach in, and the widget's CSS cannot leak out. Lengths
+  - Host CSS cannot reach in, except into the overlay, and the widget's CSS cannot leak out. Lengths
     are in px, not rem, so even the page's root font size stays outside.
   - There are no globals, no polyfills and no network requests: fonts and icons are in the bundle.
 - **Listeners outside the widget:**
@@ -294,7 +353,7 @@ On a page with a Content Security Policy, the widget needs:
   back to the system fonts.
 - Nothing for `style-src`: the stylesheet is a constructed one, adopted by the
   shadow root, which a policy does not block, and every other style is set through
-  the CSSOM. No `'unsafe-inline'` is needed.
+  the CSSOM, the overlay's included. No `'unsafe-inline'` is needed.
 - Nothing else: no `connect-src`, `worker-src` or `'unsafe-eval'`. The widget makes
   no requests of its own.
 
@@ -341,8 +400,9 @@ npm run size
 ```
 
 The demo (`demo/`) plays the test fixtures through two widgets, one live and
-one in replay. It has a button for every moment, a locale toggle, a width
-selector and a "hostile CSS" switch. `window.demo` holds the hooks the
+one in replay. It has a button for every moment, disabled while the moment
+cannot be played, a locale toggle, a width selector and a "hostile CSS" switch.
+A badge styled by the page's stylesheet sits in each overlay, showing the box. `window.demo` holds the hooks the
 performance checks use: `perf.start()` / `perf.stop()` time every animation
 frame, and `bench()` times the renderer over a goal. Screenshots taken
 from it go in `demo/screenshots/`, which git ignores.

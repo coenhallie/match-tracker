@@ -24,14 +24,15 @@ afterEach(() => {
 })
 
 describe('mounting', () => {
-  it('builds everything inside an open shadow root, and adds nothing to the head', () => {
+  it('builds everything inside an open shadow root but the overlay, and adds nothing to the head', () => {
     const head = document.head.innerHTML
     const { host, tracker } = mount()
     expect(host.shadowRoot).not.toBeNull()
     expect(host.shadowRoot!.mode).toBe('open')
-    expect(host.children).toHaveLength(0)
+    // The overlay is the one light-DOM node, for the page's CSS to reach (host.test.ts).
+    expect([...host.childNodes]).toEqual([tracker.overlay])
+    expect(tracker.overlay.getAttribute('slot')).toBe('overlay')
     expect(host.shadowRoot!.querySelector('canvas')).not.toBeNull()
-    expect(host.shadowRoot!.contains(tracker.overlay)).toBe(true)
     // Only font faces may be added to the page, and those go to document.fonts, not the head.
     expect(document.head.innerHTML).toBe(head)
   })
@@ -58,8 +59,11 @@ describe('mounting', () => {
     expect([canvas.width, canvas.height]).toEqual([728, 410])
     expect(canvas.style.width).toBe('728px')
     expect(canvas.style.top).toBe('40px')
-    expect(tracker.overlay.style.width).toBe('728px')
-    expect(tracker.overlay.style.left).toBe(canvas.style.left)
+    // The overlay fills the shadow root's box its slot is in, which is the canvas's.
+    const overlayBox = host.shadowRoot!.querySelector('slot[name="overlay"]')!.parentElement!
+    expect(overlayBox.style.width).toBe('728px')
+    expect(overlayBox.style.left).toBe(canvas.style.left)
+    expect(tracker.box).toMatchObject({ width: 728, top: 40 })
   })
 
   it('keeps its box when it is measured at nothing', () => {

@@ -151,6 +151,7 @@ describe('destroy', () => {
     expect(stillListening(onDocument)).toEqual([])
     expect(mediaListeners()).toBe(0)
     expect(host.shadowRoot?.childNodes).toHaveLength(0)
+    expect(host.childNodes).toHaveLength(0)
   })
 
   it('leaves no observer, listener or frame behind over 50 mounts', () => {
