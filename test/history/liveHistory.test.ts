@@ -62,9 +62,57 @@ describe('LiveHistory', () => {
     history.add(record(0))
     history.add(newest)
     expect(history.window().map((r) => r.frameCount)).toEqual([10_000])
-    expect(history.add(record(1, newest.t - HISTORY_S - 0.001))).toBe(false)
     expect(history.add(record(2, newest.t - HISTORY_S))).toBe(true)
     expect(history.window().map((r) => r.frameCount)).toEqual([2, 10_000])
+  })
+
+  it('takes a jump back of more than HISTORY_S as a new stream: it starts afresh from that record', () => {
+    const history = new LiveHistory()
+    for (let i = 0; i < 50; i++) history.add(record(i, 2700 + i * DT))
+    expect(history.breaks).toBe(0)
+    // The pipeline restarted with the socket open: its stream-relative t starts again near 0.
+    const restart = record(7, 0.04)
+    expect(history.add(restart)).toBe(true)
+    expect(history.breaks).toBe(1)
+    expect(history.latest()).toBe(restart)
+    expect(history.window()).toEqual([restart])
+    // It goes on from there, frame counts the old stream held included.
+    for (let i = 8; i < 20; i++) expect(history.add(record(i, 0.04 + (i - 7) * DT))).toBe(true)
+    expect(history.latest()?.frameCount).toBe(19)
+    expect(history.window()).toHaveLength(13)
+    expect(history.breaks).toBe(1)
+  })
+
+  it('takes a record from just over HISTORY_S back as a new stream too, not as one to drop', () => {
+    const history = new LiveHistory()
+    const newest = record(10_000)
+    history.add(newest)
+    const old = record(1, newest.t - HISTORY_S - 0.001)
+    expect(history.add(old)).toBe(true)
+    expect(history.breaks).toBe(1)
+    expect(history.latest()).toBe(old)
+  })
+
+  it('never freezes after a jump forward: what follows is a new stream, and is held', () => {
+    const history = new LiveHistory()
+    for (let i = 0; i < 10; i++) history.add(record(i))
+    // A corrupt t far ahead: everything after it looks far in the past.
+    const far = record(10, 1e300)
+    expect(history.add(far)).toBe(true)
+    expect(history.window()).toEqual([far])
+    expect(history.add(record(11))).toBe(true)
+    expect(history.latest()?.frameCount).toBe(11)
+    expect(history.breaks).toBe(1)
+    expect(history.add(record(12))).toBe(true)
+    expect(history.window().map((r) => r.frameCount)).toEqual([11, 12])
+  })
+
+  it('holds nothing with a t that is not finite', () => {
+    const history = new LiveHistory()
+    history.add(record(1))
+    for (const t of [Infinity, -Infinity, NaN]) expect(history.add(record(2, t))).toBe(false)
+    expect(history.latest()?.frameCount).toBe(1)
+    expect(history.add(record(2))).toBe(true)
   })
 
   it('inserts an out-of-order record in order, without making it the latest', () => {

@@ -36,7 +36,8 @@ function normalizeFrame(raw: Record<string, unknown>): Frame {
  * describes. While the window is still filling at the start of a run it is short, so the lag
  * varies exactly where replay time is measured from.
  *
- * Returns null for anything that is not a usable record. It never throws.
+ * Returns null for anything that is not a usable record, a `t` or `frame_count` that is not a
+ * finite number among them. It never throws.
  */
 export function parseRecord(message: unknown): TrackerRecord | null {
   let value: unknown = message
@@ -54,7 +55,8 @@ export function parseRecord(message: unknown): TrackerRecord | null {
   const frame = normalizeFrame(candidate)
 
   const meta: unknown = Array.isArray(frame.frame_data) ? frame.frame_data[0] : undefined
-  if (!isRecord(meta) || typeof meta.frame_count !== 'number') return null
+  // Not finite (JSON reads 1e999 as Infinity): such a record can never be told apart from the next.
+  if (!isRecord(meta) || typeof meta.frame_count !== 'number' || !Number.isFinite(meta.frame_count)) return null
 
   const uuids = meta.frame_uuid
   const last: unknown = Array.isArray(uuids) ? uuids[uuids.length - 1] : undefined

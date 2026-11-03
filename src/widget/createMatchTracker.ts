@@ -227,7 +227,7 @@ class Tracker implements MatchTracker {
   private wasHidden: boolean
   /** Whether the widget is in view, as the intersection observer last said. In view until it says otherwise. */
   private onScreen = true
-  /** Live: whether the next update is a seek. True at mount, after a reset, and on coming back into view. */
+  /** Live: whether the next record shown is a seek. True at mount, after a reset, on coming back into view, and when the stream breaks. */
   private resumed = true
 
   private readonly history = new LiveHistory()
@@ -270,7 +270,7 @@ class Tracker implements MatchTracker {
     // Frame size is a sane bitmap until the box arrives, as in the reference.
     if (this.renderer) sizeBitmap(this.canvas, null)
     this.director = new Director({ layers: this.layers, ...directorOptions(this.resolved) })
-    this.loop = new FrameLoop(this.tick)
+    this.loop = new FrameLoop(this.tick, () => this.director.animating)
 
     this.overlay.addEventListener('pointerdown', this.onOverlayPointerDown, { capture: true })
     this.zoomPan = new ZoomPan(this.viewport, {
@@ -308,7 +308,11 @@ class Tracker implements MatchTracker {
   push(message: unknown): void {
     if (this.destroyed || this.mode !== 'live') return
     const record = parseRecord(message)
-    if (!record || !this.history.add(record)) return
+    if (!record) return
+    const breaks = this.history.breaks
+    if (!this.history.add(record)) return
+    // The stream broke and started again (LiveHistory.add): what it shows next is a seek.
+    if (this.history.breaks !== breaks) this.resumed = true
     this.historyVersion++
     this.loop.request()
   }
@@ -327,6 +331,9 @@ class Tracker implements MatchTracker {
     this.flag = null
     this.derived = null
     this.director.reset()
+    // A goal's camera puts the user's view back as it stops: take it now, or
+    // the next update would pass the camera's last view back in as the user's.
+    this.adoptCamera(this.director.view)
     this.lastInput = null
     this.resumed = true
     // The director stops its moments without a paint.
@@ -336,7 +343,7 @@ class Tracker implements MatchTracker {
   trigger(moment: ReplayMoment, team: TeamId = 0): boolean {
     if (this.destroyed) return false
     // A frame due now is run first, so the moment plays on what is on screen by now.
-    this.loop.flush(performance.now())
+    this.loop.flush()
     const input = this.lastInput
     // What the director can play is read from the frame it was last given,
     // which is `input`: taking it in again inside trigger changes nothing.
@@ -465,7 +472,9 @@ class Tracker implements MatchTracker {
         record ? deriveAt(this.history.window(), record) : null,
       )
       const playback = !this.resumed
-      this.resumed = false
+      // The seek is for the first record shown: a frame with nothing held,
+      // as one queued before a reset, leaves it for that record.
+      if (record) this.resumed = false
       return { nowMs, time: performance.now() / 1000, playing: true, playback, record, phase, trail }
     }
     const state = this.presented
@@ -501,9 +510,10 @@ class Tracker implements MatchTracker {
     for (const paint of out.paints) {
       for (const change of this.moments.next(paint.layers)) this.emitter.emit('moment', change)
     }
+    // Asked for before drawing, so a draw that throws leaves the moments going.
+    if (out.animating) this.loop.request()
     const last = out.paints.at(-1)
     if (last) this.draw(last)
-    if (out.animating) this.loop.request()
   }
 
   /** Draw `paint` as the director made it: its frame and layers, in its view. */

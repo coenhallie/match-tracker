@@ -217,6 +217,75 @@ describe('live input', () => {
     expect(control.inputs.at(-1)?.playback).toBe(false)
   })
 
+  it('takes the first record after a reset as a seek, with a frame due at the reset', () => {
+    const { tracker } = mount()
+    for (let i = 0; i < 5; i++) tracker.push(message(i))
+    env.settle()
+    tracker.push(message(5))
+    expect(env.queued()).toBe(1)
+    tracker.reset()
+    // The frame queued before the reset runs with nothing held: it is not what the seek is for.
+    env.frame()
+    tracker.push(message(6))
+    env.frame()
+    const withRecord = control.inputs.filter((input) => input.record !== null)
+    expect(withRecord.at(-1)?.record?.frameCount).toBe(55155)
+    expect(withRecord.at(-1)?.playback).toBe(false)
+    tracker.push(message(7))
+    env.frame()
+    expect(control.inputs.at(-1)?.playback).toBe(true)
+  })
+
+  it('takes the stream starting again from an earlier t as a seek, and draws on', () => {
+    const { host, tracker } = mount()
+    for (let i = 0; i < 5; i++) {
+      tracker.push(message(i))
+      env.frame()
+    }
+    expect(control.inputs.at(-1)?.playback).toBe(true)
+    const draws = env.draws(host)
+    // The pipeline restarted with the socket open: t starts again near 0.
+    for (let i = 0; i < 3; i++) {
+      tracker.push(message(100 + i, { t: 0.04 * (i + 1) }))
+      env.frame()
+    }
+    expect(control.inputs.slice(-3).map((input) => [input.record?.frameCount, input.playback])).toEqual([
+      [55249, false],
+      [55250, true],
+      [55251, true],
+    ])
+    expect(env.draws(host)).toBe(draws + 3)
+  })
+
+  it('draws nothing zoomed in after a reset in the middle of a goal camera ease', () => {
+    const { tracker } = mount()
+    const zooms: number[] = []
+    tracker.on('zoom', ({ zoom }) => zooms.push(zoom))
+    tracker.push(message(0, { withBall: true }))
+    env.settle()
+    expect(tracker.trigger('goal')).toBe(true)
+    // Into the camera's ease in, where it moves on every frame.
+    const moving = () => {
+      const [a, b] = control.outputs.slice(-2).map((out) => out.camera)
+      return a && b && b.zoom > 1 && (a.zoom !== b.zoom || a.panX !== b.panX || a.panY !== b.panY)
+    }
+    for (let i = 0; i < 100 && !moving(); i++) env.frame()
+    expect(moving()).toBe(true)
+    expect(zooms.at(-1)).toBeGreaterThan(1)
+
+    tracker.reset()
+    // The host hears of the whole pitch at once, not at the next record.
+    expect(zooms.at(-1)).toBe(1)
+    const views = control.views.length
+    const outputs = control.outputs.length
+    tracker.push(message(1, { withBall: true }))
+    env.settle()
+    const drawn = control.outputs.slice(outputs).flatMap((out) => out.paints.map((paint) => paint.view.zoom))
+    expect(drawn.length).toBeGreaterThan(0)
+    expect(drawn.every((zoom) => zoom === 1)).toBe(true)
+    expect(control.views.slice(views).every((view) => view.zoom === 1)).toBe(true)
+  })
+
   it('stops a goal when the overlay is pressed', () => {
     const { host, tracker, log } = goalRunning()
     const draws = env.draws(host)
@@ -225,6 +294,27 @@ describe('live input', () => {
     expect(log).toEqual(['goal:start', 'goal:end'])
     expect(env.draws(host)).toBe(draws + 1)
     env.settle()
+    expect(env.queued()).toBe(0)
+  })
+
+  it('goes on with a goal when a frame of it fails to draw, and reports the error once', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { log } = goalRunning()
+    control.failRenders = 1
+    expect(() => env.frame()).not.toThrow()
+    expect(error).toHaveBeenCalledTimes(1)
+    expect(String(error.mock.calls[0]?.at(-1))).toContain('the renderer failed')
+    // The same failure again is not reported again; another is.
+    control.failRenders = 2
+    env.frame()
+    env.frame()
+    expect(error).toHaveBeenCalledTimes(1)
+    control.failRenders = 1
+    control.failMessage = 'another failure'
+    env.frame()
+    expect(error).toHaveBeenCalledTimes(2)
+    env.settle()
+    expect(log).toEqual(['goal:start', 'goal:end'])
     expect(env.queued()).toBe(0)
   })
 
@@ -281,6 +371,24 @@ describe('live input', () => {
     ])
     env.settle()
     expect(env.queued()).toBe(0)
+  })
+
+  it("runs the frame due before a moment played by hand at the last animation frame's time, not the clock's", () => {
+    const { tracker } = mount()
+    tracker.push(message(0, { withBall: true }))
+    env.settle()
+    const frameMs = env.now
+    // The clock moves on between frames, as it does in a click handler.
+    env.now += 8
+    tracker.push(message(1, { withBall: true }))
+    expect(env.queued()).toBe(1)
+    expect(tracker.trigger('throwIn')).toBe(true)
+    const flushed = control.inputs.at(-1)!
+    expect(flushed.record?.frameCount).toBe(55150)
+    expect(flushed.nowMs).toBe(frameMs)
+    // The next animation frame is a frame of its own, and the moment steps in it.
+    env.frame()
+    expect(control.inputs.at(-1)!.nowMs).toBeGreaterThan(frameMs)
   })
 
   it('plays nothing by hand before there is a record', () => {

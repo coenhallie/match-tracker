@@ -14,17 +14,32 @@ export class LiveHistory {
   private held: TrackerRecord[] = []
   private frames = new Set<number>()
   private newest: TrackerRecord | null = null
+  /** How many times the stream broke (see `add`): each started the history afresh. */
+  breaks = 0
 
   /**
    * Take a record in. Returns false, and holds nothing new, for a frameCount already held and
-   * for a record older than the newest minus HISTORY_S.
+   * for a t that is not finite.
    *
    * A record with a t older than the newest goes in at its place in time and does not become
    * the newest. One with the same t as the newest does, as the stream's latest word.
+   *
+   * A record more than HISTORY_S older than the newest cannot be a late one of this stream:
+   * the stream broke (the pipeline restarted with the socket open, and its t started again
+   * near 0; or a corrupt t far ahead made every record after it look old). Everything held is
+   * forgotten, the record starts the history afresh, and `breaks` goes up, so the widget can
+   * take what it shows next as a seek. Rejecting it instead would reject every record after
+   * it, and the picture would freeze. A jump forward needs nothing of its own: the records it
+   * leaves more than HISTORY_S behind are dropped as usual.
    */
   add(record: TrackerRecord): boolean {
+    if (!Number.isFinite(record.t)) return false
+    // Before the frameCount check: a restarted stream counts its frames again too.
+    if (this.newest && record.t < this.newest.t - HISTORY_S) {
+      this.clear()
+      this.breaks++
+    }
     if (this.frames.has(record.frameCount)) return false
-    if (this.newest && record.t < this.newest.t - HISTORY_S) return false
 
     let at = this.held.length
     while (at > 0 && this.held[at - 1]!.t > record.t) at--

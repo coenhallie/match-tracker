@@ -133,6 +133,16 @@ describe('parseRecord rejects', () => {
     expect(parseRecord(frame(1, 1, { frame_data: [{ frame_count: 1, frame_uuid: [{ timestamp: 'x' }] }] }))).toBeNull()
   })
 
+  it('a timestamp or frame_count that is not finite, as JSON reads 1e999', () => {
+    const text = (t: string, count: string) =>
+      `{"teams":[],"frame_data":[{"frame_count":${count},"frame_uuid":[{"timestamp":${t},"uuid":"a"}]}]}`
+    expect(parseRecord(text('5', '1'))?.frameCount).toBe(1)
+    expect(parseRecord(text('1e999', '1'))).toBeNull()
+    expect(parseRecord(text('-1e999', '1'))).toBeNull()
+    expect(parseRecord(text('5', '1e999'))).toBeNull()
+    expect(parseRecord({ teams: [], frame_data: [{ frame_count: NaN, frame_uuid: [{ timestamp: 5 }] }] })).toBeNull()
+  })
+
   it('non-JSON text', () => {
     expect(parseRecord('{ not json')).toBeNull()
   })

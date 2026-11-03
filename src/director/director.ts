@@ -232,7 +232,7 @@ export class Director {
   private readonly throwIn: ThrowIn
   /** The moments' requests for the next animation frame, in the order they were made. */
   private requests: FrameRequest[] = []
-  /** The requests the frame now running is calling, so a stop can cancel one not yet called. */
+  /** The requests due in the frame now running, so a stop can cancel one not yet called. */
   private due: FrameRequest[] = []
   /** The last animation frame's timestamp. */
   private frameMs = -Infinity
@@ -289,9 +289,20 @@ export class Director {
   update(input: DirectorInput, view: DirectorView): DirectorOutput {
     this.paints = []
     this.takeView(view)
-    const due = this.beginFrame(input.nowMs)
-    this.flush(input)
-    this.runFrame(due, input.nowMs)
+    // Due from here, before the flush: a moment the flush stops has its
+    // request for this frame cancelled, as cancelAnimationFrame cancels a
+    // callback of the frame running that has not been called yet.
+    this.due = this.beginFrame(input.nowMs)
+    try {
+      this.flush(input)
+      this.runFrame(input.nowMs)
+    } finally {
+      // A frame an exception cut short: the requests it had not called yet,
+      // and the one it was calling, go on to the next frame, so no moment is
+      // left running with nothing to step it.
+      this.requests = [...this.due.filter((request) => request.live), ...this.requests]
+      this.due = []
+    }
     return this.output()
   }
 
@@ -538,21 +549,26 @@ export class Director {
     return due
   }
 
-  /** Each moment's animation frame, in the order requested, the view flushed after each. */
-  private runFrame(due: FrameRequest[], nowMs: number): void {
-    this.due = due
-    for (const request of due) {
-      if (!request.live) continue
+  /** Each moment's animation frame due, in the order requested, the view flushed after each. */
+  private runFrame(nowMs: number): void {
+    // Each request leaves `due` once called, and not before: see `update`.
+    while (this.due.length > 0) {
+      const request = this.due[0]!
+      if (!request.live) {
+        this.due.shift()
+        continue
+      }
       const { moment } = request
       if (moment.step(nowMs) === 'paint') {
         this.paint()
+        this.due.shift()
         this.request(moment)
       } else {
+        this.due.shift()
         this.stopMoment(moment)
       }
       this.flushView()
     }
-    this.due = []
   }
 
   private request(moment: Moment): void {
@@ -657,8 +673,13 @@ export class Director {
     this.paints.push({ frame: record.frame, layers, view: { ...this.rendered } })
   }
 
-  private output(): DirectorOutput {
+  /** True while any moment or fade needs another tick: `animating` of the next output. */
+  get animating(): boolean {
     const moments = [this.goal, this.attack, this.freeKick, this.throwIn]
+    return moments.some((m) => m.active) || this.rings.fading()
+  }
+
+  private output(): DirectorOutput {
     const camera = this.movedTo
     this.movedTo = null
     return {
@@ -666,7 +687,7 @@ export class Director {
       paint: this.paints.length > 0,
       paints: this.paints,
       camera,
-      animating: moments.some((m) => m.active) || this.rings.fading(),
+      animating: this.animating,
     }
   }
 }

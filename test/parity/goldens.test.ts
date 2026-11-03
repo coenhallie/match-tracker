@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { brotliDecompressSync } from 'node:zlib'
 import { afterEach, describe, expect, it } from 'vitest'
-import { deriveAt } from '../../src/analysis/derive'
+import { deriveAt, windowAt } from '../../src/analysis/derive'
 import type { TeamId } from '../../src/analysis/teamPhase'
 import { takesCamera, type ViewGesture } from '../../src/director/camera'
 import {
@@ -121,6 +121,21 @@ function groups(steps: GoldenStep[]): Group[] {
 }
 
 const sameCamera = (a: DirectorCamera, b: DirectorCamera) => a.zoom === b.zoom && a.panX === b.panX && a.panY === b.panY
+
+/**
+ * The live history's window rule against the reference's: at every step on a
+ * record, `windowAt` over all the scenario's records gives the lookback the
+ * reference's replay handed its phase and trail, record for record and in
+ * its order, ties included.
+ */
+function checkLookbacks(golden: GoldenFile): void {
+  const index = new Map(golden.records.map((record, i) => [record, i]))
+  golden.steps.forEach((step, i) => {
+    if (step.recordIndex === null) return
+    const window = windowAt(golden.records, golden.records[step.recordIndex]!).map((record) => index.get(record))
+    expect(window, `step ${i}: lookback of record ${step.recordIndex}`).toEqual(step.lookback)
+  })
+}
 
 function replay(golden: GoldenFile) {
   const { ctx, ops } = recordingCtx()
@@ -254,6 +269,7 @@ describe('golden recordings of the reference replay', () => {
       offscreen = stubOffscreenCanvas()
       const golden = readGolden(name)
       expect(golden.scenario).toBe(name)
+      checkLookbacks(golden)
       replay(golden)
     },
     120_000,

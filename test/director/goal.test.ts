@@ -1,7 +1,8 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { GOAL_SEQUENCE_MS, goalCamera, planGoal } from '../../src/analysis/goalSequence'
 import { blendCamera, takesCamera } from '../../src/director/camera'
 import { Director, type DirectorInput, type DirectorView } from '../../src/director/director'
+import { Goal } from '../../src/director/goal'
 import { DEFAULT_REPLAY_LAYERS } from '../../src/model/replayLayers'
 import type { Frame } from '../../src/model/types'
 import { viewFromCamera } from '../../src/render/viewTransform'
@@ -352,5 +353,48 @@ describe('camera', () => {
     expect(takesCamera('pointerdown', 1.15)).toBe(true)
     expect(takesCamera('pointermove', 3)).toBe(false)
     expect(takesCamera('pointerup', 3)).toBe(false)
+  })
+})
+
+describe('a moment stopped and started again in one animation frame', () => {
+  it('steps once a frame from then on, not twice', () => {
+    const step = vi.spyOn(Goal.prototype, 'step')
+    const replay = playing()
+    tick(replay, goalFrame(['other']))
+    // A goal played by hand, running: its request is due at the next frame.
+    expect(replay.trigger('goal')).not.toBeNull()
+    replay.animate(100)
+    expect(lastOverlay(replay)).toBeDefined()
+    // A new animation frame brings a pause and a record with a GOAL label: the
+    // pause stops the goal, cancelling the request due in this very frame, and
+    // the label starts it again.
+    replay.frame({ playing: false, frame: goalFrame(['GOAL']) })
+    expect(lastOverlay(replay)).toBeDefined()
+    step.mockClear()
+    const frames = replay.animate(300).length
+    expect(frames).toBeGreaterThan(10)
+    expect(step).toHaveBeenCalledTimes(frames)
+  })
+})
+
+describe('an exception in a frame', () => {
+  it('leaves the moments due in it to the next frame, so a goal goes on', () => {
+    const replay = playing()
+    tick(replay, goalFrame(['GOAL']))
+    replay.animate(200)
+    expect(lastOverlay(replay)).toBeDefined()
+    const real = Goal.prototype.step
+    const step = vi.spyOn(Goal.prototype, 'step').mockImplementationOnce(() => {
+      throw new Error('a step that fails once')
+    })
+    expect(() => replay.animate(10)).toThrow('a step that fails once')
+    step.mockImplementation(real)
+    step.mockClear()
+    const outputs = replay.animate(100)
+    expect(step).toHaveBeenCalledTimes(outputs.length)
+    expect(outputs.at(-1)?.animating).toBe(true)
+    replay.animate(GOAL_SEQUENCE_MS)
+    expect(lastOverlay(replay)).toBeUndefined()
+    expect(replay.outputs.at(-1)?.animating).toBe(false)
   })
 })

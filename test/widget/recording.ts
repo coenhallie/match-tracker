@@ -28,6 +28,9 @@ export const control = {
   stopAll: 0,
   /** Every view a renderer was given, in order. */
   views: [] as DirectorView[],
+  /** How many of the next renderFrame calls throw, and with what message. */
+  failRenders: 0,
+  failMessage: 'the renderer failed',
   reset() {
     control.options = []
     control.inputs = []
@@ -35,6 +38,8 @@ export const control = {
     control.releases = 0
     control.stopAll = 0
     control.views = []
+    control.failRenders = 0
+    control.failMessage = 'the renderer failed'
   },
 }
 
@@ -65,7 +70,7 @@ export function recordingDirector(Real: typeof Director): typeof Director {
   return Recording as unknown as typeof Director
 }
 
-/** createRenderer, making the real renderer, and noting every view it is given. */
+/** createRenderer, making the real renderer, noting every view it is given, and failing when told to. */
 export function recordingRenderer(real: typeof createRenderer): typeof createRenderer {
   return (canvas, theme) => {
     const renderer = real(canvas, theme)
@@ -73,6 +78,14 @@ export function recordingRenderer(real: typeof createRenderer): typeof createRen
     renderer.setView = (view) => {
       control.views.push({ ...view })
       setView(view)
+    }
+    const renderFrame = renderer.renderFrame
+    renderer.renderFrame = (...args) => {
+      if (control.failRenders > 0) {
+        control.failRenders--
+        throw new Error(control.failMessage)
+      }
+      renderFrame(...args)
     }
     return renderer
   }
