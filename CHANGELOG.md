@@ -6,6 +6,42 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-11-03
+
+Host controls over the pitch are left alone by zoom and pan too, and an
+opt-in console banner shows the version. The pitch, the moments and the HUD
+are drawn as in 0.1.2, and the goldens and snapshots are unchanged.
+
+### What you see
+
+- **Play works while zoomed in**, on pages that put their player controls
+  over the pitch and mark them `data-match-tracker-keep`. Before, zoomed in,
+  a press on such a control started a pan of the pitch and its click never
+  reached the button, and a double-click on one (Next frame, twice) reset the
+  zoom. Now a press there starts no pan and a double-click there leaves the
+  zoom. A ctrl or ⌘ + wheel or a pinch over a control still zooms the pitch,
+  and never the page, as before.
+
+### For pages that embed it
+
+- **`data-match-tracker-keep`** now also keeps zoom and pan's hands off the
+  element: no pan and no pointer capture on a press, no zoom reset on a
+  double-click. A page that stopped its controls' pointer events from
+  reaching the tracker to get this can drop that workaround.
+- **`logMatchTrackerBanner()`**, from the main entry and from `/vue`, prints
+  a small pitch in box-drawing characters with `MATCH TRACKER · v<version>`
+  under it to the browser's console, in the widget's colours. It is opt-in:
+  the widget never prints it by itself. It prints once per page however many
+  times it is called, and does nothing on the server or without a console.
+  `matchTrackerBanner()` returns the same art as plain text. The README's
+  Console banner section shows how to turn it on.
+
+### Size
+
+- The widget is 34.3 kB gzipped (budget 60 kB). The Vue component adds 1.4 kB,
+  and the fonts are still 81.7 kB.
+- Nothing in the draw path changed, so the drawing times of 0.1.0 stand.
+
 ## [0.1.2] - 2026-11-02
 
 Three fixes for replay pages, which video-annotation needs before it ships.
