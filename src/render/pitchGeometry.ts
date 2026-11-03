@@ -30,6 +30,7 @@
 // ---------------------------------------------------------------------------
 
 import type { PitchDimensions, Transform2D } from '../model/types.js'
+import { PITCH_GRASS_MIDDLE } from '../palette.js'
 import { FRAME_W, FRAME_H, PITCH_MARGIN, LINE_COLOR } from './constants.js'
 
 // ── Default pitch metric values (FIFA standard) ────────────────────────────
@@ -120,8 +121,6 @@ export function worldToPx(x: number, y: number, t: Transform2D): [number, number
 
 /** Grass colour at the left and right edges of the frame. */
 export const PITCH_GRASS_EDGE = '#166950'
-/** Grass colour down the middle of the frame. */
-export const PITCH_GRASS_MIDDLE = '#198061'
 
 /**
  * Opacity the markings are drawn at, over the grass. Applied to the cache as a

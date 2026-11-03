@@ -2,6 +2,8 @@
  * The opt-in console banner: a pitch in box-drawing characters with the
  * version under it, printed once per page, and only when a host asks.
  */
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
 import pkg from '../package.json'
 
@@ -105,5 +107,50 @@ describe('logMatchTrackerBanner', () => {
     const vue = await import('../src/vue')
     expect(vue.logMatchTrackerBanner).toBe(main.logMatchTrackerBanner)
     expect(vue.matchTrackerBanner).toBe(main.matchTrackerBanner)
+  })
+})
+
+describe('the /banner entry', () => {
+  it('prints once, however many times it is called', async () => {
+    vi.resetModules()
+    const entry = await import('../src/banner')
+    entry.logMatchTrackerBanner()
+    entry.logMatchTrackerBanner()
+    expect(log).toHaveBeenCalledOnce()
+  })
+
+  it('prints once on a page that loads the banner entry and the main entry', async () => {
+    vi.resetModules()
+    const entry = await import('../src/banner')
+    const main = await import('../src/index')
+    entry.logMatchTrackerBanner()
+    main.logMatchTrackerBanner()
+    entry.logMatchTrackerBanner()
+    expect(log).toHaveBeenCalledOnce()
+  })
+
+  it('prints once on a page that loads the main entry, /vue and the banner entry, in any order', async () => {
+    vi.resetModules()
+    const vue = await import('../src/vue')
+    const entry = await import('../src/banner')
+    const main = await import('../src/index')
+    vue.logMatchTrackerBanner()
+    main.logMatchTrackerBanner()
+    entry.logMatchTrackerBanner()
+    expect(log).toHaveBeenCalledOnce()
+  })
+
+  it('is the banner the main entry exports, so both read one guard', async () => {
+    vi.resetModules()
+    const entry = await import('../src/banner')
+    const main = await import('../src/index')
+    expect(main.logMatchTrackerBanner).toBe(entry.logMatchTrackerBanner)
+    expect(main.matchTrackerBanner).toBe(entry.matchTrackerBanner)
+  })
+
+  it('imports only the version and the palette', async () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/banner.ts'), 'utf8')
+    const imports = [...source.matchAll(/^import .* from '(.+)'$/gm)].map((match) => match[1])
+    expect(imports.sort()).toEqual(['./palette.js', './version.js'])
   })
 })

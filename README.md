@@ -196,17 +196,27 @@ socket.addEventListener('message', (event) => tracker.value?.push(event.data))
 
 The widget never prints a banner on its own. To show the widget's version in
 the browser's developer console as a small pitch, call
-`logMatchTrackerBanner()` once from your app, for example where you mount the
-tracker:
+`logMatchTrackerBanner()` once from your app's entry, and import it from
+`@coenhallie/match-tracker/banner`:
 
 ```ts
-import { logMatchTrackerBanner } from '@coenhallie/match-tracker' // or '@coenhallie/match-tracker/vue'
+import { logMatchTrackerBanner } from '@coenhallie/match-tracker/banner'
 
 logMatchTrackerBanner()
 ```
 
-- It prints once per page, however many times it is called, so calling it
-  from every component that mounts a tracker is fine.
+- **Import it from `/banner` at your entry, not from the main entry.** The main
+  entry is the whole widget in one module, so importing even the banner from it
+  pulls the whole widget into the chunk that imports it. An app entry runs on
+  every page load, and if your widget is otherwise loaded lazily, on one view
+  only, that puts it in your entry chunk and on every page. `/banner` is about
+  1 kB gzipped and imports nothing, so your entry stays small and the widget
+  still loads only where you mount it.
+- The main entry and `/vue` export the same two functions, for code that already
+  imports them. They are the same functions as `/banner`'s, with one guard
+  between them.
+- It prints once per page, however many times it is called, from whichever
+  entries, so calling it from every component that mounts a tracker is fine.
 - On the server (SSR), or without a console, it does nothing.
 - `matchTrackerBanner()` returns the same art as plain text, without colours.
 
@@ -235,7 +245,7 @@ destroyed on can have a new one.
 
 Also exported:
 - `MATCH_TRACKER_VERSION`;
-- `logMatchTrackerBanner()` and `matchTrackerBanner()`, the opt-in console banner (see Console banner), also from `/vue`;
+- `logMatchTrackerBanner()` and `matchTrackerBanner()`, the opt-in console banner (see Console banner), also from `/vue` and, alone and tiny, from `/banner`;
 - `parseRecord(message): TrackerRecord | null`;
 - `REPLAY_LOOKBACK_S`, the seconds of records a replay host passes as `lookback`;
 - `DEFAULT_PERSON_COLORS`, the default `fill`, `outline` and `text` per role, frozen;
@@ -426,8 +436,9 @@ The other newer APIs the code calls are older than these: `Array.prototype.at`,
 
 ## Size and performance
 
-`npm run size` prints the gzipped size of `dist/index.js` and `dist/vue.js`, and
-the size of the fonts. It fails when `dist/index.js` is over 60 kB gzipped.
+`npm run size` prints the gzipped size of `dist/index.js`, `dist/vue.js` and
+`dist/banner.js`, and the size of the fonts. It fails when `dist/index.js` is over
+60 kB gzipped, or `dist/banner.js` over 2 kB.
 The measured numbers for each release are in [CHANGELOG.md](CHANGELOG.md). The targets:
 - one draw in under 4 ms at 1280×720 CSS px at 2x;
 - no dropped frames during a goal on a mid-range phone.

@@ -31,7 +31,7 @@ npm test           # vitest
 npm run typecheck
 npm run lint       # oxlint --deny-warnings
 npm run build      # dist/, then scripts/check-dist.mjs
-npm run size       # fails over 60 kB gzipped for dist/index.js
+npm run size       # fails over 60 kB gzipped for dist/index.js, or 2 kB for dist/banner.js
 ```
 
 ## Style
@@ -60,7 +60,9 @@ The README's Embedding section is the full list. Never regress these:
 - Document listeners only as the README lists them (`visibilitychange`, and
   `pointerdown` in capture while the layers menu is open), all removed on `destroy()`.
 - Fonts and icons are bundled; both font licences ship beside the fonts.
-- `dist` is two files, `index.js` and `vue.js`; `index.js` never imports Vue.
+- `dist` is three files, `index.js`, `vue.js` and `banner.js`; `index.js` never imports Vue.
+  `banner.js` (`/banner`) imports nothing and holds no widget code, and `index.js` imports
+  the banner from it, so its once-per-page guard is one variable. scripts/check-dist.mjs checks it.
 
 ## Commits
 

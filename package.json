@@ -21,6 +21,10 @@
       "types": "./dist/vue.d.ts",
       "import": "./dist/vue.js"
     },
+    "./banner": {
+      "types": "./dist/banner.d.ts",
+      "import": "./dist/banner.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [

@@ -7,6 +7,8 @@
 // repository renders 2D only and has none of the GLB/HDR assets they name.
 // ---------------------------------------------------------------------------
 
+import { AWAY_FILL, HOME_FILL } from '../palette.js'
+
 /** Internal canvas width in pixels. */
 export const FRAME_W = 1280
 /** Internal canvas height in pixels. */
@@ -41,8 +43,8 @@ export interface PersonColors {
  * green. White is kept for NEARBY_OUTLINE.
  */
 export const PERSON_COLORS: Record<'home' | 'away' | 'goalkeeper' | 'official' | 'unknown', PersonColors> = {
-  home: { fill: '#e51a1a', outline: '#7f1d1d', text: '#ffffff' },
-  away: { fill: '#184fe7', outline: '#1e3a8a', text: '#ffffff' },
+  home: { fill: HOME_FILL, outline: '#7f1d1d', text: '#ffffff' },
+  away: { fill: AWAY_FILL, outline: '#1e3a8a', text: '#ffffff' },
   goalkeeper: { fill: '#facc15', outline: '#000000', text: '#000000' },
   official: { fill: '#000000', outline: '#000000', text: '#ffffff' },
   // A team id the export does not define has no home or away to be coloured as.

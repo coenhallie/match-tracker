@@ -105,8 +105,10 @@ export default defineConfig({
     // The oldest browsers are set by the platform APIs (README.md, "Browsers").
     target: 'es2022',
     lib: {
-      // The framework-free widget, and the Vue component over it, which imports it from ./index.js.
-      entry: { index: 'src/index.ts', vue: 'src/vue.ts' },
+      // The framework-free widget, the Vue component over it, which imports it from ./index.js,
+      // and the console banner, which both import from ./banner.js and which a host can
+      // import alone, without the widget.
+      entry: { index: 'src/index.ts', vue: 'src/vue.ts', banner: 'src/banner.ts' },
       formats: ['es'],
     },
     rolldownOptions: {

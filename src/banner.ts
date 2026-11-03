@@ -6,14 +6,20 @@
  * banner calls logMatchTrackerBanner, and it prints once per page however
  * many times it is called.
  *
+ * This is also an entry of its own, `@coenhallie/match-tracker/banner`, so a
+ * host can call it from its app entry without loading the widget. Keep its
+ * imports to the version and the palette: scripts/check-dist.mjs fails the
+ * build if dist/banner.js imports anything or holds renderer code. The main
+ * entry and /vue import this very module, so the once-per-page guard below
+ * is one variable however a page loads them.
+ *
  * Every character is one column wide: box drawing, ASCII, `•` and `·`, and
  * no emoji or ambiguous-width glyph such as `●`. Each is in Menlo, the
  * console font of Chrome, Safari and Firefox on macOS, at the same advance.
  * The lines are drawn in the regular weight, since Menlo Bold has no
  * box-drawing glyphs and a fallback font would put them out of line.
  */
-import { PERSON_COLORS } from './render/constants.js'
-import { PITCH_GRASS_MIDDLE } from './render/pitchGeometry.js'
+import { AWAY_FILL, HOME_FILL, PITCH_GRASS_MIDDLE } from './palette.js'
 import { MATCH_TRACKER_VERSION } from './version.js'
 
 /**
@@ -43,8 +49,8 @@ type Ink = 'line' | 'home' | 'away' | 'ball' | 'title'
  */
 const STYLES: Record<Ink, string> = {
   line: `color:${PITCH_GRASS_MIDDLE};font-weight:normal`,
-  home: `color:${PERSON_COLORS.home.fill};font-weight:bold`,
-  away: `color:${PERSON_COLORS.away.fill};font-weight:bold`,
+  home: `color:${HOME_FILL};font-weight:bold`,
+  away: `color:${AWAY_FILL};font-weight:bold`,
   ball: 'font-weight:bold',
   title: 'font-weight:bold',
 }

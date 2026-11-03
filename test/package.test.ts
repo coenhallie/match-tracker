@@ -14,6 +14,7 @@ describe('package.json', () => {
   it('ships the changelog with dist, and lets tools read package.json through exports', () => {
     expect(pkg.files).toEqual(['dist', 'CHANGELOG.md'])
     expect(pkg.exports).toMatchObject({ './package.json': './package.json' })
-    expect(Object.keys(pkg.exports)).toEqual(['.', './vue', './package.json'])
+    expect(pkg.exports['./banner']).toEqual({ types: './dist/banner.d.ts', import: './dist/banner.js' })
+    expect(Object.keys(pkg.exports)).toEqual(['.', './vue', './banner', './package.json'])
   })
 })
