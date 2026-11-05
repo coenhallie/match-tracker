@@ -6,6 +6,11 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-05
+
+The bottom-left action text lists only human labels. Everything else is drawn
+as in 0.2.1.
+
 ### What you see
 
 - **The bottom-left action text lists only human labels.** It follows the
