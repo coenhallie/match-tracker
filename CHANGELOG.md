@@ -6,8 +6,16 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-05
+
 The view zooms in as the ball nears a goal, a goal no longer zooms on its
 own, and the goal's banner is new. Everything else is drawn as in 0.3.0.
+
+### API
+
+- `ReplayLayers` has a new key, `goalZoom`. A page that builds a whole
+  `ReplayLayers` itself now has to give it; `layers` and `setOptions` take
+  a `Partial<ReplayLayers>`, as before, and need nothing new.
 
 ### What you see
 
