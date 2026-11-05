@@ -435,8 +435,17 @@ export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTh
       ctx.globalAlpha = 1
     }
 
+    // The throw-in's band and the corner's card are laid out for the whole
+    // pitch. In a view zoomed or panned, by the user or the zoom near goal,
+    // they stay on the frame where the whole pitch has them, as the goal's
+    // card does, rather than going partly out of view. In the whole pitch the
+    // view is the frame's own, and they are drawn as they always were.
+    const cards = layers.throwIn || layers.corner
+    const moved = matrix.some((v, i) => v !== [sx, 0, 0, sy, 0, 0][i])
+    if (cards && moved) ctx.setTransform(sx, 0, 0, sy, 0, 0)
     if (layers.throwIn) drawThrowInIndicator(ctx as CanvasRenderingContext2D, pd, transform2d, layers.throwIn, theme)
     if (layers.corner) drawCornerCard(ctx as CanvasRenderingContext2D, transform2d, layers.corner, theme)
+    if (cards && moved) ctx.setTransform(...matrix)
     if (layers.goalBanner) {
       // Fixed to the frame: the goal sequence zooms the view in on the net
       // behind it, and at that scale the card would cover the screen.

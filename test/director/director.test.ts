@@ -214,7 +214,8 @@ describe('Director', () => {
     // (:562-581): a record arriving at an unchanged time keeps the flag it had.
     it('is read only when the clock moves', () => {
       const director = new Director({
-        layers: DEFAULT_REPLAY_LAYERS,
+        // The zoom near goal off, as in the harness: the reference's camera.
+        layers: { ...DEFAULT_REPLAY_LAYERS, goalZoom: false },
         reducedMotion: () => false,
         teamName: () => '',
         teamColor: () => '',

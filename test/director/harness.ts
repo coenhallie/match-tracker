@@ -63,8 +63,10 @@ export class FakeReplay {
 
   constructor(layers: Partial<ReplayLayers> = {}, options: Partial<DirectorOptions> = {}) {
     // The attack over a player loss off, unless a test asks for it: every frame these tests make has fewer
-    // than 18 players, which would be a loss throughout (test/director/playerLoss.test.ts has it on).
-    this.layers = { ...DEFAULT_REPLAY_LAYERS, playerLoss: false, ...layers }
+    // than 18 players, which would be a loss throughout (test/director/playerLoss.test.ts has it on). And
+    // the zoom near goal off, so the cases ported from the reference run the reference's camera
+    // (test/director/goalZoom.test.ts has it on).
+    this.layers = { ...DEFAULT_REPLAY_LAYERS, playerLoss: false, goalZoom: false, ...layers }
     this.director = new Director({
       layers: this.layers,
       reducedMotion: () => this.reducedMotion,
@@ -119,6 +121,11 @@ export class FakeReplay {
       outputs.push(this.push(this.director.update(this.input(), VIEW)))
     }
     return outputs
+  }
+
+  /** Time passing with no animation frame, as when nothing animates and the widget's loop has stopped. */
+  idle(ms: number): void {
+    this.nowMs += ms
   }
 
   /** Play `moment` by hand, as the demo controls do. */

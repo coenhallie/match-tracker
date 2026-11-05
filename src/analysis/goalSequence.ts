@@ -198,26 +198,25 @@ const CAMERA_OUT_MS = 600
 const easeInOutCubic = (u: number) => (u < 0.5 ? 4 * u ** 3 : 1 - (-2 * u + 2) ** 3 / 2)
 
 /**
- * The view that frames a goal: from where the shot starts to the back of the
- * net, in frame units (1280x720) like the surface's own zoom and pan. Never
- * centred so near an edge that it would show past the frame.
+ * The view that frames the pitch box spanning `xs` and `ys` (pitch metres),
+ * with `margin` metres kept around it, in frame units (1280x720) like the
+ * surface's own zoom and pan. The zoom is kept within `minZoom` and
+ * `maxZoom`, and the view is never centred so near an edge that it would show
+ * past the frame.
  */
-export function goalCamera(
-  plan: GoalPlan,
+export function framePitchBox(
+  xs: readonly number[],
+  ys: readonly number[],
+  margin: number,
+  minZoom: number,
+  maxZoom: number,
   pd: Partial<PitchDimensions> | undefined,
 ): { zoom: number; x: number; y: number } {
   const t = build2DTransform(pd)
-  const m = CAMERA_MARGIN_METRES
-  const xs = [plan.start.x, plan.side * (plan.halfLength + NET_DEPTH_METRES)]
-  const ys = [plan.start.y, -plan.goalWidth / 2, plan.goalWidth / 2]
-  const [ax, ay] = worldToPx(Math.min(...xs) - m, Math.min(...ys) - m, t)
-  const [bx, by] = worldToPx(Math.max(...xs) + m, Math.max(...ys) + m, t)
+  const [ax, ay] = worldToPx(Math.min(...xs) - margin, Math.min(...ys) - margin, t)
+  const [bx, by] = worldToPx(Math.max(...xs) + margin, Math.max(...ys) + margin, t)
 
-  const zoom = clamp(
-    Math.min(FRAME_W / Math.abs(bx - ax), FRAME_H / Math.abs(by - ay)),
-    CAMERA_MIN_ZOOM,
-    CAMERA_MAX_ZOOM,
-  )
+  const zoom = clamp(Math.min(FRAME_W / Math.abs(bx - ax), FRAME_H / Math.abs(by - ay)), minZoom, maxZoom)
   const halfW = FRAME_W / (2 * zoom)
   const halfH = FRAME_H / (2 * zoom)
   return {
@@ -225,6 +224,21 @@ export function goalCamera(
     x: clamp((ax + bx) / 2, halfW, FRAME_W - halfW),
     y: clamp((ay + by) / 2, halfH, FRAME_H - halfH),
   }
+}
+
+/** The view that frames a goal: from where the shot starts to the back of the net. */
+export function goalCamera(
+  plan: GoalPlan,
+  pd: Partial<PitchDimensions> | undefined,
+): { zoom: number; x: number; y: number } {
+  return framePitchBox(
+    [plan.start.x, plan.side * (plan.halfLength + NET_DEPTH_METRES)],
+    [plan.start.y, -plan.goalWidth / 2, plan.goalWidth / 2],
+    CAMERA_MARGIN_METRES,
+    CAMERA_MIN_ZOOM,
+    CAMERA_MAX_ZOOM,
+    pd,
+  )
 }
 
 /**

@@ -17,7 +17,8 @@ const records: TrackerRecord[] = Array.from({ length: 20 }, (_, i) => parseRecor
 
 function mount() {
   const host = makeHost()
-  const tracker = createMatchTracker(host, { mode: 'replay', layersStorageKey: null })
+  // The zoom near goal off: these follow the reference's goal camera (test/widget/goalZoom.test.ts has it on).
+  const tracker = createMatchTracker(host, { mode: 'replay', layersStorageKey: null, layers: { goalZoom: false } })
   mounted.push(tracker)
   env.resize(host, 1280, 760)
   const log: string[] = []

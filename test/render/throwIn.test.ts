@@ -134,4 +134,33 @@ describe('throw-in in the renderer', () => {
     const bandAt = ops.findIndex((o) => o.op === 'fillRect' && o.fillStyle.includes('12, 63, 47'))
     expect(bandAt).toBeGreaterThan(ops.findLastIndex(isPlayer))
   })
+
+  // Laid out for the whole pitch: zoomed or panned, by the user or the zoom near goal, the throw-in's band and
+  // the corner's card stay on the frame where the whole pitch has them, whole, as the goal's card does.
+  it.each(['throwIn', 'corner'] as const)('draws the %s card on the frame in a zoomed and panned view', (moment) => {
+    const layers =
+      moment === 'throwIn'
+        ? { throwIn: { intensity: 1, slide: 1, side: 1 as const, inPlace: true } }
+        : { corner: { intensity: 1, playersFade: 1, ballFade: 1, corner: { x: 1 as const, y: 1 as const }, sections: [1, 1, 1] } }
+    const render = (zoomed: boolean) => {
+      const { canvas, ops } = fakeCanvas()
+      const renderer = createRenderer(canvas)
+      if (zoomed) renderer.setView({ zoom: 2, panX: -300, panY: 120, renderedWidth: 1280 })
+      renderer.renderFrame(frame, layers as never)
+      return ops
+    }
+    const isCard = (o: Op) => o.op === 'fillText' && /THROW|CORNER/.test(String(o.args[0]))
+    const whole = render(false)
+    const ops = render(true)
+    const at = ops.findIndex(isCard)
+    expect(at).toBeGreaterThan(-1)
+    const transforms = ops.slice(0, at).filter((o) => o.op === 'setTransform')
+    expect(transforms.at(-1)!.args).toEqual([1, 0, 0, 1, 0, 0])
+    // Drawn as in the whole pitch, call for call.
+    const card = (list: Op[]) => list.filter(isCard).map((o) => o.args)
+    expect(card(ops)).toEqual(card(whole))
+    // And the view is put back after it, for what is drawn over it.
+    const after = ops.slice(at).find((o) => o.op === 'setTransform')
+    expect(after!.args).toEqual([2, 0, 0, 2, -940, -240])
+  })
 })

@@ -109,15 +109,20 @@ function readGolden(name: string): GoldenFile {
 }
 
 /**
- * The deliberate difference from the reference in what these scenarios draw
- * (CHANGELOG 0.1.5): the widget's throw-in fades in where it stands, where the
- * reference's slides in from the ball's half. Drawn with the reference's
- * throw-in, everything else in a paint is still the reference's call for
- * call; the widget's own is covered in test/render/throwIn.test.ts.
+ * The deliberate differences from the reference in what these scenarios draw.
+ * The widget's throw-in fades in where it stands, where the reference's
+ * slides in from the ball's half (CHANGELOG 0.1.5). And the widget's goal
+ * banner is "GOAL" alone, sliding in from the side away from the goal, where
+ * the reference's is a card with an icon, centred, fading in (CHANGELOG, "The
+ * goal's banner"). Drawn with the reference's throw-in and goal card,
+ * everything else in a paint is still the reference's call for call; the
+ * widget's own are covered in test/render/throwIn.test.ts and
+ * test/render/goalBanner.test.ts.
  */
 const asReference = (layers: FrameLayers): FrameLayers => ({
   ...layers,
   ...(layers.throwIn && { throwIn: { ...layers.throwIn, inPlace: false } }),
+  ...(layers.goalBanner && { goalBanner: { intensity: layers.goalBanner.intensity } }),
 })
 
 /** The renderer's calls as the recorder saved them: through JSON, so NaN reads as null, the pitch cache as its size. */
@@ -167,7 +172,9 @@ function replay(golden: GoldenFile) {
   // The parity theme: the reference's colours and English, its fonts, and no icons, as jsdom loads none.
   const renderer = createRenderer(canvas, { ...DEFAULT_THEME, icons: { goal: null, corner: null } })
   const director = new Director({
-    layers: golden.layers,
+    // The zoom near goal is the widget's own (CHANGELOG, "Zoom near goal"): the reference has none, so it is
+    // off here, and the goal's camera is the reference's.
+    layers: { ...golden.layers, goalZoom: false },
     reducedMotion: () => golden.reducedMotion,
     teamName: (team) => golden.teamNames[team],
     teamColor: (team) => (team === 0 ? PERSON_COLORS.home : PERSON_COLORS.away).fill,

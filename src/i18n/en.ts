@@ -38,6 +38,7 @@ export const en: TrackerText = {
   playerLossCover: "Player loss: {players} tracked, covered by {team}'s attack",
   layers: {
     goal: { label: 'Goal animation', hint: 'A shot into the net on a goal label' },
+    goalZoom: { label: 'Zoom near goal', hint: 'The view eases in as the ball nears a goal, and into a goal' },
     attack: { label: 'Attack', hint: 'Worked out from possession: shade and team name' },
     playerLoss: { label: 'Attack over lost players', hint: 'An attack while fewer than 18 players are tracked' },
     corner: { label: 'Corner', hint: 'A banner and the corner lit up on a corner label, held while play is stopped' },

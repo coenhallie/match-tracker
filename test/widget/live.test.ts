@@ -258,7 +258,8 @@ describe('live input', () => {
   })
 
   it('draws nothing zoomed in after a reset in the middle of a goal camera ease', () => {
-    const { tracker } = mount()
+    // The goal's camera alone, which hands the whole pitch back: the zoom near goal would keep the view in.
+    const { tracker } = mount({ layers: { goalZoom: false } })
     const zooms: number[] = []
     tracker.on('zoom', ({ zoom }) => zooms.push(zoom))
     tracker.push(message(0, { withBall: true }))
@@ -327,7 +328,8 @@ describe('live input', () => {
   })
 
   it("draws a goal in its camera's view, zoomed in, and hands the whole pitch back", () => {
-    const { tracker } = mount()
+    // The goal's camera alone, which hands the whole pitch back: the zoom near goal would keep the view in.
+    const { tracker } = mount({ layers: { goalZoom: false } })
     const zooms: number[] = []
     tracker.on('zoom', ({ zoom }) => zooms.push(zoom))
     tracker.push(message(0, { withBall: true }))

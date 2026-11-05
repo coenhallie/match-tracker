@@ -283,7 +283,8 @@ describe('goal sequence', () => {
       replay.reducedMotion = true
       tick(replay, goalFrame(['GOAL']))
       const [first, second] = replay.animate(33)
-      expect(first!.layers?.goalBanner).toEqual({ intensity: 1 })
+      // In place at once: the widget's banner slides in, but not with reduced motion (the reference's card has no side).
+      expect(first!.layers?.goalBanner).toEqual({ intensity: 1, side: 1, slide: 1 })
       expect(first!.camera).toBeNull()
       expect(second!.paints).toHaveLength(1)
       const end = goalFrame(['GOAL'])
@@ -295,7 +296,8 @@ describe('goal sequence', () => {
 
     it('takes a view passed with an update as the caller’s own change only when it is a new one', () => {
       const director = new Director({
-        layers: DEFAULT_REPLAY_LAYERS,
+        // The zoom near goal off, as in the harness: the reference's camera.
+        layers: { ...DEFAULT_REPLAY_LAYERS, goalZoom: false },
         reducedMotion: () => false,
         teamName: () => 'Red',
         teamColor: () => '#e51a1a',

@@ -79,6 +79,28 @@
  *    output. The director has already drawn in it; a caller that keeps its
  *    own zoom and pan takes it as theirs.
  *
+ * ## The zoom near goal
+ *
+ * The widget's own, with its layer (`goalZoom`): video-annotation has none,
+ * so with the layer off the director is the reference, and the goldens run
+ * it so. With it on, as the ball nears a goal the view eases in on it
+ * (goalZoom.ts), and a goal moves no camera of its own (goal.ts): the view
+ * follows the goal's ball into the net, as it follows the tracked one.
+ *
+ * It moves the view only while the view is not the user's. The user takes it
+ * by moving it: a view of theirs that is zoomed in, or a gesture that takes
+ * the camera (`releaseCamera`) while zoomed in. Back at the whole pitch (a
+ * double click, or zoomed all the way out) the view is the zoom's again. A
+ * view that comes in with the same zoom and pan, from a resize, changes
+ * nothing. It leaves the view to a goal's camera (the reference's, which a
+ * goal has only with the layer off as it started), and does nothing with
+ * reduced motion, where it puts the whole pitch back. While a corner or a
+ * throw-in shows, it eases out to the whole pitch their cards are laid out
+ * for (the renderer keeps the cards whole on the frame meanwhile); the
+ * attack's label stays in view however far in it is. It steps once in each
+ * animation frame, after the moments, and its move goes through the view's
+ * push, which paints.
+ *
  * ## Golden steps and calls
  *
  * The golden recordings (video-annotation's goldens, Task 1) have one step
@@ -122,11 +144,14 @@ import type { ReplayLayers, ReplayMoment } from '../model/replayLayers.js'
 import type { Frame, TrackerRecord } from '../model/types.js'
 import { planGoal } from '../analysis/goalSequence.js'
 import type { FrameLayers } from '../render/renderer.js'
-import { viewFromCamera, type Camera } from '../render/viewTransform.js'
+import { cameraFromView, viewFromCamera, type Camera } from '../render/viewTransform.js'
+import { WHOLE_PITCH_CAMERA } from '../analysis/goalApproach.js'
 import { Attack } from './attack.js'
 import { BallRoll, shownBall } from './ballRoll.js'
+import { MIN_ZOOM } from './camera.js'
 import { Corner } from './corner.js'
 import { Goal } from './goal.js'
+import { GoalZoom } from './goalZoom.js'
 import { PlayerLoss, type PlayerLossState } from './playerLoss.js'
 import type { Moment, MomentContext, MomentMemory, ShownReplay } from './moment.js'
 import { ThrowIn } from './throwIn.js'
@@ -240,6 +265,9 @@ export class Director {
   private readonly corner: Corner
   private readonly throwIn: ThrowIn
   private readonly playerLoss: PlayerLoss
+  private readonly goalZoom = new GoalZoom()
+  /** Whether the user has the view, so the zoom near goal leaves it where they put it. */
+  private userHasView = false
   /** The moments' requests for the next animation frame, in the order they were made. */
   private requests: FrameRequest[] = []
   /** The requests due in the frame now running, so a stop can cancel one not yet called. */
@@ -303,10 +331,12 @@ export class Director {
     // Due from here, before the flush: a moment the flush stops has its
     // request for this frame cancelled, as cancelAnimationFrame cancels a
     // callback of the frame running that has not been called yet.
+    const newFrame = input.nowMs > this.frameMs
     this.due = this.beginFrame(input.nowMs)
     try {
       this.flush(input)
       this.runFrame(input.nowMs)
+      if (newFrame) this.followBall(input.nowMs)
     } finally {
       // A frame an exception cut short: the requests it had not called yet,
       // and the one it was calling, go on to the next frame, so no moment is
@@ -412,6 +442,7 @@ export class Director {
     if (before.corner && !layers.corner) this.stopMoment(this.corner)
     if (before.throwInBanner && !layers.throwInBanner) this.stopMoment(this.throwIn)
     if (before.ringFades && !layers.ringFades) this.rings.settle(this.shown.record?.frame ?? null)
+    if (before.goalZoom && !layers.goalZoom) this.dropGoalZoom()
     this.paint()
     this.flushView()
     return this.output()
@@ -425,6 +456,9 @@ export class Director {
   /** The user has zoomed or panned: the view is theirs, and stays where they put it. */
   releaseCamera(): void {
     this.goal.releaseCamera()
+    // At the whole pitch there is nothing of the zoom near goal to take: a
+    // double click there, or a wheel out, leaves it the view.
+    if (this.userView.zoom > MIN_ZOOM) this.takeFromGoalZoom()
   }
 
   /**
@@ -439,6 +473,7 @@ export class Director {
     }
     this.requests = []
     this.due = []
+    this.goalZoom.reset()
     this.rings.clear()
     this.roll.reset()
     this.memory = freshMemory()
@@ -504,6 +539,7 @@ export class Director {
     this.memory.lastBall = null
     this.memory.playMovedAt = this.shown.time
     this.playerLoss.forget()
+    this.goalZoom.forgetBall()
   }
 
   /** The frame watcher (`:1268-1309`), with `before` what it last saw. */
@@ -632,6 +668,7 @@ export class Director {
       this.renderedWidth = view.renderedWidth
       this.flushedView = cameraOf(view)
       this.rendered = { ...view }
+      this.userHasView = view.zoom > MIN_ZOOM
       return
     }
     if (sameView(view, passed) || sameView(view, this.view)) return
@@ -640,10 +677,58 @@ export class Director {
 
   /** The caller's view, as theirs: pushed, and drawn. */
   private applyView(view: DirectorView): void {
+    // Back at the whole pitch the view is the zoom near goal's again; a zoom
+    // or pan of the user's own is theirs; the same one, from a resize, is
+    // whoever's it was.
+    if (view.zoom <= MIN_ZOOM) this.userHasView = false
+    else if (!sameCamera(view, this.userView)) this.userHasView = true
+    // Wherever it came from, the zoom near goal sets off again from it.
+    this.goalZoom.release()
     this.userView = cameraOf(view)
     this.renderedWidth = view.renderedWidth
     this.flushedView = cameraOf(view)
     this.pushView()
+  }
+
+  /** The zoom near goal's animation frame: see "The zoom near goal" above. */
+  private followBall(nowMs: number): void {
+    const record = this.shown.record
+    // A goal moving the view, with the reference's camera, has it to itself.
+    if (!this.layers.goalZoom || this.userHasView || this.goal.movesCamera || !record) {
+      this.goalZoom.release()
+      return
+    }
+    if (this.options.reducedMotion()) {
+      this.dropGoalZoom()
+      this.flushView()
+      return
+    }
+    // The corner's card and the throw-in's banner are laid out for the whole pitch: the throw-in's sits on the touchline.
+    const makeWay = this.corner.active || this.throwIn.active
+    // The ball drawn: during a goal, its own, shot into the net.
+    const ball = shownBall(record.frame, this.goal.overlay())
+    const at = { ball, pitch: record.frame.pitch_dimensions, time: this.shown.time }
+    const camera = this.goalZoom.step(at, cameraFromView(this.view), nowMs, makeWay)
+    if (!camera) return
+    this.showCamera(camera)
+    this.flushView()
+  }
+
+  /** The user takes the view: the zoom near goal leaves it where it is. */
+  private takeFromGoalZoom(): void {
+    this.userHasView = true
+    this.goalZoom.release()
+  }
+
+  /**
+   * The zoom near goal stops moving the view: switched off, or reduced
+   * motion. If it had the view in on a goal, the whole pitch goes back, as a
+   * moment switched off puts the user's view back. Reaches the renderer at
+   * the next view flush.
+   */
+  private dropGoalZoom(): void {
+    this.goalZoom.release()
+    if (!this.userHasView && !this.goal.movesCamera && this.userView.zoom > MIN_ZOOM) this.showCamera(WHOLE_PITCH_CAMERA)
   }
 
   /** `showCamera` (`:490-496`): the user's view on `camera`, until the view is next flushed. */
@@ -703,7 +788,7 @@ export class Director {
   /** True while any moment or fade needs another tick: `animating` of the next output. */
   get animating(): boolean {
     const moments = [this.goal, this.attack, this.playerLoss, this.corner, this.throwIn]
-    return moments.some((m) => m.active) || this.rings.fading()
+    return moments.some((m) => m.active) || this.rings.fading() || this.goalZoom.moving
   }
 
   private output(): DirectorOutput {

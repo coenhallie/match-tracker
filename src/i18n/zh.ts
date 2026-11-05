@@ -30,6 +30,7 @@ export const zh: TrackerText = {
   playerLossCover: '球员丢失：仅跟踪到 {players} 人，以{team}的进攻覆盖',
   layers: {
     goal: { label: '进球动画', hint: '出现进球标签时，播放射门入网的动画' },
+    goalZoom: { label: '球门附近放大', hint: '球接近球门时以及进球时，视角平缓放大' },
     attack: { label: '进攻', hint: '根据控球推算：阴影和球队名称' },
     playerLoss: { label: '球员丢失时显示进攻', hint: '跟踪到的球员少于 18 人时显示进攻动画' },
     corner: { label: '角球', hint: '出现角球标签时显示横幅并点亮角球区，比赛暂停期间一直显示' },

@@ -6,6 +6,58 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+The view zooms in as the ball nears a goal, a goal no longer zooms on its
+own, and the goal's banner is new. Everything else is drawn as in 0.3.0.
+
+### What you see
+
+- **Zoom near goal.** As the ball nears a goal, the view eases in on the ball
+  and that goal, a little more the nearer it gets: from about 32 m from the
+  middle of the goal, up to 1.8x from about the penalty spot in. It follows
+  smoothly, sets off and comes to rest gently, rides over a ball that jumps
+  about, and holds through a ball lost for under 2 s. Far from goal, by the
+  corner flags included, the view is the whole pitch. It is a new layer,
+  `goalZoom` ("Zoom near goal"), on by default.
+- **A goal has no zoom of its own.** With the zoom near goal on, the view
+  follows the goal's ball into the net as it follows the tracked ball, and
+  settles as close in as the zoom near goal goes, 1.8x, with no pull back out
+  at the end. A view still easing in as the goal comes carries on, with no
+  stop and start. Before, the goal's camera went from 1x to 2x in 150 ms, at
+  full speed from its first frame, and snapped back out over its last 0.6 s.
+- While a corner or a throw-in shows, the view eases out to the whole pitch,
+  as their cards are laid out for it. An attack keeps the view: its edge and
+  label stay in view.
+- **The corner's card and the throw-in's banner stay whole when zoomed in.**
+  In a view zoomed or panned, by the viewer or the zoom near goal, they are
+  drawn on the frame where the whole pitch has them, as the goal's card is,
+  where before they zoomed with the pitch and could be cut off. At the whole
+  pitch they are drawn as before.
+- Zooming or panning takes the view from the zoom near goal, which leaves it
+  where it is put, until it is back at the whole pitch (a double-click, or
+  zoomed all the way out). With reduced motion the zoom near goal does
+  nothing.
+- The `zoom` event is sent for each step of the zoom near goal, as it is for
+  a goal's camera.
+- **The goal's banner.** "GOAL" alone on the dark band, with no icon, in the
+  half of the screen away from the goal, as the design's vp-pitch-3 has it.
+  It slides in from that side's edge as the ball reaches the net, slowing to
+  a stop over 0.6 s: left to right for a goal on the right, right to left for
+  one on the left. It fades out as before. With reduced motion it is in place
+  from the start. Before, it was "GOAL" and a ball-in-the-net icon on a card
+  centred on the pitch, fading in where it stood.
+
+### Parity
+
+- video-annotation has no zoom near goal, and its goal's camera lunges in
+  over 400 ms. With `goalZoom` off, the view is drawn as video-annotation
+  draws it. The goldens and baseline snapshots are unchanged: the parity test,
+  and the tests ported from the reference, run with `goalZoom` off.
+- The reference has no corner, and its throw-in slides in over the zoomed
+  pitch; none of the goldens zooms in during either, so they hold.
+- The reference's goal card is the old one. The goldens are unchanged: the
+  parity test draws the widget's goal banner as the reference's card, as it
+  does its throw-in.
+
 ## [0.3.0] - 2026-11-05
 
 The bottom-left action text lists only human labels. Everything else is drawn

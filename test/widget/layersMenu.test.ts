@@ -220,7 +220,8 @@ describe('the layers menu', () => {
   })
 
   it('stops a goal that is playing when it is switched off, view and all', () => {
-    const { host, tracker } = mount()
+    // The goal's camera alone, which hands the whole pitch back: the zoom near goal would keep the view in.
+    const { host, tracker } = mount({ layers: { goalZoom: false } })
     const log: string[] = []
     tracker.on('moment', ({ moment, phase }) => log.push(`${moment}:${phase}`))
     expect(tracker.trigger('goal')).toBe(true)

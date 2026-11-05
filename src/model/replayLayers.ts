@@ -8,6 +8,7 @@
 
 export type ReplayLayerKey =
   | 'goal'
+  | 'goalZoom'
   | 'attack'
   | 'playerLoss'
   | 'corner'
@@ -33,6 +34,7 @@ export type ReplayMoment = 'goal' | 'attack' | 'corner' | 'throwIn'
  */
 export const REPLAY_LAYERS: ReadonlyArray<{ key: ReplayLayerKey }> = [
   { key: 'goal' },
+  { key: 'goalZoom' },
   { key: 'attack' },
   { key: 'playerLoss' },
   { key: 'corner' },
@@ -48,6 +50,7 @@ export const REPLAY_LAYERS: ReadonlyArray<{ key: ReplayLayerKey }> = [
 
 export const DEFAULT_REPLAY_LAYERS: ReplayLayers = {
   goal: true,
+  goalZoom: true,
   attack: true,
   playerLoss: true,
   corner: true,

@@ -325,6 +325,8 @@ describe('the team phase row on a narrow widget', () => {
 describe('the zoom badge', () => {
   it('shows only while the view is zoomed in, with the zoom to one decimal', () => {
     const { host, tracker } = withPhase(NOBODY)
+    // The goal's camera alone, which hands the whole pitch back: the zoom near goal would keep the view in.
+    tracker.setOptions({ layers: { goalZoom: false } })
     expect(badge(host)).toBeNull()
     const zooms: number[] = []
     tracker.on('zoom', ({ zoom }) => zooms.push(zoom))

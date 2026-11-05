@@ -110,7 +110,8 @@ describe('playing moments by hand', () => {
   describe('the output', () => {
     it('is null with no record on screen, as nothing can be played without a frame', () => {
       const director = new Director({
-        layers: DEFAULT_REPLAY_LAYERS,
+        // The zoom near goal off, as in the harness: the reference's camera.
+        layers: { ...DEFAULT_REPLAY_LAYERS, goalZoom: false },
         reducedMotion: () => false,
         teamName: () => 'Red',
         teamColor: () => '#e51a1a',

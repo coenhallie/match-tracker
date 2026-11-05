@@ -12,6 +12,10 @@
  * shot and the net and eases back out to the view the user had. Stopping it
  * puts that view straight back; zooming or panning during it hands the view
  * to the user for good.
+ *
+ * With the zoom near goal on, the goal moves no camera of its own: the zoom
+ * near goal keeps the view, and follows the goal's ball into the net. The
+ * reference's camera lunges in over 400 ms, and back out at the end.
  */
 import {
   GOAL_SEQUENCE_MS,
@@ -24,7 +28,7 @@ import {
   type GoalState,
 } from '../analysis/goalSequence.js'
 import type { Frame } from '../model/types.js'
-import { goalBannerIntensity, type GoalBanner } from '../render/goalBanner.js'
+import { goalBannerIntensity, goalBannerSlide, type GoalBanner } from '../render/goalBanner.js'
 import type { GoalOverlay } from '../render/renderer.js'
 import { cameraFromView, type Camera } from '../render/viewTransform.js'
 import { blendCamera } from './camera.js'
@@ -53,6 +57,11 @@ export class Goal implements Moment {
     return this.goal !== null
   }
 
+  /** Whether it is moving the view: the reference's camera, with the zoom near goal off. */
+  get movesCamera(): boolean {
+    return this.goal?.camera != null
+  }
+
   /**
    * The frame watcher's goal check, on each new record (`:1280-1289`):
    * whether a goal starts on `frame`. Notes whether it is labelled either way.
@@ -67,8 +76,9 @@ export class Goal implements Moment {
 
   /**
    * `startGoal`: plan the shot on `frame`, the camera moving from the user's
-   * view to the goal. False with no ball, when there is no telling which goal
-   * it went in: better no sequence than one at the wrong end.
+   * view to the goal, unless the zoom near goal has the view. False with no
+   * ball, when there is no telling which goal it went in: better no sequence
+   * than one at the wrong end.
    */
   start(frame: Frame): boolean {
     const plan = planGoal(frame)
@@ -78,7 +88,10 @@ export class Goal implements Moment {
       plan,
       startedMs: null,
       elapsedMs: 0,
-      camera: this.ctx.reducedMotion() ? null : { from, to: goalCamera(plan, frame.pitch_dimensions) },
+      camera:
+        this.ctx.reducedMotion() || this.ctx.layers().goalZoom
+          ? null
+          : { from, to: goalCamera(plan, frame.pitch_dimensions) },
     }
     return true
   }
@@ -123,14 +136,19 @@ export class Goal implements Moment {
   }
 
   /**
-   * The goal's card (`goalBannerValue`): in as the ball reaches the net, out
-   * as the camera eases back. With reduced motion the ball is in the net from
-   * the start, and so is the card. Drawn with the theme's icon.
+   * The goal's banner (`goalBannerValue`): in as the ball reaches the net,
+   * sliding in from the side away from the goal, and out as the camera eases
+   * back. With reduced motion the ball is in the net from the start, and the
+   * banner in place. The reference's card fades in where it stands, and has
+   * no side (goalBanner.ts).
    */
   banner(): GoalBanner | undefined {
-    if (!this.goal) return undefined
-    const intensity = this.ctx.reducedMotion() ? 1 : goalBannerIntensity(this.goal.plan, this.goal.elapsedMs)
-    return intensity > 0 ? { intensity } : undefined
+    const goal = this.goal
+    if (!goal) return undefined
+    const still = this.ctx.reducedMotion()
+    const intensity = still ? 1 : goalBannerIntensity(goal.plan, goal.elapsedMs)
+    if (!(intensity > 0)) return undefined
+    return { intensity, side: goal.plan.side, slide: still ? 1 : goalBannerSlide(goal.plan, goal.elapsedMs) }
   }
 
   reset(): void {

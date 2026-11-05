@@ -271,8 +271,8 @@ Also exported:
 | `aiLabels` | `boolean` | `false` | Whether the bottom-left action text lists the pipeline's AI labels too. Off, it lists only the labels a human gave, the ones the moments play on (see [Labels](#labels)). For developers, like `layersMenu`. Can be changed with `setOptions`. |
 | `debug` | `boolean` | `false` | Developer mode. A red badge, top left of the pitch, while fewer than 18 players are tracked on the frame on screen: how many are, and whose attack covers the loss when one does (see [Player loss](#player-loss)). For telling a real attack from one shown over lost players. Can be changed with `setOptions`. |
 
-The layers are `goal`, `attack`, `playerLoss`, `corner`, `throwInBanner`, `ballTrail`,
-`phaseLabels`, `nearbyRings`, `farFade` and `ringFades`.
+The layers are `goal`, `goalZoom`, `attack`, `playerLoss`, `corner`, `throwInBanner`,
+`ballTrail`, `phaseLabels`, `nearbyRings`, `farFade` and `ringFades`.
 
 #### Labels
 
@@ -304,6 +304,28 @@ default):
   during a loss isn't shown on top of it.
 - With `debug` on, a badge says when this is happening.
 
+#### Zoom near goal
+
+As the ball nears a goal, the view eases in on the ball and that goal, a
+little more the nearer it gets (the `goalZoom` layer, on by default):
+- It starts about 32 m from the middle of the goal, past the corner of the
+  box, and is as close as it goes, 1.8x, from about the penalty spot in. A
+  ball by the corner flag is far.
+- The view follows smoothly: it sets off and comes to rest gently, and a
+  ball that jumps about from record to record does not jerk it. A ball lost
+  for under 2 s keeps the view where it was.
+- A goal has no zoom of its own: the view follows the goal's ball into the
+  net and stays as close in as this goes. Without this layer a goal's camera
+  lunges in over 400 ms and back out at the end, as video-annotation's does.
+- While a corner or a throw-in shows, it eases out to the whole pitch, as
+  their cards are laid out on it. Zoomed in, by you or by this, the corner's
+  card and the throw-in's banner stay whole, on the frame where the whole
+  pitch has them, as the goal's card does.
+- Zooming or panning yourself takes the view: it stays where you put it.
+  Back at the whole pitch (a double-click, or zooming all the way out), the
+  zoom near goal has it again.
+- With reduced motion it does nothing.
+
 The `TrackerText` keys are:
 - on the canvas: `goal`, `corner`, `throwIn`, `attack`;
 - the row: `attacking`, `defending`, `versus`, `phaseTooltip`, `red` and `blue` (the default team names);
@@ -317,7 +339,7 @@ The `TrackerText` keys are:
 
 | Event | Value | When |
 |---|---|---|
-| `zoom` | `{ zoom }` | The view's zoom changed, by the viewer or by a goal's camera. |
+| `zoom` | `{ zoom }` | The view's zoom changed: by the viewer, by a goal's camera, or by the zoom near goal, which sends one for each step as it eases. |
 | `layers` | `ReplayLayers` | The layers in force changed, from the menu or from `setOptions`. |
 | `moment` | `{ moment, phase: 'start' \| 'end' }` | A moment came on screen, or went. |
 | `box` | `TrackerBox` | The pitch's box moved or changed size. The box measured at mount is not sent, because no listener exists yet: read `tracker.box` for it. |
@@ -413,6 +435,7 @@ scripts and styles, several times on one page.
   - On touch, two fingers pinch-zoom, and one finger pans once zoomed in. At 1x, a vertical drag scrolls the page.
   - A mouse drag pans when zoomed in, and a double-click resets the view, except on the host's
     own controls marked `data-match-tracker-keep`, which the press and the double-click are left to.
+  - Zooming or panning takes the view from the zoom near goal until it is back at the whole pitch.
   - Escape closes the layers menu only while focus is inside the widget, and the page
     does not get that Escape too.
   - A press anywhere outside the layers menu, on the pitch or on the page, closes it.
@@ -422,8 +445,8 @@ scripts and styles, several times on one page.
 ### Content Security Policy
 
 On a page with a Content Security Policy, the widget needs:
-- `img-src data:`, for the corner and goal cards' icons, which are SVG `data:` URLs
-  drawn through an `Image`. Without it the cards are drawn without their icons.
+- `img-src data:`, for the corner card's icon, an SVG `data:` URL drawn through an
+  `Image`. Without it the card is drawn without its icon.
 - `font-src` for wherever the package's files are served from: the fonts are
   woff2 files next to `dist/index.js`, loaded with `FontFace`. Bundled into your app
   that is usually `'self'`; from a CDN, that CDN's origin. Without it the text falls

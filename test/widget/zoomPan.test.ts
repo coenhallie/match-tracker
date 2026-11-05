@@ -30,7 +30,8 @@ const mounted: MatchTracker[] = []
 
 function mount() {
   const host = makeHost()
-  const tracker = createMatchTracker(host, { mode: 'live', layersStorageKey: null })
+  // The zoom near goal off: it would move the view under the gestures (test/widget/goalZoom.test.ts has it on).
+  const tracker = createMatchTracker(host, { mode: 'live', layersStorageKey: null, layers: { goalZoom: false } })
   mounted.push(tracker)
   env.resize(host, 800, 450)
   tracker.push(message(0, { withBall: true }))
