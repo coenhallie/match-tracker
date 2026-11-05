@@ -268,6 +268,7 @@ Also exported:
 | `layersMenu` | `boolean` | `true` | `false` takes the layers button and menu out. The layers are then the defaults over `layers`, and nothing is read from or written to `layersStorageKey`. Can be changed with `setOptions`. |
 | `layersStorageKey` | `string \| null` | `'match-tracker.layers'` | Where the menu's choice is kept in `localStorage`. `null` keeps nothing. A kept choice wins over `layers`. Fixed at mount, like `mode`: `setOptions` ignores it, and so does the Vue component when the prop changes. To keep the choice somewhere else, make a new tracker. |
 | `formatAction` | `(actionType: string) => string` | as it comes | The bottom-left text for each of a frame's actions, from its `action_type` (for example `'EventType.FREE_KICK'` to `'Free kick'`). |
+| `aiLabels` | `boolean` | `false` | Whether the bottom-left action text lists the pipeline's AI labels too. Off, it lists only the labels a human gave, the ones the moments play on (see [Labels](#labels)). For developers, like `layersMenu`. Can be changed with `setOptions`. |
 | `debug` | `boolean` | `false` | Developer mode. A red badge, top left of the pitch, while fewer than 18 players are tracked on the frame on screen: how many are, and whose attack covers the loss when one does (see [Player loss](#player-loss)). For telling a real attack from one shown over lost players. Can be changed with `setOptions`. |
 
 The layers are `goal`, `attack`, `playerLoss`, `corner`, `throwInBanner`, `ballTrail`,
@@ -279,8 +280,9 @@ The goal, the corner and the throw-in play when playback runs into the
 pipeline's label for them, in a frame's `state.actions`, and only when a
 human gave it: its `action_origin` is `"human"`. A label from the pipeline's
 AI (`"ai"`), or one from an older export with no `action_origin`, plays
-nothing. The bottom-left action text still lists every label, as the export
-has it, and a moment played with `trigger` needs no label at all.
+nothing. The bottom-left action text follows the same rule: it lists only the
+human labels, unless `aiLabels` is on, when it lists every label as the export
+has it. A moment played with `trigger` needs no label at all.
 
 #### Player loss
 

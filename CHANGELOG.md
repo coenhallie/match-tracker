@@ -6,6 +6,22 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### What you see
+
+- **The bottom-left action text lists only human labels.** It follows the
+  same rule as the moments: a label whose `action_origin` is `"human"` is
+  listed, and the AI's labels, and labels with no `action_origin`, are not.
+  On a frame with no human label there is no text.
+- **`aiLabels`, a new option, lists the AI's labels too,** as every label was
+  listed before. It is off by default, for developers, like `layersMenu`, and
+  can be changed with `setOptions` (and as a prop of the Vue component).
+
+### Parity
+
+- video-annotation lists every label. The baseline snapshots are unchanged:
+  their labels have no origin, so the baseline test marks them human, as the
+  parity test does the goldens'.
+
 ## [0.2.1] - 2026-11-03
 
 The moments play only on labels a human gave. Everything else is drawn as in

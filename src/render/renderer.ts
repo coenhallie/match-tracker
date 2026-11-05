@@ -75,7 +75,8 @@
 //   const { renderFrame, invalidateCache } = createRenderer(canvas)
 // ---------------------------------------------------------------------------
 
-import type { Player, Ball, Frame, Transform2D } from '../model/types.js'
+import type { Player, Ball, Frame, FrameAction, Transform2D } from '../model/types.js'
+import { isHumanLabel } from '../analysis/actionLabels.js'
 import {
   FRAME_W,
   FRAME_H,
@@ -725,7 +726,9 @@ export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTh
 
   /**
    * Draw the action-type text (bottom-left), each action as the theme's
-   * formatAction writes it.
+   * formatAction writes it: only the labels a human gave, unless the theme
+   * asks for the AI's too (`aiLabels`, the widget's own; the reference lists
+   * every label).
    *
    * The frame-count label used to be drawn here too (top-left), but that put
    * it inside the canvas bitmap, which the surface's zoom/pan is a CSS
@@ -734,14 +737,14 @@ export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTh
    * itself, fixed outside the canvas. `_frameCount` stays a parameter so this
    * still mirrors the vendored signature.
    */
-  function draw2DOverlay(_frameCount: number | null | undefined, actions: { action_type?: string }[]): void {
+  function draw2DOverlay(_frameCount: number | null | undefined, actions: FrameAction[]): void {
     ctx.textAlign = 'left'
     ctx.textBaseline = 'top'
     ctx.fillStyle = '#ffffff'
     ctx.font = '700 16px sans-serif'
 
     const at = actions
-      .filter((a) => a.action_type)
+      .filter((a) => a.action_type && (theme.aiLabels || isHumanLabel(a)))
       .map((a) => theme.formatAction(String(a.action_type).trim()))
       .join(', ')
 

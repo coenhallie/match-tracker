@@ -23,6 +23,8 @@ export interface RenderTheme {
   icons: { goal: CanvasImageSource | null; corner: CanvasImageSource | null }
   /** The bottom-left text for one of the frame's actions, from its `action_type`. */
   formatAction: (actionType: string) => string
+  /** Whether the bottom-left text lists the AI's labels too, or only the ones a human gave. */
+  aiLabels: boolean
 }
 
 /** PERSON_COLORS, copied role by role and frozen, so the default theme shares no object with the constants. */
@@ -55,4 +57,5 @@ export const DEFAULT_THEME: Readonly<RenderTheme> = Object.freeze({
   fonts: Object.freeze({ label: familyList(LABEL_FAMILY), title: familyList(TITLE_FAMILY) }),
   icons: Object.freeze({ goal: null, corner: null }),
   formatAction: (actionType: string) => actionType,
+  aiLabels: false,
 })

@@ -106,6 +106,7 @@ const optionProps = {
   // `default: undefined`, or Vue would take a left-out Boolean prop as false and hide the menu.
   layersMenu: { type: Boolean, default: undefined },
   debug: { type: Boolean, default: undefined },
+  aiLabels: { type: Boolean, default: undefined },
   /** null keeps nothing; left out, the default key. */
   layersStorageKey: { type: String as PropType<string | null>, default: undefined },
   formatAction: { type: Function as Prop<'formatAction'>, default: undefined },

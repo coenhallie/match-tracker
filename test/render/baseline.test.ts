@@ -52,7 +52,8 @@ function plainFrame(actions: string[] = []): Frame {
       { team_id: -1, players: [player(99, 0, -34, {}, 'PersonType.REFEREE')] },
     ],
     balls: [{ projected_coordinates: { x: -10, y: 4 } }],
-    state: { actions: actions.map((action_type) => ({ action_type })) },
+    // Human, as the reference's labels are taken to be: the widget lists only human labels by default (aiLabels).
+    state: { actions: actions.map((action_type) => ({ action_type, action_origin: 'human' })) },
   } as unknown as Frame
 }
 

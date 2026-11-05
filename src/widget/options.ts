@@ -53,6 +53,12 @@ export interface MatchTrackerOptions {
   /** The bottom-left text for one of a frame's actions, from its `action_type`. Default: as it comes. */
   formatAction?: (actionType: string) => string
   /**
+   * Whether the bottom-left text lists the pipeline's AI labels too. Default
+   * false: only the labels a human gave (`action_origin` "human"), the ones
+   * the moments play on. For developers, as `layersMenu` is.
+   */
+  aiLabels?: boolean
+  /**
    * Developer mode: a badge over the pitch while fewer than 18 players are
    * tracked, saying how many are, and whose attack covers the loss when one
    * does. For telling a real attack from one shown over lost players.
@@ -78,6 +84,7 @@ export interface Resolved {
   teamName: (team: TeamId) => string
   teamColor: (team: TeamId) => string
   formatAction: (actionType: string) => string
+  aiLabels: boolean
 }
 
 export function resolveOptions(options: MutableOptions): Resolved {
@@ -97,6 +104,7 @@ export function resolveOptions(options: MutableOptions): Resolved {
     teamName: (team) => names[team],
     teamColor: (team) => fills[team],
     formatAction: options.formatAction ?? DEFAULT_THEME.formatAction,
+    aiLabels: options.aiLabels ?? DEFAULT_THEME.aiLabels,
   }
 }
 
@@ -109,6 +117,7 @@ export function themeFor(resolved: Resolved, icons: RenderTheme['icons']): Rende
     fonts: DEFAULT_THEME.fonts,
     icons,
     formatAction: resolved.formatAction,
+    aiLabels: resolved.aiLabels,
   }
 }
 

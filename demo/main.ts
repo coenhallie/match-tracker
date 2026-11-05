@@ -205,6 +205,7 @@ function mount(host: HTMLElement, mode: 'live' | 'replay', status: string, key: 
     teams: teams(),
     layersStorageKey: null,
     debug: $<HTMLInputElement>('debug').checked,
+    aiLabels: $<HTMLInputElement>('debug').checked,
     ...(source?.synthetic ? { layers: { playerLoss: false } } : {}),
   })
   // Mounted in the overlay and styled by this page's stylesheet: the pitch's box, as the tracker reports it.
@@ -400,11 +401,11 @@ $<HTMLInputElement>('hostile').addEventListener('change', (e) => {
   document.head.append(style)
 })
 
-// Developer mode: the player loss badge, which says when an attack is shown over lost players.
+// Developer mode: the player loss badge, which says when an attack is shown over lost players, and the AI labels bottom left.
 $<HTMLInputElement>('debug').addEventListener('change', (e) => {
   const debug = (e.target as HTMLInputElement).checked
-  live?.setOptions({ debug })
-  replay?.setOptions({ debug })
+  live?.setOptions({ debug, aiLabels: debug })
+  replay?.setOptions({ debug, aiLabels: debug })
 })
 
 // The version banner in the console, which the widget prints only when its host asks.

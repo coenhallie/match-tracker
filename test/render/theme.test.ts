@@ -9,7 +9,7 @@ import { normalizeCalls } from '../helpers/normalize'
 const PITCH = { length: 105, width: 68 }
 
 /** Home has the ball at (-10, 4), away has a player near it, and the frame carries `actions`. */
-function frame(actions: string[] = []): Frame {
+function frame(actions: string[] = [], origin: string | undefined = 'human'): Frame {
   return {
     pitch_dimensions: PITCH,
     teams: [
@@ -33,7 +33,7 @@ function frame(actions: string[] = []): Frame {
       },
     ],
     balls: [{ projected_coordinates: { x: -10, y: 4 } }],
-    state: { actions: actions.map((action_type) => ({ action_type })) },
+    state: { actions: actions.map((action_type) => ({ action_type, action_origin: origin })) },
   } as unknown as Frame
 }
 
@@ -83,6 +83,7 @@ describe('DEFAULT_THEME', () => {
     })
     expect(DEFAULT_THEME.icons).toEqual({ goal: null, corner: null })
     expect(DEFAULT_THEME.formatAction('EventType.FREE_KICK')).toBe('EventType.FREE_KICK')
+    expect(DEFAULT_THEME.aiLabels).toBe(false)
   })
 
   it('is frozen, with colours of its own, so no host or instance can change what the next one reads', () => {
@@ -162,6 +163,24 @@ describe('a custom theme', () => {
     // Where and how the reference draws it.
     expect(action.args.slice(1)).toEqual([20, 700])
     expect(action.font).toBe('600 14px sans-serif')
+  })
+
+  it('lists only the labels a human gave, unless the theme asks for the AI\'s too', () => {
+    const mixed: Frame = {
+      ...frame(),
+      state: {
+        actions: [
+          { action_type: 'EventType.BALL_IN_PLAY', action_origin: 'ai' },
+          { action_type: 'EventType.THROW_IN', action_origin: 'Human ' },
+          { action_type: 'EventType.PASS' },
+        ],
+      },
+    }
+    const bottomLeft = (ops: Op[]) => texts(ops).find((o) => o.args[1] === 20 && o.args[2] === 700)?.args[0]
+    expect(bottomLeft(render(custom({}), mixed))).toBe('EventType.THROW_IN')
+    expect(bottomLeft(render(custom({ aiLabels: true }), mixed))).toBe('EventType.BALL_IN_PLAY, EventType.THROW_IN, EventType.PASS')
+    // Nothing a human gave: no text at all.
+    expect(bottomLeft(render(custom({}), frame(['EventType.BALL_IN_PLAY'], 'ai')))).toBeUndefined()
   })
 
   it("draws in the theme's fonts", () => {
