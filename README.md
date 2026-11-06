@@ -295,7 +295,8 @@ These are the same card, a title over an icon or a short text on a dark band
 across the middle of the pitch, each with a layer of its own, on by default: "VAR
 CHECK" and an eye on a VAR check label (`varCheck`), "GOAL DISALLOWED" and a
 struck-through goal on a goal disallowed label (`goalDisallowed`), and "SECOND
-HALF" and a short text, `secondHalfText` in `TrackerText`, on a second half label
+HALF" and a short text, `secondHalfText` in `TrackerText`, on a second half label,
+written `second half`, `Start second half` or in any of the ways above
 (`secondHalf`). Each:
 - It fades in over 0.4 s, stays for at least 2 s and then for as long as the
   label is on, and fades out over 0.4 s. Played with `trigger`, it is on screen
@@ -313,9 +314,10 @@ HALF" and a short text, `secondHalfText` in `TrackerText`, on a second half labe
 #### Half time and full time
 
 The same card, with a title and a short text in place of the icon: "HALF TIME" on
-a half time label, written `half time`, `Halftime` or in any of the ways above
-(the `halfTime` layer), and "FULL TIME" on a full time label, written `full time`,
-`Fulltime` or likewise (the `fullTime` layer), each on by default. Their texts are
+a half time label, written `half time`, `Halftime`, `End first half`, `End FirstHalf`
+or in any of the ways above (the `halfTime` layer), and "FULL TIME" on a full time
+label, written `full time`, `Fulltime`, `End second half`, `End SecondHalf` or
+likewise (the `fullTime` layer), each on by default. Their texts are
 `halfTimeText` and `fullTimeText` in `TrackerText`, broken into lines at each line
 break and to fit.
 

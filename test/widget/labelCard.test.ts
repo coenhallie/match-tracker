@@ -106,6 +106,19 @@ describe('a label card through the widget', () => {
     expect(env.queued()).toBe(0)
   })
 
+  it('plays the half time and the second half on the names the labelling tool sends for them', () => {
+    const { tracker, log } = mount()
+    playing(tracker)
+    tracker.push(labelled(5, 'End FirstHalf'))
+    env.settle()
+    expect(log).toEqual(['halfTime:start'])
+    tracker.push(labelled(6, 'Start second half'))
+    env.frame()
+    env.frame()
+    expect(log).toEqual(['halfTime:start', 'halfTime:end', 'secondHalf:start'])
+    expect(control.outputs.at(-1)!.layers?.labelCard?.key).toBe('secondHalf')
+  })
+
   it('rests on full time with the loop stopped, until a pushed human label sends it off', () => {
     const { tracker, log } = mount()
     playing(tracker)

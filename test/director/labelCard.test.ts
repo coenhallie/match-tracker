@@ -386,7 +386,7 @@ describe('the half time card', () => {
     return replay
   }
 
-  it.each(['Half time', 'half time', 'HALF TIME', 'half-time', 'HALF_TIME', 'Halftime', 'EventType.HALF_TIME'])(
+  it.each(['Half time', 'half time', 'HALF TIME', 'half-time', 'HALF_TIME', 'Halftime', 'EventType.HALF_TIME', 'End FirstHalf', 'End first half'])(
     'plays on %j',
     (label) => {
       const replay = ready()
@@ -625,7 +625,7 @@ describe('the full time card', () => {
     return replay
   }
 
-  it.each(['Full time', 'full time', 'FULL TIME', 'full-time', 'FULL_TIME', 'Fulltime', 'EventType.FULL_TIME'])('plays on %j', (label) => {
+  it.each(['Full time', 'full time', 'FULL TIME', 'full-time', 'FULL_TIME', 'Fulltime', 'EventType.FULL_TIME', 'End SecondHalf', 'End second half'])('plays on %j', (label) => {
     const replay = ready()
     record(replay, [label])
     animate(replay, 100)
@@ -699,7 +699,7 @@ describe('the full time card', () => {
 describe('the second half card', () => {
   const SECOND = ['Second half']
 
-  it.each(['Second half', 'second half', 'SECOND HALF', 'second-half', 'SECOND_HALF', 'EventType.SECOND_HALF'])('plays on %j', (label) => {
+  it.each(['Second half', 'second half', 'SECOND HALF', 'second-half', 'SECOND_HALF', 'EventType.SECOND_HALF', 'Start second half'])('plays on %j', (label) => {
     const replay = ready()
     record(replay, [label])
     animate(replay, 100)

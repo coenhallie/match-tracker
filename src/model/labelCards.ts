@@ -31,11 +31,15 @@ export const LABEL_CARDS = [
   { key: 'varCheck', labels: ['var check'], size: 'centre', below: 'icon', until: 'labelOff', makesWay: true },
   /** Matched whole, so it is not the goal's label, and no goal plays on it (actionName, frameHasAction). */
   { key: 'goalDisallowed', labels: ['goal disallowed'], size: 'centre', below: 'icon', until: 'labelOff', makesWay: true },
-  /** "Half time", "half-time" and "HALF_TIME" read as "half time"; "Halftime" is the same words written as one. */
-  { key: 'halfTime', labels: ['half time', 'halftime'], size: 'centre', below: 'text', until: 'nextLabel', makesWay: true },
-  { key: 'secondHalf', labels: ['second half'], size: 'centre', below: 'text', until: 'labelOff', makesWay: true },
-  /** As for "Halftime", "Fulltime" is the same words written as one. */
-  { key: 'fullTime', labels: ['full time', 'fulltime'], size: 'centre', below: 'text', until: 'nextLabel', makesWay: true },
+  /**
+   * "Half time", "half-time" and "HALF_TIME" read as "half time"; "Halftime" is the same words written as one.
+   * The labelling tool's button says "Half Time", but it sends "End first half", renamed "End FirstHalf" on saving.
+   */
+  { key: 'halfTime', labels: ['half time', 'halftime', 'end firsthalf', 'end first half'], size: 'centre', below: 'text', until: 'nextLabel', makesWay: true },
+  /** The labelling tool's button says "Second Half", but it sends "Start second half". */
+  { key: 'secondHalf', labels: ['second half', 'start second half'], size: 'centre', below: 'text', until: 'labelOff', makesWay: true },
+  /** As for "Halftime", "Fulltime" is the same words written as one. The labelling tool sends "End second half", renamed "End SecondHalf" on saving. */
+  { key: 'fullTime', labels: ['full time', 'fulltime', 'end secondhalf', 'end second half'], size: 'centre', below: 'text', until: 'nextLabel', makesWay: true },
   { key: 'foul', labels: ['foul'], size: 'small', below: 'nothing', until: 'time', makesWay: true },
   // A shot or a header on goal is what the zoom near goal is there for: it stays in.
   { key: 'shotOnGoal', labels: ['shot on goal'], size: 'small', below: 'nothing', until: 'time', makesWay: false },

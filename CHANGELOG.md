@@ -6,6 +6,14 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### What you see
+
+- **The half time, the second half and the full time play on the labelling
+  tool's names for them.** It sends `End first half` (saved as `End FirstHalf`),
+  `Start second half` and `End second half` (saved as `End SecondHalf`), whatever
+  its buttons say, and none of these played a card. The names they already played
+  on still do.
+
 ## [0.6.0] - 2026-11-06
 
 Five new moments: the second half and the full time, on the reusable card, and
