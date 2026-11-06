@@ -6,6 +6,53 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+Five new moments: the second half and the full time, on the reusable card, and
+the foul and the shot and header on goal, on a small version of it, which the
+throw-in now uses too. The centre cards fade out the pitch and zoom out. Everything else is drawn
+as in 0.5.0.
+
+### API
+
+- `ReplayMoment` has five new members, `'secondHalf'`, `'fullTime'`, `'foul'`,
+  `'shotOnGoal'` and `'headerOnGoal'`, which `trigger` plays and the `moment` event names.
+- `MomentAvailability` has the same five new keys. A page that builds a whole
+  `MomentAvailability` itself now has to give them.
+- `ReplayLayers` has the same five new keys. A page that builds a whole
+  `ReplayLayers` itself now has to give them; `layers` and `setOptions` take a
+  `Partial<ReplayLayers>`, as before, and need nothing new.
+- `TrackerText` has the same five new keys, the cards' titles, the same five under
+  `layers`, and `secondHalfText` and `fullTimeText`. `text` takes overrides, as before, and needs nothing new.
+
+### What you see
+
+- **Second half.** On a human's second half label, "SECOND HALF" and a short text
+  fade in on the same card as the half time. It goes by itself, as the VAR check
+  does, after at least 2 s and once its label is off, and takes over from a half
+  time still showing. It is a new layer, `secondHalf` ("Second half"), on by
+  default, and the widget's own too.
+- **Full time.** On a human's full time label, "FULL TIME" and a short text fade in
+  on the same card. As the half time does, it does not time out: it stays until a
+  human gives any other label. It is a new layer, `fullTime` ("Full time"), on by
+  default, and the widget's own too.
+- **Foul.** On a human's foul label, "FOUL" fades in on a small dark band along
+  the bottom touchline, and fades out after 2 s, as a throw-in does, with the
+  pitch left as it is. It is a new layer, `foul` ("Foul"), on by default.
+  video-annotation has no foul: this is the widget's own.
+- **Shot and header on goal.** The same card, with "SHOT!" on a human's shot on goal
+  label and "HEADER!" on a header on goal label. No goal plays on either. Unlike
+  the foul, the view stays zoomed in for them. They are new layers, `shotOnGoal` and
+  `headerOnGoal`, on by default, and the widget's own too.
+- **The throw-in is on the new small card.** Its band is now 112 px high and hugs
+  "THROW IN", where it was a fixed 501 by 109, and stands 60 px above the bottom
+  touchline, where it stood 90. It behaves as before. The parity test still draws
+  the reference's sliding band.
+- **The zoom near goal makes way for the new cards.** While a VAR check, a goal
+  disallowed, a half time, a second half, a full time or a foul shows, the view eases out to the whole pitch,
+  as it does for a corner or a throw-in.
+- **The VAR check, the goal disallowed and the half time fade out the pitch.**
+  Everyone on the pitch, the ball and its trail fade out as the card fades in, as
+  for a corner, and back as it goes.
+
 ## [0.5.0] - 2026-11-06
 
 Three new moments, the VAR check, the goal disallowed and the half time, on a

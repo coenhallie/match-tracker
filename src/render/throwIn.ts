@@ -3,15 +3,20 @@ import { frameHasAction } from '../analysis/actionLabels.js'
 import { designUnit, resolvePitchDimensions, worldToPx } from './pitchGeometry.js'
 import { drawEventBand, drawEventTitle, INTER_ASCENT, type TitleLayout } from './eventBanner.js'
 import { FRAME_W } from './constants.js'
+import { drawSmallCard } from './smallCard.js'
 import { DEFAULT_THEME, type RenderTheme } from './theme.js'
 
 /**
- * The throw-in, as the match-summary design shows it (Figma vp-pitch-2): a
- * small "THROW IN" band just above the bottom touchline, the players left as
- * they are. The widget's fades in and out where it stands (inPlace). The
- * reference's slides in from the side of the half the ball is in, and back
- * out the same way: the export does not say which team takes a throw-in, so
- * the side says where it is rather than whose it is.
+ * The throw-in: "THROW IN" on a small band along the bottom touchline, the
+ * players left as they are. The widget's is the small card every small moment
+ * uses (smallCard.ts; Figma viewport/eventThrowIn, node 75:368), and fades in and
+ * out where it stands (inPlace).
+ *
+ * The reference's, the rest of this file, is the band of the design it was built
+ * from (Figma vp-pitch-2). It slides in from the side of the half the ball is in,
+ * and back out the same way: the export does not say which team takes a throw-in,
+ * so the side says where it is rather than whose it is. Only the parity test draws
+ * it, as test/parity/goldens.test.ts sets out.
  */
 export interface ThrowInIndicator {
   /** 0 to 1: how far it has faded in, or, leaving, how much of it is left. */
@@ -21,8 +26,8 @@ export interface ThrowInIndicator {
   /** The side it slides from: -1 the left, 1 the right, null in place. */
   side: -1 | 1 | null
   /**
-   * Drawn where it stands, fading in and out, whatever `side` says: the
-   * widget's throw-in. Default false, the reference's, which slides.
+   * The widget's: the small card, fading in and out where it stands, whatever
+   * `side` says. Default false, the reference's, which slides.
    */
   inPlace?: boolean
 }
@@ -52,7 +57,7 @@ export function isThrowInFrame(frame: Frame): boolean {
 }
 
 /**
- * The band, in design pixels. Measured from the design's frame: 501 by 109,
+ * The reference's band, in design pixels. Measured from the design's frame: 501 by 109,
  * its top 90 px above the middle of the bottom touchline, so its foot sits on
  * the grass just past the line. Centred on the pitch.
  */
@@ -94,12 +99,16 @@ export function drawThrowInIndicator(
 ): void {
   const alpha = clamp01(ind.intensity)
   if (alpha <= 0) return
+  if (ind.inPlace) {
+    drawSmallCard(ctx, pd, t, theme.text.throwIn, theme.fonts.title, alpha)
+    return
+  }
   const u = designUnit(t)
   const width = BAND_WIDTH_PX * u
   const halfWidth = resolvePitchDimensions(pd).width.value / 2
   const [cx, touchline] = worldToPx(0, halfWidth, t)
   const travel = FRAME_W / 2 + width / 2
-  const offset = ind.side === null || ind.inPlace ? 0 : ind.side * travel * (1 - easeOutCubic(clamp01(ind.slide)))
+  const offset = ind.side === null ? 0 : ind.side * travel * (1 - easeOutCubic(clamp01(ind.slide)))
   const left = cx + offset - width / 2
   const top = touchline - BAND_TOP_ABOVE_TOUCHLINE_PX * u
 

@@ -2,10 +2,13 @@ import type { Frame, Transform2D } from '../model/types.js'
 import { labelCard, labelCardTextKey, type IconCardKey, type LabelCardKey } from '../model/labelCards.js'
 import { frameHasAction } from '../analysis/actionLabels.js'
 import { FRAME_W } from './constants.js'
-import { INTER_ASCENT, drawEventTitle, type CardBox, type TitleLayout } from './eventBanner.js'
+import { drawEventTitle, interBaselinePx, type CardBox, type TitleLayout } from './eventBanner.js'
 import { measureWidth, wrapText } from './fitText.js'
 import { designUnit, worldToPx } from './pitchGeometry.js'
+import { drawSmallCard } from './smallCard.js'
+import type { PitchDimensions } from '../model/types.js'
 import { DEFAULT_THEME, type RenderTheme } from './theme.js'
+import { THROW_IN_IN_MS, THROW_IN_REARM_S, THROW_IN_SHOW_MS } from './throwIn.js'
 
 /**
  * A label card (labelCards.ts in model), as the match-summary design shows it
@@ -13,16 +16,30 @@ import { DEFAULT_THEME, type RenderTheme } from './theme.js'
  * viewport/eventGoalDisallowed, banner 80:3853, and viewport/eventHalfTime,
  * banner 81:4327): a title over an icon or a short text on a dark band centred
  * on the pitch. The band hugs its title, so any card's words fit it; only the
- * words and what is under them change from card to card. The players are left
- * as they are.
+ * words and what is under them change from card to card. Everyone on the pitch,
+ * the ball and its trail fade out as it fades in, as for the corner, and back
+ * as it goes (renderer.ts).
  */
 export interface LabelCardIndicator {
   key: LabelCardKey
-  /** 0 to 1: how far it has faded in, or, leaving, how much of it is left. */
+  /**
+   * 0 to 1: how far it has faded in, or, leaving, how much of it is left. It is
+   * also how far everyone on the pitch and the ball have faded out.
+   */
   intensity: number
   /** Its icon, if it has one, once it has loaded. Until then it is drawn without it. Default the theme's. */
   icon?: CanvasImageSource | null
 }
+
+/**
+ * How a small label card is shown: as the throw-in is (throwIn.ts), fading in
+ * over SMALL_CARD_IN_MS, staying until SMALL_CARD_SHOW_MS from the start whatever
+ * its label does, and fading out over LABEL_CARD_OUT_MS. It counts as a new one
+ * after SMALL_CARD_REARM_S off, as fouls and the like come close together.
+ */
+export const SMALL_CARD_IN_MS = THROW_IN_IN_MS
+export const SMALL_CARD_SHOW_MS = THROW_IN_SHOW_MS
+export const SMALL_CARD_REARM_S = THROW_IN_REARM_S
 
 /**
  * How a label card is shown: it fades in over LABEL_CARD_IN_MS, stays for at
@@ -81,12 +98,7 @@ const LABEL_CARD_ICON_BOXES: Record<IconCardKey, CardBox> = {
   goalDisallowed: { left: 29.25, top: 29.25, width: 149.5, height: 149.5 },
 }
 
-/** Inter's descent as a share of its size, for centring its line box in the title's line. */
-const INTER_DESCENT = 494 / 2048
-/** The baseline of `sizePx` Inter on a line `linePx` high, from the line's top. */
-const baselinePx = (sizePx: number, linePx: number) =>
-  (linePx - sizePx * (INTER_ASCENT + INTER_DESCENT)) / 2 + sizePx * INTER_ASCENT
-const TITLE_BASELINE_PX = PADDING_Y_PX + baselinePx(TITLE_PX, TITLE_LINE_PX)
+const TITLE_BASELINE_PX = PADDING_Y_PX + interBaselinePx(TITLE_PX, TITLE_LINE_PX)
 
 /** The band's colour, and its opacity across it: clear at each end, solid at its middle. */
 const BAND_RGB = '12, 63, 47'
@@ -142,7 +154,7 @@ export function drawLabelCard(
       const slotTop = top + SLOT_TOP_PX * u
       ctx.drawImage(icon, slotLeft + box.left * u, slotTop + box.top * u, box.width * u, box.height * u)
     }
-  } else {
+  } else if (spec.below === 'text') {
     const textFont = `600 ${TEXT_PX * u}px ${font}`
     const text = theme.text[labelCardTextKey(spec.key)]
     ctx.font = textFont
@@ -150,8 +162,19 @@ export function drawLabelCard(
     ctx.textBaseline = 'alphabetic'
     ctx.fillStyle = '#ffffff'
     wrapText(ctx, text, textFont, TEXT_WIDTH_PX * u, TEXT_MAX_LINES).forEach((line, i) => {
-      ctx.fillText(line, cx, top + (TEXT_TOP_PX + i * TEXT_LINE_PX + baselinePx(TEXT_PX, TEXT_LINE_PX)) * u)
+      ctx.fillText(line, cx, top + (TEXT_TOP_PX + i * TEXT_LINE_PX + interBaselinePx(TEXT_PX, TEXT_LINE_PX)) * u)
     })
   }
   ctx.restore()
+}
+
+/** Draw a small label card, in the theme's words and font (smallCard.ts). */
+export function drawSmallLabelCard(
+  ctx: CanvasRenderingContext2D,
+  pd: Partial<PitchDimensions> | undefined,
+  t: Transform2D,
+  card: LabelCardIndicator,
+  theme: RenderTheme = DEFAULT_THEME,
+): void {
+  drawSmallCard(ctx, pd, t, theme.text[card.key], theme.fonts.title, clamp01(card.intensity))
 }

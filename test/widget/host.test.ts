@@ -39,6 +39,11 @@ const NOTHING: MomentAvailability = {
   varCheck: false,
   goalDisallowed: false,
   halfTime: false,
+  secondHalf: false,
+  fullTime: false,
+  foul: false,
+  shotOnGoal: false,
+  headerOnGoal: false,
 }
 
 beforeEach(() => {
@@ -284,6 +289,11 @@ describe('moment availability', () => {
       ['varCheck', 0, available.varCheck],
       ['goalDisallowed', 0, available.goalDisallowed],
       ['halfTime', 0, available.halfTime],
+      ['secondHalf', 0, available.secondHalf],
+      ['fullTime', 0, available.fullTime],
+      ['foul', 0, available.foul],
+      ['shotOnGoal', 0, available.shotOnGoal],
+      ['headerOnGoal', 0, available.headerOnGoal],
     ] as const
     for (const [moment, team, can] of plays) expect(tracker.trigger(moment, team)).toBe(can)
   })

@@ -1,7 +1,8 @@
 /**
  * A label card (labelCards.ts in model), which the reference does not have:
- * one class for them all, built on the corner's timing and the throw-in's
- * leaving the players as they are.
+ * one class for them all, built on the corner's timing and its fading out
+ * everyone on the pitch and the ball, which the renderer does by the card's
+ * intensity.
  *
  * When playback runs into a frame a human gave one of the card's labels, the
  * card fades in across the middle of the pitch, stays for at least
@@ -16,8 +17,14 @@
  * does coming back to a hidden tab in live mode, but a seek and a press still
  * do: it would no longer say anything about the frame someone has gone to.
  *
+ * A small card is shown as a throw-in is: it fades in along the bottom
+ * touchline, stays for SMALL_CARD_SHOW_MS whatever its label does, and fades out,
+ * with the pitch left as it is. An attack shows alongside it, and it takes over
+ * from a throw-in or another small card, and they from it. It does not go over a
+ * centre card, which takes over from it.
+ *
  * It is shown once per run of the label, however it flickers
- * (LABEL_CARD_REARM_S). A label seen while another moment blocks the card does
+ * (LABEL_CARD_REARM_S, or SMALL_CARD_REARM_S). A label seen while another moment blocks the card does
  * not use its one showing up: a VAR check is usually called just as a goal is
  * being shown, so the card plays on the first labelled frame after the goal.
  * It only plays during playback, anything that means someone wants the real
@@ -35,6 +42,9 @@ import {
   LABEL_CARD_OUT_MS,
   LABEL_CARD_REARM_S,
   LABEL_CARD_SHOW_MS,
+  SMALL_CARD_IN_MS,
+  SMALL_CARD_REARM_S,
+  SMALL_CARD_SHOW_MS,
   isLabelCardFrame,
   type LabelCardIndicator,
 } from '../render/labelCard.js'
@@ -65,6 +75,11 @@ export class LabelCard implements Moment {
   readonly key: LabelCardKey
   private readonly labels: readonly string[]
   private readonly until: (typeof LABEL_CARDS)[number]['until']
+  /** A small card, along the touchline, rather than a centre card. */
+  readonly small: boolean
+  /** Whether the zoom near goal eases out to the whole pitch while it shows. */
+  readonly makesWay: boolean
+  private readonly inMs: number
 
   constructor(
     private readonly ctx: MomentContext,
@@ -73,6 +88,9 @@ export class LabelCard implements Moment {
     this.key = card.key
     this.labels = card.labels
     this.until = card.until
+    this.small = card.size === 'small'
+    this.makesWay = card.makesWay
+    this.inMs = this.small ? SMALL_CARD_IN_MS : LABEL_CARD_IN_MS
   }
 
   get active(): boolean {
@@ -108,7 +126,8 @@ export class LabelCard implements Moment {
       return false
     }
     if (!labelled) return false
-    if (run.seenAt === null || now - run.seenAt > LABEL_CARD_REARM_S) run.shown = false
+    const rearm = this.small ? SMALL_CARD_REARM_S : LABEL_CARD_REARM_S
+    if (run.seenAt === null || now - run.seenAt > rearm) run.shown = false
     run.seenAt = now
     return !run.shown && this.ctx.layers()[this.key] && !blocked && !this.showing
   }
@@ -172,19 +191,14 @@ export class LabelCard implements Moment {
     const still = this.ctx.reducedMotion()
     const { seenAt } = this.run
     const labelOn = seenAt !== null && this.ctx.shown().time - seenAt < LABEL_HOLD_S
-    const over =
-      this.until === 'nextLabel'
-        ? card.leaveAsked
-        : card.byHand
-          ? card.elapsedMs >= LABEL_CARD_DEMO_MS - (still ? 0 : LABEL_CARD_OUT_MS)
-          : card.elapsedMs >= LABEL_CARD_SHOW_MS && !labelOn
+    const over = this.isOver(card, labelOn, still)
     if (card.leavingFromMs === null && over) {
       if (still) return 'stop'
       card.leavingFromMs = card.elapsedMs
       card.leavingFromIntensity = was
     }
     if (card.leavingFromMs !== null && card.elapsedMs - card.leavingFromMs >= LABEL_CARD_OUT_MS) return 'stop'
-    if (this.until === 'nextLabel' && card.leavingFromMs === null && (still || card.elapsedMs >= LABEL_CARD_IN_MS)) {
+    if (this.until === 'nextLabel' && card.leavingFromMs === null && (still || card.elapsedMs >= this.inMs)) {
       card.idle = true
       return 'hold'
     }
@@ -209,11 +223,19 @@ export class LabelCard implements Moment {
     this.showing = null
   }
 
+  /** Whether it is time to go: at once under reduced motion, or else with room left to fade out when played by hand. */
+  private isOver(card: Showing, labelOn: boolean, still: boolean): boolean {
+    if (this.until === 'nextLabel') return card.leaveAsked
+    if (this.until === 'time') return card.elapsedMs >= SMALL_CARD_SHOW_MS
+    if (card.byHand) return card.elapsedMs >= LABEL_CARD_DEMO_MS - (still ? 0 : LABEL_CARD_OUT_MS)
+    return card.elapsedMs >= LABEL_CARD_SHOW_MS && !labelOn
+  }
+
   private intensity(card: Showing): number {
     if (this.ctx.reducedMotion()) return 1
     if (card.leavingFromMs !== null) {
       return card.leavingFromIntensity * Math.max(0, 1 - (card.elapsedMs - card.leavingFromMs) / LABEL_CARD_OUT_MS)
     }
-    return Math.min(1, card.fromIntensity + (1 - card.fromIntensity) * (card.elapsedMs / LABEL_CARD_IN_MS))
+    return Math.min(1, card.fromIntensity + (1 - card.fromIntensity) * (card.elapsedMs / this.inMs))
   }
 }

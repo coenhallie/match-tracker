@@ -86,6 +86,11 @@ const NOTHING_AVAILABLE: MomentAvailability = {
   varCheck: false,
   goalDisallowed: false,
   halfTime: false,
+  secondHalf: false,
+  fullTime: false,
+  foul: false,
+  shotOnGoal: false,
+  headerOnGoal: false,
 }
 
 /** Whether two availabilities say the same, whatever moments there are. */

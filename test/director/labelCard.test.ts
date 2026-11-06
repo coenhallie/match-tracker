@@ -67,7 +67,7 @@ describe('a label card, by its label', () => {
     expect(card(replay)).toBeUndefined()
   })
 
-  it('fades in, stays, and fades out once the label is off, leaving the players and the view as they are', () => {
+  it('fades in, stays, and fades out once the label is off, leaving the view as it is', () => {
     const replay = ready()
     const from = replay.outputs.length
     record(replay, VAR)
@@ -612,6 +612,388 @@ describe('the half time card', () => {
     record(replay, HALF)
     animate(replay, 100)
     expect(card(replay)?.key).toBe('halfTime')
+  })
+})
+
+describe('the full time card', () => {
+  const FULL = ['Full time']
+  function resting(): FakeReplay {
+    const replay = ready()
+    record(replay, FULL)
+    animate(replay, 500)
+    play(replay, 1000)
+    return replay
+  }
+
+  it.each(['Full time', 'full time', 'FULL TIME', 'full-time', 'FULL_TIME', 'Fulltime', 'EventType.FULL_TIME'])('plays on %j', (label) => {
+    const replay = ready()
+    record(replay, [label])
+    animate(replay, 100)
+    expect(card(replay)?.key).toBe('fullTime')
+  })
+
+  it('does not play on a label the AI gave', () => {
+    const replay = ready()
+    replay.set({ time: replay.time + 0.04, frame: frameAt(FULL, 40, 'ai') })
+    animate(replay, 100)
+    expect(card(replay)).toBeUndefined()
+  })
+
+  it('stays at full strength for as long as no other label comes, asking for no frames', () => {
+    const replay = ready()
+    record(replay, FULL)
+    for (let i = 0; i < 3000; i++) {
+      record(replay, [], 0.4)
+      animate(replay, 20)
+    }
+    expect(card(replay)).toEqual({ key: 'fullTime', intensity: 1 })
+    expect(replay.outputs.at(-1)!.animating).toBe(false)
+  })
+
+  it('fades out on any other human label, but not on an AI one or its own', () => {
+    const replay = resting()
+    record(replay, FULL)
+    replay.set({ time: replay.time + 0.04, frame: frameAt(['Substitution'], 40, 'ai') })
+    animate(replay, 500)
+    expect(card(replay)).toEqual({ key: 'fullTime', intensity: 1 })
+    record(replay, ['Substitution'])
+    animate(replay, 200)
+    expect(card(replay)!.intensity).toBeLessThan(1)
+    animate(replay, 300)
+    expect(card(replay)).toBeUndefined()
+  })
+
+  it('stays through a pause, and ends on a seek or a press', () => {
+    const paused = resting()
+    paused.pause()
+    expect(card(paused)).toEqual({ key: 'fullTime', intensity: 1 })
+    const sought = resting()
+    sought.set({ time: 2000, frame: frameAt() })
+    expect(card(sought)).toBeUndefined()
+    const pressed = resting()
+    pressed.stopAll()
+    expect(card(pressed)).toBeUndefined()
+  })
+
+  it('takes over from the second half with no gap in the band, and stays', () => {
+    const replay = ready()
+    play(replay, 600, ['Second half'])
+    const from = replay.outputs.length
+    record(replay, FULL)
+    animate(replay, 200)
+    for (const output of replay.outputs.slice(from)) {
+      expect(output.layers?.labelCard).toEqual({ key: 'fullTime', intensity: 1 })
+    }
+    play(replay, 5000)
+    expect(card(replay)).toEqual({ key: 'fullTime', intensity: 1 })
+  })
+
+  it('stays until the next label when played by hand too', () => {
+    const replay = ready()
+    replay.trigger('fullTime')
+    animate(replay, 10000)
+    expect(card(replay)).toEqual({ key: 'fullTime', intensity: 1 })
+  })
+})
+
+describe('the second half card', () => {
+  const SECOND = ['Second half']
+
+  it.each(['Second half', 'second half', 'SECOND HALF', 'second-half', 'SECOND_HALF', 'EventType.SECOND_HALF'])('plays on %j', (label) => {
+    const replay = ready()
+    record(replay, [label])
+    animate(replay, 100)
+    expect(card(replay)?.key).toBe('secondHalf')
+  })
+
+  it('does not play on a label the AI gave', () => {
+    const replay = ready()
+    replay.set({ time: replay.time + 0.04, frame: frameAt(SECOND, 40, 'ai') })
+    animate(replay, 100)
+    expect(card(replay)).toBeUndefined()
+  })
+
+  it('goes by itself with no other label, unlike the half time', () => {
+    const replay = ready()
+    record(replay, SECOND)
+    play(replay, LABEL_CARD_SHOW_MS - 100)
+    expect(card(replay)).toEqual({ key: 'secondHalf', intensity: 1 })
+    play(replay, 100 + LABEL_CARD_OUT_MS + 100)
+    expect(card(replay)).toBeUndefined()
+    expect(replay.outputs.at(-1)!.animating).toBe(false)
+  })
+
+  it('stays for as long as its label is on, and asks for frames throughout', () => {
+    const replay = ready()
+    play(replay, LABEL_CARD_SHOW_MS * 2, SECOND)
+    expect(card(replay)).toEqual({ key: 'secondHalf', intensity: 1 })
+    expect(replay.outputs.at(-1)!.animating).toBe(true)
+    play(replay, 500 + LABEL_CARD_OUT_MS + 100)
+    expect(card(replay)).toBeUndefined()
+  })
+
+  it('ends on a pause, as every moment but the half time does', () => {
+    const replay = ready()
+    record(replay, SECOND)
+    animate(replay, 100)
+    replay.pause()
+    expect(card(replay)).toBeUndefined()
+  })
+
+  it('takes over from the half time with no gap in the band, which does not come back after it', () => {
+    const replay = ready()
+    record(replay, ['Half time'])
+    animate(replay, 500)
+    play(replay, 1000)
+    const from = replay.outputs.length
+    record(replay, SECOND)
+    animate(replay, 200)
+    for (const output of replay.outputs.slice(from)) {
+      expect(output.layers?.labelCard).toEqual({ key: 'secondHalf', intensity: 1 })
+    }
+    play(replay, LABEL_CARD_SHOW_MS + LABEL_CARD_OUT_MS + 100)
+    expect(card(replay)).toBeUndefined()
+  })
+
+  it('plays, not the half time, on a frame with both labels', () => {
+    const replay = ready()
+    record(replay, ['Half time', ...SECOND])
+    animate(replay, 100)
+    expect(card(replay)?.key).toBe('secondHalf')
+  })
+
+  it('is on screen for LABEL_CARD_DEMO_MS when played by hand', () => {
+    const replay = ready()
+    replay.trigger('secondHalf')
+    animate(replay, LABEL_CARD_DEMO_MS - LABEL_CARD_OUT_MS - 100)
+    expect(card(replay)).toEqual({ key: 'secondHalf', intensity: 1 })
+    animate(replay, 100 + LABEL_CARD_OUT_MS + 50)
+    expect(card(replay)).toBeUndefined()
+  })
+})
+
+describe('the foul card, a small card', () => {
+  const FOUL = ['Foul']
+  const small = (replay: FakeReplay) => replay.last()?.smallLabelCard
+
+  it.each(['Foul', 'foul', 'FOUL', 'EventType.FOUL', ' Foul '])('plays on %j, in the small slot, not the centre one', (label) => {
+    const replay = ready()
+    record(replay, [label])
+    animate(replay, 100)
+    expect(small(replay)?.key).toBe('foul')
+    expect(card(replay)).toBeUndefined()
+  })
+
+  it('does not play on a label the AI gave, or on one that only has the word in it', () => {
+    const ai = ready()
+    ai.set({ time: ai.time + 0.04, frame: frameAt(FOUL, 40, 'ai') })
+    animate(ai, 100)
+    expect(small(ai)).toBeUndefined()
+    const other = ready()
+    record(other, ['Foul throw'])
+    animate(other, 100)
+    expect(small(other)).toBeUndefined()
+  })
+
+  it('fades in over 0.5 s, and is gone by 2.4 s, whatever its label does, as a throw-in is', () => {
+    const replay = ready()
+    record(replay, FOUL)
+    animate(replay, 250)
+    const early = small(replay)!.intensity
+    expect(early).toBeGreaterThan(0.3)
+    expect(early).toBeLessThan(0.6)
+    play(replay, 1000, FOUL)
+    expect(small(replay)).toEqual({ key: 'foul', intensity: 1 })
+    play(replay, 800, FOUL)
+    expect(small(replay)!.intensity).toBeLessThan(1)
+    play(replay, 500, FOUL)
+    expect(small(replay)).toBeUndefined()
+    expect(replay.outputs.at(-1)!.animating).toBe(false)
+  })
+
+  it('plays once for a label that flickers, and again after 5 s off', () => {
+    const replay = ready()
+    record(replay, FOUL)
+    animate(replay, 2500)
+    offFor(replay, 4)
+    record(replay, FOUL)
+    animate(replay, 100)
+    expect(small(replay)).toBeUndefined()
+    offFor(replay, 5.1)
+    record(replay, FOUL)
+    animate(replay, 100)
+    expect(small(replay)?.key).toBe('foul')
+  })
+
+  it('leaves an attack showing, and lets one start beside it', () => {
+    const showing = ready()
+    showing.set({ time: showing.time + 0.04, frame: frameAt([], -40), phase: BLUE_ATTACKING })
+    animate(showing, 100)
+    expect(showing.last()?.attack).toBeDefined()
+    record(showing, FOUL, 0.04, -40)
+    animate(showing, 100)
+    expect(small(showing)?.key).toBe('foul')
+    expect(showing.last()?.attack).toBeDefined()
+
+    const beside = ready()
+    record(beside, FOUL, 0.04, -40)
+    animate(beside, 100)
+    beside.set({ time: beside.time + 0.04, frame: frameAt([], -40), phase: BLUE_ATTACKING })
+    animate(beside, 100)
+    expect(small(beside)?.key).toBe('foul')
+    expect(beside.last()?.attack).toBeDefined()
+  })
+
+  it('takes over from a throw-in, and a throw-in from it, as they stand in one place', () => {
+    const replay = ready()
+    record(replay, ['Throw in'])
+    animate(replay, 100)
+    expect(replay.last()?.throwIn).toBeDefined()
+    record(replay, FOUL)
+    expect(replay.last()?.throwIn).toBeUndefined()
+    animate(replay, 100)
+    expect(small(replay)?.key).toBe('foul')
+    offFor(replay, 5.1)
+    record(replay, FOUL)
+    animate(replay, 100)
+    expect(small(replay)?.key).toBe('foul')
+    record(replay, ['Throw in'])
+    expect(small(replay)).toBeUndefined()
+    expect(replay.last()?.throwIn).toBeDefined()
+  })
+
+  it('does not go over a centre card, which takes over from it, and waits while its label stays on', () => {
+    const replay = ready()
+    record(replay, VAR)
+    animate(replay, 100)
+    record(replay, FOUL)
+    animate(replay, 100)
+    expect(small(replay)).toBeUndefined()
+    expect(card(replay)?.key).toBe('varCheck')
+    // Up from nothing once the centre card has gone, its label still on.
+    play(replay, LABEL_CARD_SHOW_MS + LABEL_CARD_OUT_MS + 200, FOUL)
+    expect(card(replay)).toBeUndefined()
+    expect(small(replay)?.key).toBe('foul')
+    record(replay, ['Goal disallowed'])
+    expect(small(replay)).toBeUndefined()
+  })
+
+  it('shows as half time fades out on it, both on screen for that long', () => {
+    const replay = ready()
+    record(replay, ['Half time'])
+    animate(replay, 500)
+    play(replay, 500)
+    record(replay, FOUL)
+    animate(replay, 200)
+    expect(card(replay)?.key).toBe('halfTime')
+    expect(card(replay)!.intensity).toBeLessThan(1)
+    expect(small(replay)?.key).toBe('foul')
+    animate(replay, 300)
+    expect(card(replay)).toBeUndefined()
+    expect(small(replay)?.key).toBe('foul')
+  })
+
+  it('gives way to a goal or a corner, and ends on a pause, a seek and its layer', () => {
+    for (const label of ['Goal', 'Corner']) {
+      const replay = ready()
+      record(replay, FOUL)
+      animate(replay, 100)
+      record(replay, [label])
+      expect(small(replay)).toBeUndefined()
+    }
+    const paused = ready()
+    record(paused, FOUL)
+    animate(paused, 100)
+    paused.pause()
+    expect(small(paused)).toBeUndefined()
+    const sought = ready()
+    record(sought, FOUL)
+    animate(sought, 100)
+    sought.set({ time: 900, frame: frameAt() })
+    expect(small(sought)).toBeUndefined()
+    const off = ready()
+    record(off, FOUL)
+    animate(off, 100)
+    off.toggle({ foul: false })
+    expect(small(off)).toBeUndefined()
+    record(off, FOUL, 6)
+    animate(off, 100)
+    expect(small(off)).toBeUndefined()
+  })
+
+  it('under reduced motion shows at full strength, and goes when its time is up', () => {
+    const replay = ready()
+    replay.reducedMotion = true
+    record(replay, FOUL)
+    animate(replay, 20)
+    expect(small(replay)).toEqual({ key: 'foul', intensity: 1 })
+    animate(replay, 2050)
+    expect(small(replay)).toBeUndefined()
+  })
+
+  it('can be played by hand, for the same time', () => {
+    const replay = ready()
+    expect(replay.director.availability().foul).toBe(true)
+    replay.trigger('foul')
+    animate(replay, 1500)
+    expect(small(replay)).toEqual({ key: 'foul', intensity: 1 })
+    animate(replay, 1000)
+    expect(small(replay)).toBeUndefined()
+  })
+})
+
+describe.each([
+  ['shotOnGoal', 'Shot on goal', ['shot on goal', 'SHOT ON GOAL', 'Shot_on_goal', 'EventType.SHOT_ON_GOAL']],
+  ['headerOnGoal', 'Header on goal', ['header on goal', 'HEADER ON GOAL', 'Header-on-goal', 'EventType.HEADER_ON_GOAL']],
+] as const)('the %s card, a small card', (key, label, spellings) => {
+  const small = (replay: FakeReplay) => replay.last()?.smallLabelCard
+
+  it.each(spellings)('plays on %j, and no goal plays on it', (spelling) => {
+    const replay = ready()
+    record(replay, [spelling])
+    animate(replay, 100)
+    expect(small(replay)?.key).toBe(key)
+    expect(card(replay)).toBeUndefined()
+    expect(replay.last()?.goal).toBeUndefined()
+    expect(replay.last()?.goalBanner).toBeUndefined()
+  })
+
+  it('does not play on a label the AI gave', () => {
+    const replay = ready()
+    replay.set({ time: replay.time + 0.04, frame: frameAt([label], 40, 'ai') })
+    animate(replay, 100)
+    expect(small(replay)).toBeUndefined()
+  })
+
+  it('is on screen for as long as a throw-in, whatever its label does, with the pitch left to its own moments', () => {
+    const replay = ready()
+    play(replay, 1000, [label])
+    expect(small(replay)).toEqual({ key, intensity: 1 })
+    play(replay, 1600, [label])
+    expect(small(replay)).toBeUndefined()
+  })
+
+  it('gives way at once to the goal that comes of it', () => {
+    const replay = ready()
+    record(replay, [label])
+    animate(replay, 100)
+    record(replay, ['Goal'])
+    expect(small(replay)).toBeUndefined()
+    expect(replay.last()?.goal).toBeDefined()
+  })
+
+  it('replaces the other small card, and is its own layer', () => {
+    const replay = ready()
+    record(replay, ['Foul'])
+    animate(replay, 100)
+    record(replay, [label])
+    animate(replay, 100)
+    expect(small(replay)?.key).toBe(key)
+    const off = ready()
+    off.toggle({ [key]: false })
+    record(off, [label])
+    animate(off, 100)
+    expect(small(off)).toBeUndefined()
   })
 })
 

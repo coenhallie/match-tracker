@@ -353,7 +353,7 @@ describe('live input', () => {
     const log = momentLog(tracker)
     tracker.push(message(0, { withBall: true }))
     env.settle()
-    const plays = [['goal'], ['attack', 0], ['attack', 1], ['corner'], ['throwIn'], ['varCheck'], ['goalDisallowed'], ['halfTime']] as const
+    const plays = [['goal'], ['attack', 0], ['attack', 1], ['corner'], ['throwIn'], ['varCheck'], ['goalDisallowed'], ['halfTime'], ['secondHalf'], ['fullTime'], ['foul'], ['shotOnGoal'], ['headerOnGoal']] as const
     for (const [moment, team] of plays) {
       expect(tracker.trigger(moment, team)).toBe(true)
       env.frame()
@@ -376,6 +376,16 @@ describe('live input', () => {
       'goalDisallowed:end',
       'halfTime:start',
       'halfTime:end',
+      'secondHalf:start',
+      'secondHalf:end',
+      'fullTime:start',
+      'fullTime:end',
+      'foul:start',
+      'foul:end',
+      'shotOnGoal:start',
+      'shotOnGoal:end',
+      'headerOnGoal:start',
+      'headerOnGoal:end',
     ])
     env.settle()
     expect(env.queued()).toBe(0)

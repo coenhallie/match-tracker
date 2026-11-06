@@ -410,7 +410,7 @@ export class Director {
       this.request(this.corner)
     } else if (isLabelCardKey(moment)) {
       const card = this.labelCards.find((c) => c.key === moment)!
-      const strength = this.labelCardStrength()
+      const strength = this.labelCardStrength(card.small)
       this.stopSequences()
       card.start(now, frame, true, strength)
       this.request(card)
@@ -594,21 +594,29 @@ export class Director {
         this.request(this.corner)
       }
       for (const card of this.labelCards) {
-        if (card.detect(frame, time, this.goal.active || this.corner.active)) {
-          // As a corner does: the card is laid across the pitch, and play is stopped for it. And the
-          // latest card takes over from another, as a goal disallowed answers the VAR check before it,
-          // from the strength that one had, so the band does not blink.
-          const strength = this.labelCardStrength()
-          this.stopMoment(this.attack)
-          this.stopMoment(this.playerLoss)
+        // A small card does not go over a centre one.
+        const blocked = this.goal.active || this.corner.active || (card.small && this.centreCardHoldsBack())
+        if (card.detect(frame, time, blocked)) {
+          // The latest card takes over from another of its size, as a goal disallowed answers the VAR check
+          // before it, from the strength that one had, so the band does not blink.
+          const strength = this.labelCardStrength(card.small)
           this.stopMoment(this.throwIn)
-          this.stopLabelCards()
+          if (card.small) {
+            this.stopSmallCards()
+          } else {
+            // As a corner does: the card is laid across the pitch, and play is stopped for it.
+            this.stopMoment(this.attack)
+            this.stopMoment(this.playerLoss)
+            this.stopLabelCards()
+          }
           card.start(time, frame, false, strength)
           this.request(card)
         }
       }
-      const setPiece = this.goal.active || this.corner.active || this.labelCards.some((c) => c.holdsBack)
+      const setPiece = this.goal.active || this.corner.active || this.centreCardHoldsBack()
       if (this.throwIn.detect(frame, time, setPiece)) {
+        // In the same place as a small card, which it takes over from.
+        this.stopSmallCards()
         this.throwIn.start(time)
         this.request(this.throwIn)
       }
@@ -702,9 +710,18 @@ export class Director {
     for (const card of this.labelCards) if (!letFade || card.holdsBack) this.stopMoment(card)
   }
 
-  /** How strongly the label card showing is drawn: 0 when none is. */
-  private labelCardStrength(): number {
-    return this.labelCards.find((card) => card.active)?.value()?.intensity ?? 0
+  private stopSmallCards(): void {
+    for (const card of this.labelCards) if (card.small) this.stopMoment(card)
+  }
+
+  /** Whether a centre card is up and not on its way out: what holds back what shows beside other moments. */
+  private centreCardHoldsBack(): boolean {
+    return this.labelCards.some((card) => !card.small && card.holdsBack)
+  }
+
+  /** How strongly the label card of that size showing is drawn: 0 when none is. */
+  private labelCardStrength(small: boolean): number {
+    return this.labelCards.find((card) => card.small === small && card.active)?.value()?.intensity ?? 0
   }
 
   /** `stopGoal` and the like: end `moment` at once, and paint the frame as it is if it was showing. */
@@ -759,8 +776,9 @@ export class Director {
       this.flushView()
       return
     }
-    // The corner's card and the throw-in's banner are laid out for the whole pitch: the throw-in's sits on the touchline.
-    const makeWay = this.corner.active || this.throwIn.active
+    // The corner's card, the throw-in's banner and most label cards are laid out for the whole pitch: the small
+    // ones sit on the touchline, and a centre card fades out what the view would be following.
+    const makeWay = this.corner.active || this.throwIn.active || this.labelCards.some((card) => card.active && card.makesWay)
     // The ball drawn: during a goal, its own, shot into the net.
     const ball = shownBall(record.frame, this.goal.overlay())
     const at = { ball, pitch: record.frame.pitch_dimensions, time: this.shown.time }
@@ -827,7 +845,8 @@ export class Director {
       attack: attackShown,
       corner: this.corner.value(),
       throwIn: this.throwIn.value(),
-      labelCard: this.labelCards.find((card) => card.active)?.value(),
+      labelCard: this.labelCards.find((card) => !card.small && card.active)?.value(),
+      smallLabelCard: this.labelCards.find((card) => card.small && card.active)?.value(),
       goalBanner: this.goal.banner(),
       rings: {
         nearby: this.layers.nearbyRings ? new Map(this.rings.nearby) : new Map(),

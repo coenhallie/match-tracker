@@ -21,6 +21,11 @@ const BAND_SOLID_TO = 0.75481
 export const EVENT_TITLE_FONT = DEFAULT_THEME.fonts.title
 /** Inter's ascent as a share of its size: the baseline below the top of a line box. */
 export const INTER_ASCENT = 0.96875
+/** Inter's descent as a share of its size. */
+const INTER_DESCENT = 494 / 2048
+/** The baseline of `sizePx` Inter on a line `linePx` high, from the line's top, its line box centred in the line. */
+export const interBaselinePx = (sizePx: number, linePx: number) =>
+  (linePx - sizePx * (INTER_ASCENT + INTER_DESCENT)) / 2 + sizePx * INTER_ASCENT
 /** The title's shadow: 0 4px 24px, black at 15%. */
 const TITLE_SHADOW_Y_PX = 4
 const TITLE_SHADOW_BLUR_PX = 24

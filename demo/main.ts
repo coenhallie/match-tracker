@@ -154,6 +154,11 @@ const MOMENTS: Array<{ label: string; moment: ReplayMoment; team?: TeamId }> = [
   { label: 'VAR check', moment: 'varCheck' },
   { label: 'Goal disallowed', moment: 'goalDisallowed' },
   { label: 'Half time', moment: 'halfTime' },
+  { label: 'Second half', moment: 'secondHalf' },
+  { label: 'Full time', moment: 'fullTime' },
+  { label: 'Foul', moment: 'foul' },
+  { label: 'Shot on goal', moment: 'shotOnGoal' },
+  { label: 'Header on goal', moment: 'headerOnGoal' },
 ]
 
 /** Draws per widget: each renderFrame clears the canvas once. */

@@ -89,7 +89,7 @@ function shows(layers: FrameLayers, moment: ReplayMoment): boolean {
     case 'throwIn':
       return layers.throwIn !== undefined
     default:
-      return layers.labelCard?.key === moment
+      return layers.labelCard?.key === moment || layers.smallLabelCard?.key === moment
   }
 }
 

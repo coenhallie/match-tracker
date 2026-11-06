@@ -113,7 +113,7 @@ describe('the built-in text', () => {
     expect(formatText(en.zoomLevel, { zoom: '2.5' })).toBe('2.5x')
     // The corner is the widget's own: the reference has none. So is the throw-in's hint, as the widget's
     // throw-in fades in where the reference's slides in from the ball's half. And so is the zoom near goal.
-    const { corner, throwInBanner, playerLoss, goalZoom, varCheck, goalDisallowed, halfTime, ...referenceLayers } = en.layers
+    const { corner, throwInBanner, playerLoss, goalZoom, varCheck, goalDisallowed, halfTime, secondHalf, fullTime, foul, shotOnGoal, headerOnGoal, ...referenceLayers } = en.layers
     expect(en.corner).toBe('CORNER')
     expect(corner).toEqual({
       label: 'Corner',
@@ -132,6 +132,21 @@ describe('the built-in text', () => {
       label: 'Goal disallowed',
       hint: 'A banner across the middle of the pitch on a goal disallowed label',
     })
+    expect(en.shotOnGoal).toBe('SHOT!')
+    expect(shotOnGoal).toEqual({ label: 'Shot on goal', hint: 'A banner along the bottom touchline on a shot on goal label' })
+    expect(en.headerOnGoal).toBe('HEADER!')
+    expect(headerOnGoal).toEqual({ label: 'Header on goal', hint: 'A banner along the bottom touchline on a header on goal label' })
+    expect(en.foul).toBe('FOUL')
+    expect(foul).toEqual({ label: 'Foul', hint: 'A banner along the bottom touchline on a foul label' })
+    expect(en.fullTime).toBe('FULL TIME')
+    expect(en.fullTimeText).toBe('This match has ended.')
+    expect(fullTime).toEqual({
+      label: 'Full time',
+      hint: 'A banner across the middle of the pitch on a full time label, until the next label',
+    })
+    expect(en.secondHalf).toBe('SECOND HALF')
+    expect(en.secondHalfText).toBe('The match has restarted.')
+    expect(secondHalf).toEqual({ label: 'Second half', hint: 'A banner across the middle of the pitch on a second half label' })
     expect(en.halfTime).toBe('HALF TIME')
     expect(en.halfTimeText).toBe('There is a break in play.\nCoverage will resume soon.')
     expect(halfTime).toEqual({

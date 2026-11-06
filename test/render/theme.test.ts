@@ -50,7 +50,9 @@ const EVERY_MOMENT: FrameLayers = {
   attack: ATTACK,
   corner: { intensity: 1, playersFade: 0, ballFade: 0, corner: { x: -1, y: 1 }, sections: [1, 1, 1] },
   throwIn: { intensity: 1, slide: 1, side: null },
-  labelCard: { key: 'varCheck', intensity: 1 },
+  // Half way in, so the people it fades out are still drawn, in the theme's colours.
+  labelCard: { key: 'varCheck', intensity: 0.5 },
+  smallLabelCard: { key: 'foul', intensity: 1 },
   goalBanner: { intensity: 1 },
 }
 
@@ -85,6 +87,13 @@ describe('DEFAULT_THEME', () => {
       goalDisallowed: 'GOAL DISALLOWED',
       halfTime: 'HALF TIME',
       halfTimeText: 'There is a break in play.\nCoverage will resume soon.',
+      secondHalf: 'SECOND HALF',
+      secondHalfText: 'The match has restarted.',
+      fullTime: 'FULL TIME',
+      fullTimeText: 'This match has ended.',
+      foul: 'FOUL',
+      shotOnGoal: 'SHOT!',
+      headerOnGoal: 'HEADER!',
     })
     expect(DEFAULT_THEME.icons).toEqual({ goal: null, corner: null, varCheck: null, goalDisallowed: null })
     expect(DEFAULT_THEME.formatAction('EventType.FREE_KICK')).toBe('EventType.FREE_KICK')
@@ -149,9 +158,9 @@ describe('a custom theme', () => {
   })
 
   it("writes the theme's words on the cards and the attack label", () => {
-    const theme = custom({ text: { goal: '进球', corner: '角球', throwIn: '界外球', attack: '进攻', varCheck: 'VAR 检查', goalDisallowed: '进球无效', halfTime: '中场休息', halfTimeText: '比赛暂停中。' } })
+    const theme = custom({ text: { goal: '进球', corner: '角球', throwIn: '界外球', attack: '进攻', varCheck: 'VAR 检查', goalDisallowed: '进球无效', halfTime: '中场休息', halfTimeText: '比赛暂停中。', secondHalf: '下半场', secondHalfText: '比赛已重新开始。', fullTime: '全场结束', fullTimeText: '本场比赛已结束。', foul: '犯规', shotOnGoal: '射门！', headerOnGoal: '头球！' } })
     const words = texts(render(theme, frame(), EVERY_MOMENT)).map((o) => o.args[0])
-    expect(words).toEqual(expect.arrayContaining(['进球', '角球', '界外球', '进攻', 'VAR 检查']))
+    expect(words).toEqual(expect.arrayContaining(['进球', '角球', '界外球', '进攻', 'VAR 检查', '犯规']))
     expect(words).not.toContain('GOAL')
     expect(words).not.toContain('CORNER')
     expect(words).not.toContain('THROW IN')

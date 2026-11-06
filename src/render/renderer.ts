@@ -57,7 +57,9 @@
 //    card like the reference's free kick card over everything, everyone and
 //    the ball faded out (corner.ts).
 //  - renderFrame takes an optional label card, which the reference does not
-//    have: a title over an icon across the middle of the pitch (labelCard.ts).
+//    have: a title over an icon or a short text across the middle of the pitch,
+//    everyone and the ball faded out, or a small one with the title alone along
+//    the bottom touchline, the players left as they are (labelCard.ts).
 //  - renderFrame takes an optional ball trail, drawn over the players: the
 //    path the tracked ball took, with a dot wherever it turned (ballTrail.ts).
 //  - players are not labelled with their tracking id: it is the tracker's
@@ -104,7 +106,7 @@ import {
   type AttackIndicator,
 } from './attackIndicator.js'
 import { trailOpacity, type BallTrail, type TrailPoint } from '../analysis/ballTrail.js'
-import { drawLabelCard, type LabelCardIndicator } from './labelCard.js'
+import { drawLabelCard, drawSmallLabelCard, type LabelCardIndicator } from './labelCard.js'
 import { drawThrowInIndicator, type ThrowInIndicator } from './throwIn.js'
 import { drawCornerCard, drawCornerCone, type CornerBanner } from './corner.js'
 import { drawGoalBanner, type GoalBanner } from './goalBanner.js'
@@ -197,8 +199,10 @@ export interface FrameLayers {
   corner?: CornerBanner | undefined
   /** The throw-in indicator, over everything on the pitch, the players left as they are. */
   throwIn?: ThrowInIndicator | undefined
-  /** The card a label plays (labelCard.ts), over everything on the pitch, the players left as they are. */
+  /** The card a label plays (labelCard.ts), over everything on the pitch, everyone and the ball faded out. */
   labelCard?: LabelCardIndicator | undefined
+  /** A small card a label plays (labelCard.ts), along the bottom touchline, the players left as they are. */
+  smallLabelCard?: LabelCardIndicator | undefined
   /** The goal's card, over everything, fixed to the frame while the view zooms. */
   goalBanner?: GoalBanner | undefined
   /** Ring strengths, for a caller that fades the rings in and out. */
@@ -368,13 +372,16 @@ export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTh
       if (rings && id != null) return rings.possession.get(id) ?? 0
       return p.player.in_possession ? 1 : 0
     }
-    // During an attack or a corner everyone fades out, players and officials
-    // alike. Everything drawn for a person goes through here.
-    const fade = Math.max(attack?.playersFade ?? 0, layers.corner?.playersFade ?? 0)
+    // During an attack, a corner or a label card everyone fades out, players
+    // and officials alike. Everything drawn for a person goes through here. A
+    // card fading out as a corner fades in adds up to all of it, with the same
+    // 400 ms each way, so nobody shows through as one hands over to the other.
+    const card = layers.labelCard?.intensity ?? 0
+    const fade = Math.max(attack?.playersFade ?? 0, (layers.corner?.playersFade ?? 0) + card)
     const shown = 1 - Math.min(1, Math.max(0, fade))
-    // A corner fades out the ball and its trail too, leaving nothing of play
-    // under its card. An attack keeps the ball, which it holds.
-    const ballFade = layers.corner?.ballFade ?? 0
+    // A corner or a label card fades out the ball and its trail too, leaving
+    // nothing of play under the card. An attack keeps the ball, which it holds.
+    const ballFade = (layers.corner?.ballFade ?? 0) + card
     const ballShown = 1 - Math.min(1, Math.max(0, ballFade))
     const alphaOf = (p: { faded: boolean }) => (p.faded && fadeFar ? DIMMED_PLAYER_ALPHA : 1) * shown
     // The player with the ball is drawn bigger, so on top of those around them.
@@ -445,12 +452,15 @@ export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTh
     // they stay on the frame where the whole pitch has them, as the goal's
     // card does, rather than going partly out of view. In the whole pitch the
     // view is the frame's own, and they are drawn as they always were.
-    const cards = layers.throwIn || layers.corner || layers.labelCard
+    const cards = layers.throwIn || layers.corner || layers.labelCard || layers.smallLabelCard
     const moved = matrix.some((v, i) => v !== [sx, 0, 0, sy, 0, 0][i])
     if (cards && moved) ctx.setTransform(sx, 0, 0, sy, 0, 0)
     if (layers.throwIn) drawThrowInIndicator(ctx as CanvasRenderingContext2D, pd, transform2d, layers.throwIn, theme)
     if (layers.corner) drawCornerCard(ctx as CanvasRenderingContext2D, transform2d, layers.corner, theme)
     if (layers.labelCard) drawLabelCard(ctx as CanvasRenderingContext2D, transform2d, layers.labelCard, theme)
+    if (layers.smallLabelCard) {
+      drawSmallLabelCard(ctx as CanvasRenderingContext2D, pd, transform2d, layers.smallLabelCard, theme)
+    }
     if (cards && moved) ctx.setTransform(...matrix)
     if (layers.goalBanner) {
       // Fixed to the frame: the goal sequence zooms the view in on the net

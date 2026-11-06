@@ -91,6 +91,36 @@ describe('a label card through the widget', () => {
     expect(env.queued()).toBe(0)
   })
 
+  it('plays the second half on a pushed label, in place of a resting half time, and goes by itself', () => {
+    const { tracker, log } = mount()
+    playing(tracker)
+    tracker.push(labelled(5, 'Half time'))
+    env.settle()
+    tracker.push(labelled(6, 'SECOND_HALF'))
+    env.frame()
+    env.frame()
+    expect(log).toEqual(['halfTime:start', 'halfTime:end', 'secondHalf:start'])
+    expect(control.outputs.at(-1)!.layers?.labelCard?.key).toBe('secondHalf')
+    env.settle()
+    expect(log.at(-1)).toBe('secondHalf:end')
+    expect(env.queued()).toBe(0)
+  })
+
+  it('rests on full time with the loop stopped, until a pushed human label sends it off', () => {
+    const { tracker, log } = mount()
+    playing(tracker)
+    tracker.push(labelled(5, 'Full time'))
+    env.settle()
+    expect(log).toEqual(['fullTime:start'])
+    expect(env.queued()).toBe(0)
+    tracker.push(labelled(6, 'Substitution', 'ai'))
+    env.settle()
+    expect(log).toEqual(['fullTime:start'])
+    tracker.push(labelled(7, 'Substitution'))
+    env.settle()
+    expect(log).toEqual(['fullTime:start', 'fullTime:end'])
+  })
+
   it('rests on half time with the loop stopped, until a pushed label sends it off', () => {
     const { tracker, log } = mount()
     playing(tracker)
@@ -136,6 +166,34 @@ describe('a label card through the widget', () => {
     env.setVisibility('visible')
     env.frame()
     expect(log.at(-1)).toBe('varCheck:end')
+  })
+
+  it.each([
+    ['Shot on goal', 'shotOnGoal'],
+    ['HEADER_ON_GOAL', 'headerOnGoal'],
+  ] as const)('plays on a pushed %j, and tells the host', (label, moment) => {
+    const { tracker, log } = mount()
+    playing(tracker)
+    tracker.push(labelled(5, label))
+    env.frame()
+    env.frame()
+    expect(log).toEqual([`${moment}:start`])
+    expect(control.outputs.at(-1)!.layers?.smallLabelCard?.key).toBe(moment)
+    env.settle()
+    expect(log).toEqual([`${moment}:start`, `${moment}:end`])
+  })
+
+  it('plays the foul card on its own label, and goes quiet after', () => {
+    const { tracker, log } = mount()
+    playing(tracker)
+    tracker.push(labelled(5, 'FOUL'))
+    env.frame()
+    env.frame()
+    expect(log).toEqual(['foul:start'])
+    expect(control.outputs.at(-1)!.layers?.smallLabelCard?.key).toBe('foul')
+    env.settle()
+    expect(log).toEqual(['foul:start', 'foul:end'])
+    expect(env.queued()).toBe(0)
   })
 
   it('stays off for a label the AI gave', () => {

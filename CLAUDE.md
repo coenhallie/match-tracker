@@ -23,8 +23,10 @@ of all of them, so keep dependencies pointing down towards `model`.
 - `render`: canvas drawing of the pitch, players, ball and cards.
 - `director`: moments (goal, attack, corner, throw-in, the label cards, and the attack over a
   player loss), camera and playback. The corner, the label cards and the player loss cover are
-  ours alone; video-annotation has none of them. A label card (`src/model/labelCards.ts`) is a
-  title over an icon, played by a label: a new one is a registry entry, its words and its icon. Its free kick is not shown, and its two goldens are retired.
+  ours alone; video-annotation has none of them. A label card (`src/model/labelCards.ts`) is played
+  by a label, either across the middle (a title over an icon or a short text, the pitch faded out) or small
+  on the bottom touchline (the title alone, the pitch left as it is). A new one is a registry entry and its words,
+  plus its icon if it has one. Its free kick is not shown, and its two goldens are retired.
 - `history`: the record buffer for live mode (capped to the lookback window).
 - `widget`: the shadow-root DOM, HUD, input, lifecycle. Public entry is `src/index.ts`.
 - `vue.ts`: the Vue component over the widget. Vue is an optional peer.

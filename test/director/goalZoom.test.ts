@@ -240,6 +240,51 @@ describe('the zoom near goal making way', () => {
     expect(Math.max(...zoomSteps(cameras))).toBeLessThan(0.02)
   })
 
+  it.each(['varCheck', 'goalDisallowed', 'halfTime', 'secondHalf', 'fullTime'] as const)('eases out to the whole pitch for the %s card, and fades the pitch', (moment) => {
+    const replay = playing({ x: 40, y: 0 })
+    settle(replay)
+    expect(camera(replay).zoom).toBeGreaterThan(1.3)
+    replay.trigger(moment)
+    expect(replay.last()?.labelCard?.key).toBe(moment)
+    const cameras = [camera(replay), ...frames(replay, 120)]
+    expect(cameras.at(-1)!.zoom).toBeLessThan(1.03)
+    expect(Math.max(...zoomSteps(cameras))).toBeLessThan(0.02)
+  })
+
+  it('eases out to the whole pitch for a small card, which sits on the touchline', () => {
+    const replay = playing({ x: 40, y: 0 })
+    settle(replay)
+    replay.trigger('foul')
+    expect(replay.last()?.smallLabelCard?.key).toBe('foul')
+    const cameras = [camera(replay), ...frames(replay, 120)]
+    expect(cameras.at(-1)!.zoom).toBeLessThan(1.03)
+  })
+
+  it.each(['shotOnGoal', 'headerOnGoal'] as const)('stays in for the %s card, as a shot is what it is there for', (moment) => {
+    const replay = playing({ x: 40, y: 0 })
+    settle(replay)
+    const before = camera(replay)
+    expect(before.zoom).toBeGreaterThan(1.3)
+    replay.trigger(moment)
+    expect(replay.last()?.smallLabelCard?.key).toBe(moment)
+    for (const after of frames(replay, 120)) expect(after).toEqual(before)
+  })
+
+  it('stays out through half time, asking for no frames once there, and eases back in after the next label', () => {
+    const replay = playing({ x: 40, y: 0 })
+    settle(replay)
+    const zoomedIn = camera(replay).zoom
+    replay.trigger('halfTime')
+    settle(replay)
+    expect(camera(replay)).toEqual(WHOLE_PITCH_CAMERA)
+    expect(replay.outputs.at(-1)!.animating).toBe(false)
+    expect(replay.last()?.labelCard).toEqual({ key: 'halfTime', intensity: 1 })
+    replay.set({ time: replay.time + 0.04, frame: ballFrame({ x: 40, y: 0 }, ['Substitution']) })
+    settle(replay)
+    expect(replay.last()?.labelCard).toBeUndefined()
+    expect(camera(replay).zoom).toBeCloseTo(zoomedIn, 2)
+  })
+
   it('leaves the view in for an attack, whose edge and label stay in view however far in it is', () => {
     const replay = playing({ x: 40, y: 0 })
     settle(replay)

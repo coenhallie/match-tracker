@@ -412,6 +412,11 @@ describe('the Vue component over the pitch', () => {
       varCheck: false,
       goalDisallowed: false,
       halfTime: false,
+      secondHalf: false,
+      fullTime: false,
+      foul: false,
+      shotOnGoal: false,
+      headerOnGoal: false,
     })
   })
 })

@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { drawSmallCard } from '../../src/render/smallCard'
+import { DEFAULT_THEME } from '../../src/render/theme'
 import { drawThrowInIndicator, isThrowInFrame, type ThrowInIndicator } from '../../src/render/throwIn'
 import { build2DTransform, designUnit, worldToPx } from '../../src/render/pitchGeometry'
 import { createRenderer } from '../../src/render/renderer'
@@ -69,13 +71,24 @@ describe('throw-in indicator', () => {
   })
 
   // The widget's throw-in: the reference's slides, as above.
-  it('stays in place, fading, when drawn in place, whatever its side', () => {
-    for (const side of [-1, 1] as const) {
-      expect(band(draw({ slide: 0, side, inPlace: true }))).toEqual(band(draw()))
+  it('is the small card when drawn in place, call for call, whatever its side and however far it has slid', () => {
+    const card = recordingCtx()
+    drawSmallCard(card.ctx as unknown as CanvasRenderingContext2D, PITCH, T, 'THROW IN', DEFAULT_THEME.fonts.title, 0.4)
+    expect(card.ops.length).toBeGreaterThan(0)
+    for (const side of [-1, 1, null] as const) {
+      for (const slide of [0, 0.4, 1]) expect(draw({ intensity: 0.4, slide, side, inPlace: true })).toEqual(card.ops)
     }
-    const ops = draw({ intensity: 0.4, slide: 0.4, inPlace: true })
-    expect(ops.find((o) => o.op === 'fillRect')!.globalAlpha).toBeCloseTo(0.4, 6)
-    expect(title(ops)!.globalAlpha).toBeCloseTo(0.4, 6)
+  })
+
+  it('stands where the design has it when drawn in place, hugging its title', () => {
+    const { ctx, ops } = recordingCtx()
+    ctx.measureText = (() => ({ width: 331 * u })) as never
+    drawThrowInIndicator(ctx as unknown as CanvasRenderingContext2D, PITCH, T, { intensity: 1, slide: 1, side: 1, inPlace: true })
+    const [left, top, width, height] = band(ops)
+    expect(width / u).toBeCloseTo(587, 6)
+    expect(height / u).toBeCloseTo(112, 6)
+    expect(left + width / 2).toBeCloseTo(CX, 6)
+    expect((TOUCHLINE - top) / u).toBeCloseTo(60, 6)
   })
 
   it('writes THROW IN in white Inter Black Italic where the design has it', () => {
