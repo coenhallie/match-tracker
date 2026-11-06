@@ -6,6 +6,11 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-11-06
+
+The half time, second half and full time cards now play on the names the
+labelling tool sends. Everything else is drawn as in 0.6.0.
+
 ### What you see
 
 - **The half time, the second half and the full time play on the labelling
