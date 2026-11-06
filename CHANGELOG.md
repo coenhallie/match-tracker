@@ -6,6 +6,8 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-06
+
 Three new moments, the VAR check, the goal disallowed and the half time, on a
 new reusable kind of card. Everything else is drawn as in 0.4.0.
 
