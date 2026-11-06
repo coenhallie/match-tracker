@@ -87,6 +87,9 @@ describe('playing moments by hand', () => {
       attack: { 0: true, 1: true },
       corner: true,
       throwIn: true,
+      varCheck: true,
+      goalDisallowed: true,
+      halfTime: true,
     })
 
     const without = ready(null, { possession: null, attacks: { 0: null, 1: null }, states: { 0: null, 1: null } })
@@ -123,6 +126,9 @@ describe('playing moments by hand', () => {
         attack: { 0: false, 1: false },
         corner: false,
         throwIn: false,
+        varCheck: false,
+        goalDisallowed: false,
+        halfTime: false,
       })
     })
 

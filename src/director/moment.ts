@@ -1,23 +1,29 @@
 /**
  * The seam between the director and its moments (goal.ts, attack.ts,
- * corner.ts, throwIn.ts, playerLoss.ts): what a moment is to the director,
+ * corner.ts, throwIn.ts, labelCard.ts, playerLoss.ts): what a moment is to the director,
  * and what the director lends each moment to read and act through. See "The
  * moments" in director.ts.
  */
 import type { BallTrail } from '../analysis/ballTrail.js'
 import type { Spin } from '../analysis/football.js'
 import type { TeamId, TeamPhase } from '../analysis/teamPhase.js'
+import type { LabelCardKey } from '../model/labelCards.js'
 import type { ReplayLayers } from '../model/replayLayers.js'
 import type { TrackerRecord } from '../model/types.js'
 import type { Camera, PipelineView } from '../render/viewTransform.js'
 
-/** What a moment's animation frame did: painted and wants another frame, or is over. */
-export type MomentStep = 'paint' | 'stop'
+/**
+ * What a moment's animation frame did: painted and wants another frame, painted
+ * and wants none until something changes (it stays on screen as it is), or is over.
+ */
+export type MomentStep = 'paint' | 'hold' | 'stop'
 
 /** A moment, as the director drives it. */
 export interface Moment {
   /** The reference's `x !== null || xRaf !== null`: showing, or waiting on its first frame. */
   readonly active: boolean
+  /** Showing as it is with nothing to animate, since its step said 'hold'. Asks for no frames. */
+  readonly idle?: boolean
   /** Its animation frame callback, at the frame's timestamp. */
   step(nowMs: number): MomentStep
   /** End it at once; true when it was active, and the director then paints, as `stopX` does. */
@@ -35,12 +41,20 @@ export interface ShownReplay {
   trail: BallTrail | null
 }
 
-/** What a seek forgets (`:574-579`), shared by the corner and throw-in modules. */
+/** One run of a label card's label: when it was last seen, and whether the card has shown for it. */
+export interface LabelRun {
+  seenAt: number | null
+  shown: boolean
+}
+
+/** What a seek forgets (`:574-579`), shared by the corner, throw-in and label card modules. */
 export interface MomentMemory {
   /** The replay time the corner label was last seen at, or null. */
   cornerLabelAt: number | null
   /** The replay time the throw-in label was last seen at, or null. */
   throwInLabelAt: number | null
+  /** Each label card's label. */
+  labelCards: Record<LabelCardKey, LabelRun>
   /** Where on the pitch the ball was last tracked, in metres, and when. */
   lastBall: { x: number; y: number; at: number } | null
   /** The replay time anyone on the pitch, or the ball, last moved at. */

@@ -6,6 +6,48 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+Three new moments, the VAR check, the goal disallowed and the half time, on a
+new reusable kind of card. Everything else is drawn as in 0.4.0.
+
+### API
+
+- `ReplayMoment` has three new members, `'varCheck'`, `'goalDisallowed'` and
+  `'halfTime'`, which `trigger` plays and the `moment` event names.
+- `MomentAvailability` has three new keys, `varCheck`, `goalDisallowed` and
+  `halfTime`. A page that builds a whole `MomentAvailability` itself now has to give them.
+- `ReplayLayers` has three new keys, `varCheck`, `goalDisallowed` and `halfTime`.
+  A page that builds a whole `ReplayLayers` itself now has to give them; `layers` and `setOptions` take a
+  `Partial<ReplayLayers>`, as before, and need nothing new.
+- `TrackerText` has four new keys: `varCheck`, `goalDisallowed` and `halfTime`,
+  the cards' titles, the same three under `layers`, and `halfTimeText`. `text` takes overrides, as before, and needs nothing new.
+
+### What you see
+
+- **VAR check.** On a human's VAR check label, in any case and however the
+  export writes it ("VAR check", "var check", "EventType.VAR_CHECK"), "VAR CHECK"
+  and an eye fade in on a dark band across the middle of the pitch, stay for at
+  least 2 s and for as long as the label is on, and fade out. It plays once per
+  run of the label. It gives way to a goal or a corner and plays after them if
+  the label is still on, and it takes over from an attack and a throw-in. It is
+  a new layer, `varCheck` ("VAR check"), on by default. video-annotation has no
+  VAR check: this is the widget's own.
+- **Goal disallowed.** The same card, with "GOAL DISALLOWED" and a struck-through
+  goal, on a human's goal disallowed label, written in any of the same ways. No
+  goal plays on that label. It behaves as the VAR check does, and takes over from
+  it, as the latest card always takes over from another. It is a new layer,
+  `goalDisallowed` ("Goal disallowed"), on by default. This is the widget's own too.
+- **Half time.** The same card again, with "HALF TIME" and a short text in place
+  of the icon, on a human's half time label. It does not time out: it stays until
+  a human gives any other label, then fades out as that label's moment comes. A
+  pause or coming back to a hidden tab leaves it up; a seek or a press on the
+  pitch ends it. It is a new layer, `halfTime` ("Half time"), on by default. This
+  is the widget's own too.
+
+### Package
+
+- Inter Semi Bold is now bundled, for the half time's text: a fifth font file
+  next to `dist/index.js`, 24 kB, loaded with the others.
+
 ## [0.4.0] - 2026-11-05
 
 The view zooms in as the ball nears a goal, a goal no longer zooms on its

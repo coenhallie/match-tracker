@@ -80,3 +80,34 @@ export function fitText(
   }
   return { px, text: cut(lo) }
 }
+
+/**
+ * `text` as lines at most `maxWidth` wide: each of its own lines, broken at
+ * spaces. A single word too wide for a line has the line to itself and runs
+ * over. At most `maxLines` lines; if there would be more, the last one kept
+ * ends in an ELLIPSIS. The context's font is left as it was.
+ */
+export function wrapText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  font: string,
+  maxWidth: number,
+  maxLines: number,
+): string[] {
+  const lines: string[] = []
+  for (const own of text.split('\n')) {
+    let line = ''
+    for (const word of own.trim().split(/\s+/)) {
+      const longer = line ? `${line} ${word}` : word
+      if (line && measureWidth(ctx, longer, font) > maxWidth) {
+        lines.push(line)
+        line = word
+      } else {
+        line = longer
+      }
+    }
+    lines.push(line)
+  }
+  if (lines.length <= maxLines) return lines
+  return [...lines.slice(0, maxLines - 1), `${lines[maxLines - 1]}${ELLIPSIS}`]
+}

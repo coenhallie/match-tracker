@@ -11,12 +11,17 @@ import type { TrackerText } from './text.js'
  * its canvas. The corner's words, on its card and in the layers menu, are the
  * widget's own too: the reference has no corner. So is the throw-in layer's
  * hint, as the widget's throw-in fades in where the reference's slides, and
- * so are the player loss's layer and debug badge.
+ * so are the player loss's layer and debug badge. So are the label cards'
+ * words, on the card and in the layers menu.
  */
 export const en: TrackerText = {
   goal: 'GOAL',
   corner: 'CORNER',
   throwIn: 'THROW IN',
+  varCheck: 'VAR CHECK',
+  goalDisallowed: 'GOAL DISALLOWED',
+  halfTime: 'HALF TIME',
+  halfTimeText: 'There is a break in play.\nCoverage will resume soon.',
   attack: 'Attack',
   attacking: 'Attacking',
   defending: 'Defending',
@@ -43,6 +48,9 @@ export const en: TrackerText = {
     playerLoss: { label: 'Attack over lost players', hint: 'An attack while fewer than 18 players are tracked' },
     corner: { label: 'Corner', hint: 'A banner and the corner lit up on a corner label, held while play is stopped' },
     throwInBanner: { label: 'Throw-in', hint: 'A banner along the bottom touchline on a throw-in label' },
+    varCheck: { label: 'VAR check', hint: 'A banner across the middle of the pitch on a VAR check label' },
+    goalDisallowed: { label: 'Goal disallowed', hint: 'A banner across the middle of the pitch on a goal disallowed label' },
+    halfTime: { label: 'Half time', hint: 'A banner across the middle of the pitch on a half time label, until the next label' },
     ballTrail: { label: 'Ball trail', hint: "The ball's path, with a dot at each turn" },
     phaseLabels: { label: 'Attacking / defending', hint: 'Team labels above the pitch' },
     nearbyRings: { label: 'Players near the ball', hint: 'White rings within 15 m of the ball carrier' },

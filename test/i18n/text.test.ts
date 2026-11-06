@@ -113,7 +113,7 @@ describe('the built-in text', () => {
     expect(formatText(en.zoomLevel, { zoom: '2.5' })).toBe('2.5x')
     // The corner is the widget's own: the reference has none. So is the throw-in's hint, as the widget's
     // throw-in fades in where the reference's slides in from the ball's half. And so is the zoom near goal.
-    const { corner, throwInBanner, playerLoss, goalZoom, ...referenceLayers } = en.layers
+    const { corner, throwInBanner, playerLoss, goalZoom, varCheck, goalDisallowed, halfTime, ...referenceLayers } = en.layers
     expect(en.corner).toBe('CORNER')
     expect(corner).toEqual({
       label: 'Corner',
@@ -123,6 +123,20 @@ describe('the built-in text', () => {
     expect(goalZoom).toEqual({
       label: 'Zoom near goal',
       hint: 'The view eases in as the ball nears a goal, and into a goal',
+    })
+    // So are the label cards.
+    expect(en.varCheck).toBe('VAR CHECK')
+    expect(varCheck).toEqual({ label: 'VAR check', hint: 'A banner across the middle of the pitch on a VAR check label' })
+    expect(en.goalDisallowed).toBe('GOAL DISALLOWED')
+    expect(goalDisallowed).toEqual({
+      label: 'Goal disallowed',
+      hint: 'A banner across the middle of the pitch on a goal disallowed label',
+    })
+    expect(en.halfTime).toBe('HALF TIME')
+    expect(en.halfTimeText).toBe('There is a break in play.\nCoverage will resume soon.')
+    expect(halfTime).toEqual({
+      label: 'Half time',
+      hint: 'A banner across the middle of the pitch on a half time label, until the next label',
     })
     // So is the attack over a player loss, and its debug badge.
     expect(playerLoss).toEqual({ label: 'Attack over lost players', hint: 'An attack while fewer than 18 players are tracked' })

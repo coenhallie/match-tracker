@@ -3,6 +3,7 @@
  * director's paints.
  */
 import type { MomentAvailability } from '../director/director.js'
+import { LABEL_CARD_KEYS } from '../model/labelCards.js'
 import type { ReplayLayers, ReplayMoment } from '../model/replayLayers.js'
 import type { FrameLayers } from '../render/renderer.js'
 
@@ -69,7 +70,7 @@ function reportError(error: unknown): void {
 }
 
 /** In the order the director stops them. */
-const MOMENTS: readonly ReplayMoment[] = ['goal', 'attack', 'corner', 'throwIn']
+const MOMENTS: readonly ReplayMoment[] = ['goal', 'attack', 'corner', 'throwIn', ...LABEL_CARD_KEYS]
 
 /**
  * Whether a paint shows `moment`. Each moment's value is drawn from its
@@ -87,6 +88,8 @@ function shows(layers: FrameLayers, moment: ReplayMoment): boolean {
       return layers.corner !== undefined
     case 'throwIn':
       return layers.throwIn !== undefined
+    default:
+      return layers.labelCard?.key === moment
   }
 }
 

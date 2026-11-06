@@ -83,7 +83,16 @@ const NOTHING_AVAILABLE: MomentAvailability = {
   attack: { 0: false, 1: false },
   corner: false,
   throwIn: false,
+  varCheck: false,
+  goalDisallowed: false,
+  halfTime: false,
 }
+
+/** Whether two availabilities say the same, whatever moments there are. */
+const sameAvailability = (a: MomentAvailability, b: MomentAvailability) =>
+  a.attack[0] === b.attack[0] &&
+  a.attack[1] === b.attack[1] &&
+  (Object.keys(a) as Array<keyof MomentAvailability>).every((key) => key === 'attack' || a[key] === b[key])
 
 const sameBox = (a: TrackerBox | null, b: TrackerBox | null) =>
   a === b ||
@@ -175,15 +184,7 @@ export const MatchTracker = defineComponent({
     function takeAvailability(value: MomentAvailability): void {
       availability.value = value
       const was = emittedAvailability
-      if (
-        value.goal === was.goal &&
-        value.attack[0] === was.attack[0] &&
-        value.attack[1] === was.attack[1] &&
-        value.corner === was.corner &&
-        value.throwIn === was.throwIn
-      ) {
-        return
-      }
+      if (sameAvailability(value, was)) return
       emittedAvailability = value
       emit('availability', value)
     }

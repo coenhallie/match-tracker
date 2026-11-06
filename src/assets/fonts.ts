@@ -6,7 +6,8 @@ import { LABEL_FAMILY, TITLE_FAMILY } from './fontFamilies.js'
  *  - Montserrat 600 and 700, for the attack's label on the canvas, and with
  *    400 for the HUD, whose phase row is semibold and bold and whose layers
  *    menu is the page's normal weight, as in video-annotation.
- *  - Inter Black Italic, for the event cards' titles.
+ *  - Inter Black Italic, for the event cards' titles, and Semi Bold for a label
+ *    card's short text.
  *
  * Each `new URL(..., import.meta.url)` is written out in full, so the bundler
  * ships each file as an asset of its own rather than inside the script. Vite
@@ -38,6 +39,12 @@ const FACES: ReadonlyArray<{ family: string; url: URL; weight: string; style: st
     url: new URL('./fonts/inter-latin-900-italic.woff2?no-inline', import.meta.url),
     weight: '900',
     style: 'italic',
+  },
+  {
+    family: TITLE_FAMILY,
+    url: new URL('./fonts/inter-latin-600-normal.woff2?no-inline', import.meta.url),
+    weight: '600',
+    style: 'normal',
   },
 ]
 

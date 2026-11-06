@@ -116,10 +116,10 @@
  * ## The moments
  *
  * Each moment is a module of its own (`goal.ts`, `attack.ts`, `corner.ts`,
- * `throwIn.ts`, `playerLoss.ts`) behind the narrow interface in
+ * `throwIn.ts`, `labelCard.ts`, `playerLoss.ts`) behind the narrow interface in
  * moment.ts, reading and acting through the `MomentContext` the director
  * lends it. The director holds one
- * of each, and does what crosses between them: which takes over from which,
+ * of each, one `LabelCard` per card in LABEL_CARDS, and does what crosses between them: which takes over from which,
  * and every paint.
  *
  *  - An animation frame is an update whose `nowMs` is later than the last
@@ -129,8 +129,9 @@
  *    `startedMs` is that first frame. The replay's clock is taken as the
  *    frame's first callback, as it is in the reference whenever play runs.
  *  - `step(nowMs)` is the moment's callback: it painted and goes on
- *    ('paint', requested again), or it is over ('stop': the director stops
- *    it, which paints, as `stopX` does).
+ *    ('paint', requested again), it painted and stays as it is with nothing to
+ *    animate ('hold', not requested again until something changes it), or it
+ *    is over ('stop': the director stops it, which paints, as `stopX` does).
  *  - `stop()` ends it at once and says whether it was active; the director
  *    then paints and cancels its request. The goal's stop puts the user's
  *    view back first, which reaches the renderer at the next view flush.
@@ -140,6 +141,7 @@
  */
 import { sameTrail, type BallTrail } from '../analysis/ballTrail.js'
 import { samePhase, type TeamId, type TeamPhase } from '../analysis/teamPhase.js'
+import { LABEL_CARDS, isLabelCardKey, labelCardRecord, type LabelCardKey } from '../model/labelCards.js'
 import type { ReplayLayers, ReplayMoment } from '../model/replayLayers.js'
 import type { Frame, TrackerRecord } from '../model/types.js'
 import { planGoal } from '../analysis/goalSequence.js'
@@ -152,6 +154,7 @@ import { MIN_ZOOM } from './camera.js'
 import { Corner } from './corner.js'
 import { Goal } from './goal.js'
 import { GoalZoom } from './goalZoom.js'
+import { LabelCard } from './labelCard.js'
 import { PlayerLoss, type PlayerLossState } from './playerLoss.js'
 import type { Moment, MomentContext, MomentMemory, ShownReplay } from './moment.js'
 import { ThrowIn } from './throwIn.js'
@@ -172,6 +175,12 @@ export interface DirectorInput {
   record: TrackerRecord | null
   phase: TeamPhase | null
   trail: BallTrail | null
+  /**
+   * Live, back after being hidden or scrolled away: `playback` is false, as for
+   * any seek, but nobody chose to go anywhere, so a card that stays until the
+   * next label stays.
+   */
+  rejoining?: boolean
 }
 
 export interface DirectorView {
@@ -220,7 +229,7 @@ export interface DirectorOptions {
 }
 
 /** Which moments can be played by hand on the frame on screen (`momentAvailability`, `:1020-1036`). */
-export interface MomentAvailability {
+export interface MomentAvailability extends Record<LabelCardKey, boolean> {
   /** The goal it goes in is the one in the ball's half: none without a ball. */
   goal: boolean
   /** Without a direction there is no telling which goal a team attacks. */
@@ -235,6 +244,7 @@ const NOTHING_SEEN: ShownReplay = { time: 0, playing: false, record: null, phase
 const freshMemory = (): MomentMemory => ({
   cornerLabelAt: null,
   throwInLabelAt: null,
+  labelCards: labelCardRecord(() => ({ seenAt: null, shown: false })),
   lastBall: null,
   playMovedAt: 0,
 })
@@ -264,6 +274,7 @@ export class Director {
   private readonly attack: Attack
   private readonly corner: Corner
   private readonly throwIn: ThrowIn
+  private readonly labelCards: readonly LabelCard[]
   private readonly playerLoss: PlayerLoss
   private readonly goalZoom = new GoalZoom()
   /** Whether the user has the view, so the zoom near goal leaves it where they put it. */
@@ -316,6 +327,7 @@ export class Director {
     this.attack = new Attack(this.context)
     this.corner = new Corner(this.context)
     this.throwIn = new ThrowIn(this.context)
+    this.labelCards = LABEL_CARDS.map((card) => new LabelCard(this.context, card))
     this.playerLoss = new PlayerLoss(this.context)
   }
 
@@ -362,7 +374,8 @@ export class Director {
    * Play `moment` now, by hand (`triggerMoment`, `:1038-1063`); for an
    * attack, `team`'s. It takes over from whatever is showing and runs as it
    * would on its label, during playback or not, except the corner: with no
-   * label or cutaway to wait on, it is on screen for CORNER_DEMO_MS. A seek
+   * label or cutaway to wait on, it is on screen for CORNER_DEMO_MS, and a
+   * label card, likewise for LABEL_CARD_DEMO_MS. A seek
    * or a step ends any of them, as it ends the others.
    *
    * `input` and `view` are the replay and the view as they are now, taken in
@@ -395,6 +408,12 @@ export class Director {
       this.memory.cornerLabelAt = now
       this.corner.start(frame, now, true)
       this.request(this.corner)
+    } else if (isLabelCardKey(moment)) {
+      const card = this.labelCards.find((c) => c.key === moment)!
+      const strength = this.labelCardStrength()
+      this.stopSequences()
+      card.start(now, frame, true, strength)
+      this.request(card)
     } else {
       this.stopSequences()
       this.memory.throwInLabelAt = now
@@ -415,6 +434,7 @@ export class Director {
       attack: { 0: ready && phase?.attacks[0] != null, 1: ready && phase?.attacks[1] != null },
       corner: ready,
       throwIn: ready,
+      ...labelCardRecord(() => ready),
     }
   }
 
@@ -441,6 +461,7 @@ export class Director {
     if (before.playerLoss && !layers.playerLoss) this.stopMoment(this.playerLoss)
     if (before.corner && !layers.corner) this.stopMoment(this.corner)
     if (before.throwInBanner && !layers.throwInBanner) this.stopMoment(this.throwIn)
+    for (const card of this.labelCards) if (before[card.key] && !layers[card.key]) this.stopMoment(card)
     if (before.ringFades && !layers.ringFades) this.rings.settle(this.shown.record?.frame ?? null)
     if (before.goalZoom && !layers.goalZoom) this.dropGoalZoom()
     this.paint()
@@ -468,7 +489,7 @@ export class Director {
    */
   reset(): void {
     this.goal.stop()
-    for (const moment of [this.goal, this.attack, this.playerLoss, this.corner, this.throwIn]) {
+    for (const moment of [this.goal, this.attack, this.playerLoss, this.corner, this.throwIn, ...this.labelCards]) {
       moment.reset()
     }
     this.requests = []
@@ -501,11 +522,11 @@ export class Director {
     this.seen = next
     // 1. The clock, before the record it brought in: still showing the old one.
     this.shown = { ...before, time: next.time, playing: next.playing }
-    if (next.time !== before.time) this.clockMoved(input.playback)
+    if (next.time !== before.time) this.clockMoved(input.playback, input.rejoining ?? false)
     this.shown = next
-    // 2. Pause.
+    // 2. Pause. A card that stays until the next label stays through it.
     if (before.playing && !next.playing) {
-      this.stopSequences()
+      this.stopSequences(true)
       this.rings.settle(next.record?.frame ?? null)
       this.paint()
     }
@@ -528,14 +549,15 @@ export class Director {
   }
 
   /** The currentTime watcher (`:562-581`). */
-  private clockMoved(playback: boolean): void {
+  private clockMoved(playback: boolean, rejoining: boolean): void {
     this.lastStepWasPlayback = playback
     if (playback) return
-    this.stopSequences()
+    this.stopSequences(rejoining)
     // Wherever the clock went, nothing seen before counts from here: the
     // frame watcher notes the labels and the ball again from the new record.
     this.memory.cornerLabelAt = null
     this.memory.throwInLabelAt = null
+    this.memory.labelCards = freshMemory().labelCards
     this.memory.lastBall = null
     this.memory.playMovedAt = this.shown.time
     this.playerLoss.forget()
@@ -551,28 +573,46 @@ export class Director {
       // ensureRenderer: the first record attaches the renderer, which is given the view and paints.
       if (!this.ready) this.pushView()
       const frame = record.frame
+      // First, so a card that goes on this label is on its way out as the label's own moment comes.
+      for (const card of this.labelCards) if (card.notice(frame, time)) this.request(card)
       if (this.goal.detect(frame)) {
         // The goal takes over from any other moment still showing.
         this.stopMoment(this.attack)
         this.stopMoment(this.playerLoss)
         this.stopMoment(this.corner)
         this.stopMoment(this.throwIn)
+        this.stopLabelCards(true)
         if (this.goal.start(frame)) this.request(this.goal)
       }
       if (this.corner.detect(frame, before.record?.frame ?? null, time, this.goal.active)) {
-        // A corner takes over from an attack, the attack over a player loss, and a throw-in.
+        // A corner takes over from an attack, the attack over a player loss, a throw-in and a label card.
         this.stopMoment(this.attack)
         this.stopMoment(this.playerLoss)
         this.stopMoment(this.throwIn)
+        this.stopLabelCards(true)
         this.corner.start(frame, time)
         this.request(this.corner)
       }
-      const setPiece = this.goal.active || this.corner.active
+      for (const card of this.labelCards) {
+        if (card.detect(frame, time, this.goal.active || this.corner.active)) {
+          // As a corner does: the card is laid across the pitch, and play is stopped for it. And the
+          // latest card takes over from another, as a goal disallowed answers the VAR check before it,
+          // from the strength that one had, so the band does not blink.
+          const strength = this.labelCardStrength()
+          this.stopMoment(this.attack)
+          this.stopMoment(this.playerLoss)
+          this.stopMoment(this.throwIn)
+          this.stopLabelCards()
+          card.start(time, frame, false, strength)
+          this.request(card)
+        }
+      }
+      const setPiece = this.goal.active || this.corner.active || this.labelCards.some((c) => c.holdsBack)
       if (this.throwIn.detect(frame, time, setPiece)) {
         this.throwIn.start(time)
         this.request(this.throwIn)
       }
-      // An attack shows alongside a throw-in, but not over a goal or a corner,
+      // An attack shows alongside a throw-in, but not over a goal, a corner or a label card,
       // nor over the attack covering a player loss: the one there is stands in for it.
       const attack = this.attack.detect(frame, setPiece || this.playerLoss.active)
       if (attack) {
@@ -620,10 +660,11 @@ export class Director {
         continue
       }
       const { moment } = request
-      if (moment.step(nowMs) === 'paint') {
+      const step = moment.step(nowMs)
+      if (step !== 'stop') {
         this.paint()
         this.due.shift()
-        this.request(moment)
+        if (step === 'paint') this.request(moment)
       } else {
         this.due.shift()
         this.stopMoment(moment)
@@ -642,13 +683,28 @@ export class Director {
     this.requests = this.requests.filter((request) => request.live)
   }
 
-  /** `stopSequences` (`:597-602`): every moment, in the reference's order. */
-  private stopSequences(): void {
+  /**
+   * `stopSequences` (`:597-602`): every moment, in the reference's order. With
+   * `keepStaying`, but for a card that stays until the next label, which has
+   * had none: the reference has no such moment.
+   */
+  private stopSequences(keepStaying = false): void {
     this.stopMoment(this.goal)
     this.stopMoment(this.attack)
     this.stopMoment(this.playerLoss)
     this.stopMoment(this.corner)
     this.stopMoment(this.throwIn)
+    for (const card of this.labelCards) if (!keepStaying || !card.staysOn) this.stopMoment(card)
+  }
+
+  /** End the label cards at once; with `letFade`, one already fading out finishes doing so. */
+  private stopLabelCards(letFade = false): void {
+    for (const card of this.labelCards) if (!letFade || card.holdsBack) this.stopMoment(card)
+  }
+
+  /** How strongly the label card showing is drawn: 0 when none is. */
+  private labelCardStrength(): number {
+    return this.labelCards.find((card) => card.active)?.value()?.intensity ?? 0
   }
 
   /** `stopGoal` and the like: end `moment` at once, and paint the frame as it is if it was showing. */
@@ -771,6 +827,7 @@ export class Director {
       attack: attackShown,
       corner: this.corner.value(),
       throwIn: this.throwIn.value(),
+      labelCard: this.labelCards.find((card) => card.active)?.value(),
       goalBanner: this.goal.banner(),
       rings: {
         nearby: this.layers.nearbyRings ? new Map(this.rings.nearby) : new Map(),
@@ -787,8 +844,8 @@ export class Director {
 
   /** True while any moment or fade needs another tick: `animating` of the next output. */
   get animating(): boolean {
-    const moments = [this.goal, this.attack, this.playerLoss, this.corner, this.throwIn]
-    return moments.some((m) => m.active) || this.rings.fading() || this.goalZoom.moving
+    const moments: Moment[] = [this.goal, this.attack, this.playerLoss, this.corner, this.throwIn, ...this.labelCards]
+    return moments.some((m) => m.active && !m.idle) || this.rings.fading() || this.goalZoom.moving
   }
 
   private output(): DirectorOutput {

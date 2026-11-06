@@ -5,6 +5,7 @@
 import type { TeamId } from '../analysis/teamPhase.js'
 import type { DirectorOptions } from '../director/director.js'
 import { resolveText, type TrackerLocale, type TrackerText, type TrackerTextOverrides } from '../i18n/text.js'
+import { labelCardRecord, labelCardTextRecord } from '../model/labelCards.js'
 import {
   DEFAULT_REPLAY_LAYERS,
   readReplayLayers,
@@ -113,7 +114,14 @@ export function themeFor(resolved: Resolved, icons: RenderTheme['icons']): Rende
   const { text } = resolved
   return {
     colors: resolved.colors,
-    text: { goal: text.goal, corner: text.corner, throwIn: text.throwIn, attack: text.attack },
+    text: {
+      goal: text.goal,
+      corner: text.corner,
+      throwIn: text.throwIn,
+      attack: text.attack,
+      ...labelCardRecord((key) => text[key]),
+      ...labelCardTextRecord((key) => text[key]),
+    },
     fonts: DEFAULT_THEME.fonts,
     icons,
     formatAction: resolved.formatAction,

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { ELLIPSIS, MIN_FIT, fitFontPx, fitText } from '../../src/render/fitText'
+import { ELLIPSIS, MIN_FIT, fitFontPx, fitText, wrapText } from '../../src/render/fitText'
 import { createRenderer, type FrameLayers } from '../../src/render/renderer'
 import { DEFAULT_THEME, type RenderTheme } from '../../src/render/theme'
 import { build2DTransform, designUnit, worldToPx } from '../../src/render/pitchGeometry'
@@ -259,5 +259,25 @@ describe('canvas text fits its card', () => {
     const [drawn] = textAt(320, {}, attack(name))
     expect(drawn!.args[0]).toBe(name)
     expect(width(drawn!)).toBeLessThanOrEqual(560 * u + 1e-6)
+  })
+})
+
+describe('wrapText', () => {
+  /** Every character 10 wide, whatever the font. */
+  const ctx = { font: '', measureText: (s: string) => ({ width: s.length * 10 }) } as unknown as CanvasRenderingContext2D
+
+  it('breaks at spaces to fit, and at each line of its own', () => {
+    expect(wrapText(ctx, 'one two three', 'f', 80, 9)).toEqual(['one two', 'three'])
+    expect(wrapText(ctx, 'one\ntwo', 'f', 80, 9)).toEqual(['one', 'two'])
+  })
+
+  it('gives a word too wide for a line a line of its own', () => {
+    expect(wrapText(ctx, 'a averyveryverylongword b', 'f', 80, 9)).toEqual(['a', 'averyveryverylongword', 'b'])
+  })
+
+  it('cuts it off with an ellipsis past the last line, and leaves the font as it was', () => {
+    ctx.font = 'before'
+    expect(wrapText(ctx, 'a\nb\nc', 'f', 80, 2)).toEqual(['a', `b${ELLIPSIS}`])
+    expect(ctx.font).toBe('before')
   })
 })

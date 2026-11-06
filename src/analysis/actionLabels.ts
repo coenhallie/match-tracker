@@ -25,10 +25,15 @@ export function isHumanLabel(action: FrameAction): boolean {
   return String(action.action_origin ?? '').trim().toLowerCase() === 'human'
 }
 
+/** The labels a human gave this frame, by their bare names (actionName). */
+export function humanLabelNames(frame: Frame): string[] {
+  return (frame.state?.actions ?? []).filter(isHumanLabel).map((a) => actionName(a.action_type))
+}
+
 /**
  * Whether a human gave this frame the label `name` (a bare name, see
  * actionName). Matched whole, so "goal" never matches a goal kick. The
- * moments (goal, corner, throw-in) play only on these; a label from the AI,
+ * moments (goal, corner, throw-in, label cards) play only on these; a label from the AI,
  * or one without an origin, is ignored (isHumanLabel).
  */
 export function frameHasAction(frame: Frame, name: string): boolean {

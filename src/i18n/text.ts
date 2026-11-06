@@ -1,3 +1,4 @@
+import type { LabelCardKey, LabelCardTextKey } from '../model/labelCards.js'
 import type { ReplayLayerKey } from '../model/replayLayers.js'
 import { en } from './en.js'
 import { zh } from './zh.js'
@@ -7,9 +8,11 @@ import { zh } from './zh.js'
  * video-annotation's, word for word (en.ts). Words the HUD shows in capitals
  * are kept in their own case here and capitalised by its CSS, as in the
  * reference, whose phase row's ARIA label lowercases "Attacking" and
- * "Defending" for reading out.
+ * "Defending" for reading out. Each label card's title is under its key, and
+ * the short text of one that has it under its key + "Text", with a line break
+ * for each of its own: it wraps within the card as well.
  */
-export interface TrackerText {
+export interface TrackerText extends Record<LabelCardKey | LabelCardTextKey, string> {
   /** The goal card's title. */
   goal: string
   /** The corner card's title. */

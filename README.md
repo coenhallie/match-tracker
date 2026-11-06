@@ -1,12 +1,12 @@
 # @coenhallie/match-tracker
 
 A live 2D match tracker for football streams. It draws players, ball and the
-match's moments (goals, attacks, corners, throw-ins) on a pitch, from the
+match's moments (goals, attacks, corners, throw-ins, VAR checks, disallowed goals, half time) on a pitch, from the
 tracking pipeline's frames, inside any element you give it. It is the 2D
 replay from video-annotation, taken out of Vue: the same picture, timing and
 behaviour for the same data, with zoom and pan, the attacking/defending row and
 the layers menu. The corner is the widget's own, as video-annotation has none,
-and so is the attack shown over a player loss. video-annotation's free kick
+and so are the VAR check, the goal disallowed, the half time and the attack shown over a player loss. video-annotation's free kick
 isn't shown.
 
 - **Framework-free.** One function, `createMatchTracker`, and plain DOM. A thin
@@ -236,10 +236,10 @@ destroyed on can have a new one.
 | `push(message)` | Live: one websocket message. |
 | `present(state)` | Replay: `{ time, playing, record, lookback }` at the host's clock. |
 | `reset()` | Forget everything seen and end every moment. What comes next is a seek. The last picture stays until new data arrives. |
-| `trigger(moment, team?)` | Play `'goal'`, `'attack'`, `'corner'` or `'throwIn'` now, on the frame on screen. `team` (0 home, 1 away, default 0) is for an attack. Returns false when the moment cannot be played on that frame (for example before the first frame, or a goal with no ball). |
+| `trigger(moment, team?)` | Play `'goal'`, `'attack'`, `'corner'`, `'throwIn'`, `'varCheck'`, `'goalDisallowed'` or `'halfTime'` now, on the frame on screen. `team` (0 home, 1 away, default 0) is for an attack. Returns false when the moment cannot be played on that frame (for example before the first frame, or a goal with no ball). |
 | `setOptions(options)` | Change any option but `mode` and `layersStorageKey`, which are fixed at mount. The HUD and the canvas follow at once, without a remount. Options that throw change nothing. |
 | `on(event, listener)` | Listen to an event. Returns a function that unsubscribes. |
-| `availability()` | Which moments `trigger` can play on the frame on screen: `{ goal, attack: { 0, 1 }, corner, throwIn }`, each a boolean (`MomentAvailability`). All false before the first frame and after a reset. A goal needs a ball, and an attack needs the direction that team attacks in, which needs the keepers. A fresh copy on every call. |
+| `availability()` | Which moments `trigger` can play on the frame on screen: `{ goal, attack: { 0, 1 }, corner, throwIn, varCheck, goalDisallowed, halfTime }`, each a boolean (`MomentAvailability`). All false before the first frame and after a reset. A goal needs a ball, and an attack needs the direction that team attacks in, which needs the keepers. A fresh copy on every call. |
 | `overlay` | An element over the pitch, in the canvas's own box, for a host's drawing layer and anything it anchors to the pitch. It is a `div` child of the host, with `slot="overlay"`, so the page's CSS reaches it and its content. Its inline style fills the box and turns pointer events off. Pointer events pass through it unless you turn them on for your own elements. A press on it, or on anything in it, stops every moment, except inside an element in it marked `data-match-tracker-keep` (your transport, a frame badge), where a press starts no pan and a double-click leaves the zoom. |
 | `box` | `{ left, top, width, height }`, the canvas's box in CSS px from the host's top-left corner, below the attacking/defending row (`TrackerBox`, frozen). Null until the widget has been laid out with a size, and after `destroy()`. |
 | `version` | The package version this tracker runs. |
@@ -272,17 +272,65 @@ Also exported:
 | `debug` | `boolean` | `false` | Developer mode. A red badge, top left of the pitch, while fewer than 18 players are tracked on the frame on screen: how many are, and whose attack covers the loss when one does (see [Player loss](#player-loss)). For telling a real attack from one shown over lost players. Can be changed with `setOptions`. |
 
 The layers are `goal`, `goalZoom`, `attack`, `playerLoss`, `corner`, `throwInBanner`,
-`ballTrail`, `phaseLabels`, `nearbyRings`, `farFade` and `ringFades`.
+`varCheck`, `goalDisallowed`, `halfTime`, `ballTrail`, `phaseLabels`, `nearbyRings`, `farFade` and `ringFades`.
 
 #### Labels
 
-The goal, the corner and the throw-in play when playback runs into the
-pipeline's label for them, in a frame's `state.actions`, and only when a
+The goal, the corner, the throw-in, the VAR check, the goal disallowed and the
+half time play when playback runs into the pipeline's label for them, in a frame's `state.actions`, and only when a
 human gave it: its `action_origin` is `"human"`. A label from the pipeline's
 AI (`"ai"`), or one from an older export with no `action_origin`, plays
 nothing. The bottom-left action text follows the same rule: it lists only the
 human labels, unless `aiLabels` is on, when it lists every label as the export
 has it. A moment played with `trigger` needs no label at all.
+
+A label matches however it is written: case is ignored, spaces, underscores
+and hyphens count the same, and a dotted prefix is dropped. `VAR check`,
+`var check`, `VAR_CHECK` and `EventType.VAR_CHECK` are all the VAR check's label.
+A label is matched whole, so no goal plays on a `Goal disallowed`.
+
+#### VAR check and goal disallowed
+
+These are the same card, a title over an icon on a dark band across the middle
+of the pitch, each with a layer of its own, on by default: "VAR CHECK" and an
+eye on a VAR check label (`varCheck`), and "GOAL DISALLOWED" and a struck-through
+goal on a goal disallowed label (`goalDisallowed`). Each:
+- It fades in over 0.4 s, stays for at least 2 s and then for as long as the
+  label is on, and fades out over 0.4 s. Played with `trigger`, it is on screen
+  for 4 s.
+- It plays once for each run of the label, however the label flickers: the
+  label has to be off for 15 s of replay time to count as a new one.
+- A goal or a corner takes over from it, and it does not go over either. It
+  waits for them instead: if the label is still on when they end, it plays
+  then. It takes over from an attack, the attack over a player loss and a
+  throw-in, and holds them off while it shows.
+- The latest card takes over from another: a goal disallowed replaces the VAR
+  check before it, with no gap in the band. On a frame with both labels, the
+  goal disallowed plays.
+
+#### Half time
+
+The same card, with "HALF TIME" and a short text in place of the icon, on a half
+time label, written `half time`, `Halftime` or in any of the ways above (the
+`halfTime` layer, on by default). Its text is `halfTimeText` in `TrackerText`,
+broken into lines at each line break and to fit.
+
+It does not time out. It stays until a human gives any other label, then fades
+out over 0.4 s, and that label's own moment, if it has one, plays as it goes:
+- A label from the pipeline's AI doesn't end it, nor does its own label, nor a
+  label already on as it started, unless that goes off and comes back later.
+- So a second half that starts with no human label plays on under the card,
+  until the first one.
+- While it shows, it holds back attacks, the attack over a player loss and
+  throw-ins, as the cards above do.
+- A pause doesn't end it, nor does coming back to a hidden tab or a widget
+  scrolled away. A seek does, and a press on the pitch, as for every moment, and
+  so does switching off its layer. It doesn't come back after that.
+- A label that comes and goes while the tab is hidden isn't seen, as for every
+  moment, so it stays until the next one.
+- It draws nothing while it rests, so a long break costs nothing.
+- The players are left as they are. Zoomed in, it stays whole, on the frame
+  where the whole pitch has it.
 
 #### Player loss
 
@@ -300,7 +348,7 @@ default):
   the ball keeps moving, ringed in the team's colour.
 - It stays while the loss lasts, and fades out once 18 or more players have
   been tracked again for 0.5 s.
-- A goal or a corner takes over from it. An attack the team phase calls
+- A goal, a corner, or a VAR check, goal disallowed or half time takes over from it. An attack the team phase calls
   during a loss isn't shown on top of it.
 - With `debug` on, a badge says when this is happening.
 
@@ -327,7 +375,7 @@ little more the nearer it gets (the `goalZoom` layer, on by default):
 - With reduced motion it does nothing.
 
 The `TrackerText` keys are:
-- on the canvas: `goal`, `corner`, `throwIn`, `attack`;
+- on the canvas: `goal`, `corner`, `throwIn`, `varCheck`, `goalDisallowed`, `halfTime`, `halfTimeText`, `attack`;
 - the row: `attacking`, `defending`, `versus`, `phaseTooltip`, `red` and `blue` (the default team names);
 - ARIA templates: `phaseAttackingAria` and `phaseDefendingAria` (with `{team}`), and `phaseAria` (with `{home}` and `{away}`);
 - the menu: `layersButton`, `layersTooltip`, `layersMenuLabel`, and `layers` (`{ label, hint }` per layer);
@@ -369,7 +417,7 @@ A listener that throws is reported (`reportError`) and does not stop the widget.
 ```
 
 - **Fonts.** The canvas and the HUD use Montserrat (400, 600, 700) and Inter
-  (italic 900). They come in the package as Latin woff2 files, registered under
+  (600, italic 900). They come in the package as Latin woff2 files, registered under
   private names (`"MatchTracker Montserrat"` and `"MatchTracker Inter"`), so
   they never clash with the page's fonts. Each is followed by
   `"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif`,
@@ -445,8 +493,8 @@ scripts and styles, several times on one page.
 ### Content Security Policy
 
 On a page with a Content Security Policy, the widget needs:
-- `img-src data:`, for the corner card's icon, an SVG `data:` URL drawn through an
-  `Image`. Without it the card is drawn without its icon.
+- `img-src data:`, for the corner's, the VAR check's and the goal disallowed's icons, SVG `data:` URLs drawn
+  through an `Image`. Without it the cards are drawn without their icons.
 - `font-src` for wherever the package's files are served from: the fonts are
   woff2 files next to `dist/index.js`, loaded with `FontFace`. Bundled into your app
   that is usually `'self'`; from a CDN, that CDN's origin. Without it the text falls

@@ -6,6 +6,8 @@
  * The choice is kept in the browser, so it holds across videos and visits.
  */
 
+import { LABEL_CARD_KEYS, labelCardRecord, type LabelCardKey } from './labelCards.js'
+
 export type ReplayLayerKey =
   | 'goal'
   | 'goalZoom'
@@ -13,6 +15,7 @@ export type ReplayLayerKey =
   | 'playerLoss'
   | 'corner'
   | 'throwInBanner'
+  | LabelCardKey
   | 'ballTrail'
   | 'phaseLabels'
   | 'nearbyRings'
@@ -26,7 +29,7 @@ export type ReplayLayers = Record<ReplayLayerKey, boolean>
  * label (or, for an attack, its phase) while its layer is on, and can be
  * played by hand from the demo controls whether or not it is.
  */
-export type ReplayMoment = 'goal' | 'attack' | 'corner' | 'throwIn'
+export type ReplayMoment = 'goal' | 'attack' | 'corner' | 'throwIn' | LabelCardKey
 
 /**
  * In the order the menu lists them. Each layer's name and hint are text, in
@@ -41,6 +44,7 @@ export const REPLAY_LAYERS: ReadonlyArray<{ key: ReplayLayerKey }> = [
   // Not "throwIn": that was the removed throw-in zoom's key, and a browser
   // that switched it off would hide this without anyone choosing to.
   { key: 'throwInBanner' },
+  ...LABEL_CARD_KEYS.map((key) => ({ key })),
   { key: 'ballTrail' },
   { key: 'phaseLabels' },
   { key: 'nearbyRings' },
@@ -55,6 +59,7 @@ export const DEFAULT_REPLAY_LAYERS: ReplayLayers = {
   playerLoss: true,
   corner: true,
   throwInBanner: true,
+  ...labelCardRecord(() => true),
   ballTrail: true,
   phaseLabels: true,
   nearbyRings: true,

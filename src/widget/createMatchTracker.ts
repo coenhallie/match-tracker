@@ -59,6 +59,7 @@ import type { BallTrail } from '../analysis/ballTrail.js'
 import type { TeamId, TeamPhase } from '../analysis/teamPhase.js'
 import { ensureFonts } from '../assets/fonts.js'
 import { loadIcons } from '../assets/icons.js'
+import { LABEL_CARD_KEYS, iconCardRecord, labelCardRecord } from '../model/labelCards.js'
 import {
   Director,
   type DirectorCamera,
@@ -161,6 +162,7 @@ const NOTHING_AVAILABLE: MomentAvailability = {
   attack: { 0: false, 1: false },
   corner: false,
   throwIn: false,
+  ...labelCardRecord(() => false),
 }
 
 const copyAvailability = (a: MomentAvailability): MomentAvailability => ({ ...a, attack: { ...a.attack } })
@@ -170,7 +172,8 @@ const sameAvailability = (a: MomentAvailability, b: MomentAvailability) =>
   a.attack[0] === b.attack[0] &&
   a.attack[1] === b.attack[1] &&
   a.corner === b.corner &&
-  a.throwIn === b.throwIn
+  a.throwIn === b.throwIn &&
+  LABEL_CARD_KEYS.every((key) => a[key] === b[key])
 
 const samePublicBox = (a: TrackerBox, b: TrackerBox | null) =>
   b !== null && a.left === b.left && a.top === b.top && a.width === b.width && a.height === b.height
@@ -305,7 +308,7 @@ class Tracker implements MatchTracker {
   private readonly mode: MatchTrackerOptions['mode']
   private options: MutableOptions
   private resolved: Resolved
-  private icons: RenderTheme['icons'] = { goal: null, corner: null }
+  private icons: RenderTheme['icons'] = { goal: null, corner: null, ...iconCardRecord(() => null) }
   private layers: ReplayLayers
   private readonly doc: Document
   private readonly host: HTMLElement
@@ -350,6 +353,8 @@ class Tracker implements MatchTracker {
   private onScreen = true
   /** Live: whether the next record shown is a seek. True at mount, after a reset, on coming back into view, and when the stream breaks. */
   private resumed = true
+  /** Live: that seek is only coming back after being hidden or scrolled away (DirectorInput.rejoining). */
+  private rejoining = false
 
   private readonly history = new LiveHistory()
   /** Bumped on every record the history takes, so the derived phase and trail are worked out once per change. */
@@ -445,7 +450,10 @@ class Tracker implements MatchTracker {
     const breaks = this.history.breaks
     if (!this.history.add(record)) return
     // The stream broke and started again (LiveHistory.add): what it shows next is a seek.
-    if (this.history.breaks !== breaks) this.resumed = true
+    if (this.history.breaks !== breaks) {
+      this.resumed = true
+      this.rejoining = false
+    }
     this.historyVersion++
     this.loop.request()
   }
@@ -469,6 +477,7 @@ class Tracker implements MatchTracker {
     this.adoptCamera(this.director.view)
     this.lastInput = null
     this.resumed = true
+    this.rejoining = false
     // No phase until the next record: the row of the match before goes, and so does its player loss.
     this.phase = null
     this.loss = null
@@ -649,10 +658,14 @@ class Tracker implements MatchTracker {
         record ? deriveAt(this.history.window(), record) : null,
       )
       const playback = !this.resumed
+      const rejoining = this.rejoining
       // The seek is for the first record shown: a frame with nothing held,
       // as one queued before a reset, leaves it for that record.
-      if (record) this.resumed = false
-      return { nowMs, time: performance.now() / 1000, playing: true, playback, record, phase, trail }
+      if (record) {
+        this.resumed = false
+        this.rejoining = false
+      }
+      return { nowMs, time: performance.now() / 1000, playing: true, playback, rejoining, record, phase, trail }
     }
     const state = this.presented
     if (!state) return null
@@ -836,7 +849,11 @@ class Tracker implements MatchTracker {
   /** Back in view after being hidden or scrolled away: catch up, and in live mode take it as a seek. */
   private resumeAfterAbsence(): void {
     if (this.destroyed) return
-    if (this.mode === 'live') this.resumed = true
+    if (this.mode === 'live') {
+      // Unless a seek for another reason is waiting already.
+      if (!this.resumed) this.rejoining = true
+      this.resumed = true
+    }
     this.stale = true
     this.loop.request()
   }

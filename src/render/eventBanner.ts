@@ -52,8 +52,8 @@ export function drawEventBand(
  * it, and is drawn smaller to fit if it would not (fitText.ts).
  */
 export interface TitleLayout {
-  /** The design's word ("GOAL", "THROW IN", or the widget's own "CORNER"). */
-  word: string
+  /** The design's word ("GOAL", "THROW IN", or the widget's own "CORNER"); null when every title is centred. */
+  word: string | null
   /** The design's word's left edge. */
   leftPx: number
   /** The design's word's middle. */

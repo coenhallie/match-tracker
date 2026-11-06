@@ -58,11 +58,12 @@ describe('ensureFonts', () => {
     await ensureFonts()
     expect(added.map(describeFace).sort()).toEqual([
       'MatchTracker Inter italic 900',
+      'MatchTracker Inter normal 600',
       'MatchTracker Montserrat normal 400',
       'MatchTracker Montserrat normal 600',
       'MatchTracker Montserrat normal 700',
     ])
-    expect(faces).toHaveLength(4)
+    expect(faces).toHaveLength(5)
   })
 
   it('loads each face from its own woff2 file, not from inside the script', async () => {
@@ -80,7 +81,7 @@ describe('ensureFonts', () => {
     failing.add('MatchTracker Montserrat normal 600')
     const { ensureFonts } = await import('../../src/assets/fonts')
     await expect(ensureFonts()).resolves.toBeUndefined()
-    expect(added).toHaveLength(4)
+    expect(added).toHaveLength(5)
   })
 
   it('resolves at once where the page has no FontFace API', async () => {

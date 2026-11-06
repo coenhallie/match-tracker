@@ -21,9 +21,10 @@ of all of them, so keep dependencies pointing down towards `model`.
 - `model`: the tracking data types and parsing.
 - `analysis`: derived football facts (action labels, team phase, goal sequence, ball trail, player loss).
 - `render`: canvas drawing of the pitch, players, ball and cards.
-- `director`: moments (goal, attack, corner, throw-in, and the attack over a player loss),
-  camera and playback. The corner and the player loss cover are ours alone; video-annotation
-  has neither. Its free kick is not shown, and its two goldens are retired.
+- `director`: moments (goal, attack, corner, throw-in, the label cards, and the attack over a
+  player loss), camera and playback. The corner, the label cards and the player loss cover are
+  ours alone; video-annotation has none of them. A label card (`src/model/labelCards.ts`) is a
+  title over an icon, played by a label: a new one is a registry entry, its words and its icon. Its free kick is not shown, and its two goldens are retired.
 - `history`: the record buffer for live mode (capped to the lookback window).
 - `widget`: the shadow-root DOM, HUD, input, lifecycle. Public entry is `src/index.ts`.
 - `vue.ts`: the Vue component over the widget. Vue is an optional peer.

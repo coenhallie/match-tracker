@@ -1,5 +1,6 @@
 import { PERSON_COLORS, type PersonColors } from './constants.js'
 import { LABEL_FAMILY, TITLE_FAMILY, familyList } from '../assets/fontFamilies.js'
+import { iconCardRecord, type IconCardKey, type LabelCardKey, type LabelCardTextKey } from '../model/labelCards.js'
 
 /** Who a person on the pitch is drawn as. Team 0 is home, team 1 away. */
 export type PersonRole = 'home' | 'away' | 'goalkeeper' | 'official' | 'unknown'
@@ -13,14 +14,14 @@ export type PersonRole = 'home' | 'away' | 'goalkeeper' | 'official' | 'unknown'
 export interface RenderTheme {
   colors: Record<PersonRole, PersonColors>
   /** The event cards' titles, and the word under the team's name in the attack's label. */
-  text: { goal: string; corner: string; throwIn: string; attack: string }
+  text: { goal: string; corner: string; throwIn: string; attack: string } & Record<LabelCardKey | LabelCardTextKey, string>
   /**
    * Family lists, fallbacks included: `label` for the attack's label,
    * `title` for the event cards' titles.
    */
   fonts: { label: string; title: string }
   /** The cards' icons, once loaded. A card is drawn without its icon until then. */
-  icons: { goal: CanvasImageSource | null; corner: CanvasImageSource | null }
+  icons: { goal: CanvasImageSource | null; corner: CanvasImageSource | null } & Record<IconCardKey, CanvasImageSource | null>
   /** The bottom-left text for one of the frame's actions, from its `action_type`. */
   formatAction: (actionType: string) => string
   /** Whether the bottom-left text lists the AI's labels too, or only the ones a human gave. */
@@ -53,9 +54,18 @@ export const DEFAULT_PERSON_COLORS: Readonly<Record<PersonRole, Readonly<PersonC
  */
 export const DEFAULT_THEME: Readonly<RenderTheme> = Object.freeze({
   colors: DEFAULT_PERSON_COLORS,
-  text: Object.freeze({ goal: 'GOAL', corner: 'CORNER', throwIn: 'THROW IN', attack: 'Attack' }),
+  text: Object.freeze({
+    goal: 'GOAL',
+    corner: 'CORNER',
+    throwIn: 'THROW IN',
+    attack: 'Attack',
+    varCheck: 'VAR CHECK',
+    goalDisallowed: 'GOAL DISALLOWED',
+    halfTime: 'HALF TIME',
+    halfTimeText: 'There is a break in play.\nCoverage will resume soon.',
+  }),
   fonts: Object.freeze({ label: familyList(LABEL_FAMILY), title: familyList(TITLE_FAMILY) }),
-  icons: Object.freeze({ goal: null, corner: null }),
+  icons: Object.freeze({ goal: null, corner: null, ...iconCardRecord(() => null) }),
   formatAction: (actionType: string) => actionType,
   aiLabels: false,
 })
