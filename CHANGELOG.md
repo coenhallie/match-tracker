@@ -6,10 +6,12 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-06
+
 Five new moments: the second half and the full time, on the reusable card, and
 the foul and the shot and header on goal, on a small version of it, which the
-throw-in now uses too. The centre cards fade out the pitch and zoom out. Everything else is drawn
-as in 0.5.0.
+throw-in now uses too. The centre cards fade out the pitch and zoom out.
+Everything else is drawn as in 0.5.0.
 
 ### API
 
