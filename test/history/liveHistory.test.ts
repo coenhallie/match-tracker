@@ -54,7 +54,8 @@ describe('LiveHistory', () => {
     expect(most).toBeLessThanOrEqual(bound)
     expect(history.window().length).toBeGreaterThan(bound - 3)
     expect(history.latest()?.frameCount).toBe(90 * 60 * HZ - 1)
-  })
+    // 135,000 records: about 2.5 s alone, and past vitest's 5 s default under the whole suite's load.
+  }, 30_000)
 
   it('never holds a record older than the newest minus HISTORY_S', () => {
     const history = new LiveHistory()
