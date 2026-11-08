@@ -6,6 +6,8 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-11-08
+
 Lighter and leaner, with nothing drawn differently.
 
 ### Performance
