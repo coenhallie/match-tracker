@@ -31,6 +31,15 @@ export interface MatchTrackerOptions {
    * ('zh-CN', 'zh-TW' and 'zh-Hans' are 'zh'). Anything else is 'en'. Default 'en'.
    */
   locale?: TrackerLocale | (string & {})
+  /**
+   * The language of the words the moments write on the canvas: the cards'
+   * titles and texts ("GOAL", "FOUL", "HALF TIME" and the rest) and the word
+   * under the team's name in the attack's label. Read as `locale` is. Default
+   * `locale`. For a host that wants them in one language whatever the rest is
+   * in, such as English until a translation has been approved. `text`
+   * overrides them as it does the rest.
+   */
+  momentLocale?: TrackerLocale | (string & {})
   /** Any of the text, in place of the locale's; for the layers menu, any word of any layer. */
   text?: TrackerTextOverrides
   /** Team 0 is home, team 1 away. */
@@ -80,7 +89,10 @@ const ROLES: readonly PersonRole[] = ['home', 'away', 'goalkeeper', 'official', 
 
 /** What the options come to, worked out afresh on every change. */
 export interface Resolved {
+  /** The HUD's and the layers menu's words, in `locale`. */
   text: TrackerText
+  /** The words the moments write on the canvas, in `momentLocale`. */
+  momentText: TrackerText
   colors: Record<PersonRole, PersonColors>
   teamName: (team: TeamId) => string
   teamColor: (team: TeamId) => string
@@ -90,6 +102,9 @@ export interface Resolved {
 
 export function resolveOptions(options: MutableOptions): Resolved {
   const text = resolveText(options.locale ?? 'en', options.text)
+  const momentLocale = options.momentLocale ?? options.locale ?? 'en'
+  // Resolved once, and only on a change of options: never per frame.
+  const momentText = momentLocale === (options.locale ?? 'en') ? text : resolveText(momentLocale, options.text)
   // Every role a copy of its own, so nothing here can change PERSON_COLORS,
   // which every other instance on the page reads too.
   const colors = {} as Record<PersonRole, PersonColors>
@@ -101,6 +116,7 @@ export function resolveOptions(options: MutableOptions): Resolved {
   const fills: Record<TeamId, string> = { 0: colors.home.fill, 1: colors.away.fill }
   return {
     text,
+    momentText,
     colors,
     teamName: (team) => names[team],
     teamColor: (team) => fills[team],
@@ -111,7 +127,7 @@ export function resolveOptions(options: MutableOptions): Resolved {
 
 /** The renderer's theme for `resolved`, with the cards' icons once they have loaded. */
 export function themeFor(resolved: Resolved, icons: RenderTheme['icons']): RenderTheme {
-  const { text } = resolved
+  const text = resolved.momentText
   return {
     colors: resolved.colors,
     text: {

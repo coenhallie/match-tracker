@@ -6,6 +6,13 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### API
+
+- A new option, `momentLocale`: the language of the words the moments write on the
+  canvas, the cards' titles and texts and the attack's word. Default `locale`, so
+  nothing changes for a page that does not give it. A host can keep them in one
+  language while the HUD follows `locale`.
+
 ## [0.6.1] - 2026-11-06
 
 The half time, second half and full time cards now play on the names the

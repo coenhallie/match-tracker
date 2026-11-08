@@ -261,6 +261,7 @@ Also exported:
 |---|---|---|---|
 | `mode` | `'live' \| 'replay'` | (required) | Fixed at mount. |
 | `locale` | `'en' \| 'zh'`, or a language tag | `'en'` | The built-in text. A tag is read by its language: `'zh-CN'`, `'zh-TW'` and `'zh-Hans'` are `'zh'`, `'en-GB'` is `'en'`. Anything else is English. |
+| `momentLocale` | `'en' \| 'zh'`, or a language tag | `locale` | The language of the words the moments write on the canvas: the cards' titles and texts, and the word under the team's name in the attack's label. Read as `locale` is. For keeping them in one language while the HUD follows `locale`, for example English until a translation is approved. `text` overrides them as it does the rest. Can be changed with `setOptions`. |
 | `text` | `TrackerTextOverrides` | | Any string, in place of the locale's. In `layers`, any `label` or `hint` of any layer: what you leave out stays the locale's. |
 | `teams` | `{ home?: { name?, color? }, away?: { name?, color? } }` | | Team 0 is home and team 1 is away. A name defaults to the localised "Red" and "Blue". A `color` is the team's fill, on its players, its attack and its label. |
 | `colors` | `Partial<Record<PersonRole, Partial<PersonColors>>>` | video-annotation's | `fill`, `outline` and `text` per role: `home`, `away`, `goalkeeper`, `official`, `unknown`. A team's `color` wins over `fill` here. |

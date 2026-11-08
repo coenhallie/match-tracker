@@ -113,6 +113,7 @@ type Prop<K extends OptionKey> = PropType<NonNullable<MatchTrackerOptions[K]>>
  */
 const optionProps = {
   locale: { type: String as Prop<'locale'>, default: undefined },
+  momentLocale: { type: String as Prop<'momentLocale'>, default: undefined },
   text: { type: Object as Prop<'text'>, default: undefined },
   teams: { type: Object as Prop<'teams'>, default: undefined },
   colors: { type: Object as Prop<'colors'>, default: undefined },

@@ -13,6 +13,7 @@ import type {
   DirectorView,
 } from '../../src/director/director'
 import type { createRenderer } from '../../src/render/renderer'
+import type { RenderTheme } from '../../src/render/theme'
 
 /** What the tests read back. */
 export const control = {
@@ -28,6 +29,8 @@ export const control = {
   stopAll: 0,
   /** Every view a renderer was given, in order. */
   views: [] as DirectorView[],
+  /** Every theme a renderer was made with or given, in order. */
+  themes: [] as RenderTheme[],
   /** How many of the next renderFrame calls throw, and with what message. */
   failRenders: 0,
   failMessage: 'the renderer failed',
@@ -38,6 +41,7 @@ export const control = {
     control.releases = 0
     control.stopAll = 0
     control.views = []
+    control.themes = []
     control.failRenders = 0
     control.failMessage = 'the renderer failed'
   },
@@ -73,7 +77,13 @@ export function recordingDirector(Real: typeof Director): typeof Director {
 /** createRenderer, making the real renderer, noting every view it is given, and failing when told to. */
 export function recordingRenderer(real: typeof createRenderer): typeof createRenderer {
   return (canvas, theme) => {
+    if (theme) control.themes.push(theme)
     const renderer = real(canvas, theme)
+    const setTheme = renderer.setTheme
+    renderer.setTheme = (next) => {
+      control.themes.push(next)
+      setTheme(next)
+    }
     const setView = renderer.setView
     renderer.setView = (view) => {
       control.views.push({ ...view })
