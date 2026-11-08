@@ -32,7 +32,7 @@ export interface GoalBanner {
   side?: 1 | -1
   /** 0 to 1: how far it has slid in. Default 1, in place. */
   slide?: number
-  /** The reference card's goal icon, once it has loaded. Until then it is drawn without it. Default the theme's. */
+  /** The reference card's goal-net icon. Without one it is drawn without it, as the parity test draws it. */
   icon?: CanvasImageSource | null
 }
 
@@ -106,8 +106,7 @@ export function goalBannerSlide(plan: GoalPlan, elapsedMs: number): number {
 /**
  * Draw the goal's banner, in frame units through the context's current
  * transform: the caller sets one without the view, so it stays put while the
- * pitch zooms behind it. In the theme's words and font; the reference's card
- * in its icon too.
+ * pitch zooms behind it. In the theme's words and font.
  */
 export function drawGoalBanner(
   ctx: CanvasRenderingContext2D,
@@ -117,7 +116,7 @@ export function drawGoalBanner(
 ): void {
   const alpha = clamp01(banner.intensity)
   if (banner.side === undefined) {
-    const card = { ...GOAL_CARD, title: theme.text.goal, font: theme.fonts.title, icon: banner.icon ?? theme.icons.goal }
+    const card = { ...GOAL_CARD, title: theme.text.goal, font: theme.fonts.title, icon: banner.icon ?? null }
     drawCentreCard(ctx, t, card, alpha)
     return
   }

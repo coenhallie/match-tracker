@@ -14,7 +14,9 @@
 //    then stretched to the display (soft on any 2x screen) and magnified up to
 //    6x under zoom. Drawn at the display's own resolution through the current
 //    view instead, the lines stay sharp. The surface can also leave the grass
-//    out, so the renderer can draw between the grass and the markings.
+//    out, so the renderer can draw between the grass and the markings. And it
+//    takes the cache drawn before, which it clears and draws into again when
+//    the size has not changed, rather than make a new bitmap for every view.
 //  - the pitch is drawn to the Figma pitch (Game Animation Visualizer, node
 //    5:22): a lit gradient for the grass, a darker playing area, 4px lines with
 //    a rounded outer box, 8px spots, and goals as translucent boxes behind the
@@ -228,7 +230,12 @@ export function tracePlayingArea(
 
 /**
  * Pre-render all static pitch markings to an OffscreenCanvas so they can be
- * blitted in a single `drawImage` call each frame.
+ * blitted in a single `drawImage` call each frame. Given the cache drawn
+ * before, at the same bitmap size, it clears that and draws into it again
+ * rather than making a new one: the view moves every frame while the zoom near
+ * goal eases, or someone pinches or drags, and a new full-size bitmap each
+ * time is garbage the browser has to reclaim. The markings come out the same,
+ * as everything they are drawn with is set before it is used.
  *
  * Draws:
  *  - Grass (fillGrass), unless the surface leaves it out
@@ -263,9 +270,15 @@ export function buildPitchCache(
   pd: Partial<PitchDimensions> | undefined,
   t: Transform2D,
   surface: PitchSurface = FRAME_SURFACE,
+  previous: OffscreenCanvas | null = null,
 ): OffscreenCanvas {
-  const oc = new OffscreenCanvas(surface.width, surface.height)
+  const reuse = previous !== null && previous.width === surface.width && previous.height === surface.height
+  const oc = reuse ? previous : new OffscreenCanvas(surface.width, surface.height)
   const c = oc.getContext('2d')!
+  if (reuse) {
+    c.setTransform(1, 0, 0, 1, 0, 0)
+    c.clearRect(0, 0, oc.width, oc.height)
+  }
   // Everything below is drawn in frame units; this maps them to the bitmap.
   c.setTransform(...surface.matrix)
 

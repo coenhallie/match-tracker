@@ -476,7 +476,10 @@ scripts and styles, several times on one page.
     widgets there are.
   - Host CSS cannot reach in, except into the overlay, and the widget's CSS cannot leak out. Lengths
     are in px, not rem, so even the page's root font size stays outside.
-  - There are no globals, no polyfills and no network requests: fonts and icons are in the bundle.
+  - There are no globals and no polyfills. The only requests the widget makes are for its own
+    font files, which ship next to `dist/index.js` (see
+    [Content Security Policy](#content-security-policy)). Its icons are inlined, and nothing
+    else is fetched.
 - **Listeners outside the widget:**
   - the resolution media query and the reduced-motion query;
   - one `visibilitychange` listener on the host's document, to stop drawing in a hidden tab;

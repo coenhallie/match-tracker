@@ -4,6 +4,7 @@ import { resolve } from 'node:path'
 import { fileURLToPath, URL } from 'node:url'
 import { brotliDecompressSync, gunzipSync } from 'node:zlib'
 import { defineConfig, type Plugin } from 'vite'
+import { stripStylesComments } from './scripts/stripStylesComments'
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }
 
@@ -25,6 +26,22 @@ function fontLicences(): Plugin {
         const source = readFileSync(new URL(`./src/assets/fonts/${fileName}`, import.meta.url))
         this.emitFile({ type: 'asset', fileName, source })
       }
+    },
+  }
+}
+
+/**
+ * The shadow root's stylesheet ships without its comments
+ * (scripts/stripStylesComments.ts). Not only in the build: the tests import
+ * the stylesheet through this too, so they check what ships.
+ */
+function stylesWithoutComments(): Plugin {
+  return {
+    name: 'match-tracker:styles-without-comments',
+    enforce: 'pre',
+    transform(code, id) {
+      if (!id.endsWith('/src/widget/styles.ts')) return null
+      return { code: stripStylesComments(code), map: null }
     },
   }
 }
@@ -99,7 +116,7 @@ export default defineConfig({
   // Relative, so the bundled fonts resolve next to dist/index.js wherever the
   // package is installed, rather than from the root of the host's site.
   base: './',
-  plugins: [fontLicences(), demoFixtures()],
+  plugins: [stylesWithoutComments(), fontLicences(), demoFixtures()],
   // `npm run dev`: the demo page (demo/index.html), at / and /demo/. Not 5173, which other apps here use.
   server: { port: 5180 },
   define: {

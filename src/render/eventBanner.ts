@@ -141,8 +141,9 @@ const CARD_TITLE_BASELINE_PX = CARD_TITLE_TOP_PX + CARD_TITLE_PX * INTER_ASCENT
 export const CARD_MIDDLE_PX = CARD_WIDTH_PX / 2
 
 /**
- * Draw a centred event card - the goal's, the corner's - at `alpha`, in
- * frame units through the context's current transform.
+ * Draw a centred event card - the corner's, and the reference's goal card,
+ * which only the parity test draws - at `alpha`, in frame units through the
+ * context's current transform.
  */
 export function drawCentreCard(ctx: CanvasRenderingContext2D, t: Transform2D, card: CentreCard, alpha: number): void {
   if (alpha <= 0) return

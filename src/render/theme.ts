@@ -21,7 +21,7 @@ export interface RenderTheme {
    */
   fonts: { label: string; title: string }
   /** The cards' icons, once loaded. A card is drawn without its icon until then. */
-  icons: { goal: CanvasImageSource | null; corner: CanvasImageSource | null } & Record<IconCardKey, CanvasImageSource | null>
+  icons: { corner: CanvasImageSource | null } & Record<IconCardKey, CanvasImageSource | null>
   /** The bottom-left text for one of the frame's actions, from its `action_type`. */
   formatAction: (actionType: string) => string
   /** Whether the bottom-left text lists the AI's labels too, or only the ones a human gave. */
@@ -72,7 +72,7 @@ export const DEFAULT_THEME: Readonly<RenderTheme> = Object.freeze({
     headerOnGoal: 'HEADER!',
   }),
   fonts: Object.freeze({ label: familyList(LABEL_FAMILY), title: familyList(TITLE_FAMILY) }),
-  icons: Object.freeze({ goal: null, corner: null, ...iconCardRecord(() => null) }),
+  icons: Object.freeze({ corner: null, ...iconCardRecord(() => null) }),
   formatAction: (actionType: string) => actionType,
   aiLabels: false,
 })

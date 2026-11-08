@@ -170,7 +170,7 @@ function replay(golden: GoldenFile) {
   const { ctx, ops } = recordingCtx()
   const canvas = { width: FRAME_W, height: FRAME_H, getContext: () => ctx } as unknown as HTMLCanvasElement
   // The parity theme: the reference's colours and English, its fonts, and no icons, as jsdom loads none.
-  const renderer = createRenderer(canvas, { ...DEFAULT_THEME, icons: { goal: null, corner: null, varCheck: null, goalDisallowed: null } })
+  const renderer = createRenderer(canvas, { ...DEFAULT_THEME, icons: { corner: null, varCheck: null, goalDisallowed: null } })
   const director = new Director({
     // The zoom near goal is the widget's own (CHANGELOG, "Zoom near goal"): the reference has none, so it is
     // off here, and the goal's camera is the reference's.

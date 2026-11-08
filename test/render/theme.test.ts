@@ -95,7 +95,7 @@ describe('DEFAULT_THEME', () => {
       shotOnGoal: 'SHOT!',
       headerOnGoal: 'HEADER!',
     })
-    expect(DEFAULT_THEME.icons).toEqual({ goal: null, corner: null, varCheck: null, goalDisallowed: null })
+    expect(DEFAULT_THEME.icons).toEqual({ corner: null, varCheck: null, goalDisallowed: null })
     expect(DEFAULT_THEME.formatAction('EventType.FREE_KICK')).toBe('EventType.FREE_KICK')
     expect(DEFAULT_THEME.aiLabels).toBe(false)
   })
@@ -208,7 +208,7 @@ describe('a custom theme', () => {
   it("draws the theme's icons on the cards, unless the layer brings its own", () => {
     const fromTheme = { from: 'theme' } as unknown as CanvasImageSource
     const fromLayer = { from: 'layer' } as unknown as CanvasImageSource
-    const theme = custom({ icons: { goal: fromTheme, corner: fromTheme, varCheck: null, goalDisallowed: null } })
+    const theme = custom({ icons: { corner: fromTheme, varCheck: null, goalDisallowed: null } })
     const images = (ops: Op[]) => ops.filter((o) => o.op === 'drawImage').map((o) => o.args[0])
     const corner = { intensity: 1, playersFade: 0, ballFade: 0, corner: null, sections: [] }
     const themed = images(
@@ -217,7 +217,8 @@ describe('a custom theme', () => {
         goalBanner: { intensity: 1 },
       }),
     )
-    expect(themed.filter((i) => i === fromTheme)).toHaveLength(2)
+    // The corner's from the theme; the reference's goal card has none of its own there.
+    expect(themed.filter((i) => i === fromTheme)).toHaveLength(1)
     const own = images(
       render(theme, frame(), {
         corner: { ...corner, icon: fromLayer },

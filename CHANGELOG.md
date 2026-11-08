@@ -6,6 +6,29 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+Lighter and leaner, with nothing drawn differently.
+
+### Performance
+
+- **The pitch's markings are drawn again into the bitmap they were drawn in before.**
+  While the view moves (the zoom near goal easing, or a pinch or a drag) they
+  are redrawn every frame, and each time used to take a new full-size bitmap,
+  about 15 MB a frame on a 2x screen, for the browser to reclaim. A new one is
+  made only when the canvas changes size.
+
+### Package
+
+- **The stylesheet ships without its comments**, which were about two fifths of
+  it: with the goal-net icon gone too, index.js is about 2.3 kB smaller gzipped (41.75 to 39.47 kB). The rules are
+  the same; the comments stay in the source.
+- **The goal-net icon is no longer loaded.** Only the parity test's reference goal
+  card used it, and the widget's own goal banner has no icon.
+
+### Docs
+
+- The README said the widget makes no network requests. It requests its own font
+  files, which ship next to `dist/index.js`, and nothing else.
+
 ## [0.7.0] - 2026-11-08
 
 A new option for the language of the moments' words. Everything is drawn as in

@@ -64,7 +64,8 @@ The README's Embedding section is the full list. Never regress these:
   The one exception is the overlay, a `div` with `slot="overlay"` the widget
   appends to the host (so the page's CSS reaches what is mounted in it), and
   removes on `destroy()`. Nothing else goes in the light DOM.
-- No globals, no polyfills, no network requests. Several instances per page.
+- No globals, no polyfills. The only requests are for its own font files, which ship beside
+  `dist/index.js`; the icons are inlined and nothing else is fetched. Several instances per page.
 - Document listeners only as the README lists them (`visibilitychange`, and
   `pointerdown` in capture while the layers menu is open), all removed on `destroy()`.
 - Fonts and icons are bundled; both font licences ship beside the fonts.

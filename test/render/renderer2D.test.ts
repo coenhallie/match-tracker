@@ -1089,21 +1089,46 @@ describe('resolution', () => {
     expect(viewOps(offscreen.ops)).toContainEqual([4, 0, 0, 4, -1280, -720])
   })
 
-  it('rebuilds the pitch only when the view or the resolution changes', () => {
+  it('draws the pitch again only when the view or the resolution changes, into the same bitmap unless its size changed', () => {
     const { canvas } = hiDpi()
     const renderer = createRenderer(canvas)
+    // One pitch drawn is its four boxes: the penalty and goal areas at each end.
+    const drawn = () => offscreen.ops.filter((o) => o.op === 'strokeRect').length / 4
     renderer.renderFrame(frameWith({}))
     renderer.renderFrame(frameWith({}))
-    expect(offscreen.sizes.length).toBe(1)
+    expect(drawn()).toBe(1)
+    expect(offscreen.sizes).toEqual([[2560, 1440]])
 
     renderer.setView(ZOOM_2)
     renderer.renderFrame(frameWith({}))
     renderer.renderFrame(frameWith({}))
-    expect(offscreen.sizes.length).toBe(2)
+    expect(drawn()).toBe(2)
+    expect(offscreen.sizes).toEqual([[2560, 1440]])
 
     Object.assign(canvas, { width: 1280, height: 720 })
     renderer.renderFrame(frameWith({}))
-    expect(offscreen.sizes.at(-1)).toEqual([1280, 720])
+    expect(drawn()).toBe(3)
+    expect(offscreen.sizes).toEqual([
+      [2560, 1440],
+      [1280, 720],
+    ])
+  })
+
+  it('clears a reused bitmap before drawing on it, and draws the markings with the same calls as into a new one', () => {
+    const { canvas } = hiDpi()
+    const renderer = createRenderer(canvas)
+    renderer.renderFrame(frameWith({}))
+    const first = offscreen.ops.length
+    renderer.setView(ZOOM_2)
+    renderer.renderFrame(frameWith({}))
+    const again = offscreen.ops.slice(first)
+    expect(again.slice(0, 2).map((o) => [o.op, o.args])).toEqual([
+      ['setTransform', [1, 0, 0, 1, 0, 0]],
+      ['clearRect', [0, 0, 2560, 1440]],
+    ])
+    // The rest is a first build's calls, through the new view.
+    const ops = (list: typeof again) => list.filter((o) => o.op !== 'setTransform').map((o) => o.op)
+    expect(ops(again.slice(2))).toEqual(ops(offscreen.ops.slice(0, first)))
   })
 })
 

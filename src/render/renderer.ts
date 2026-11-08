@@ -309,13 +309,14 @@ export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTh
 
     const key = `${canvas.width}x${canvas.height}:${matrix.join(',')}`
     if (!pitchCache || key !== pitchKey) {
-      // The markings alone: the grass is drawn per frame, under them.
-      pitchCache = buildPitchCache(pd, transform2d, {
-        width: canvas.width,
-        height: canvas.height,
-        matrix,
-        grass: false,
-      })
+      // The markings alone: the grass is drawn per frame, under them. Into the
+      // cache drawn before when the bitmap is the same size.
+      pitchCache = buildPitchCache(
+        pd,
+        transform2d,
+        { width: canvas.width, height: canvas.height, matrix, grass: false },
+        pitchCache,
+      )
       pitchKey = key
     }
 
@@ -481,7 +482,8 @@ export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTh
    * from 3D mode so the next render rebuilds everything.
    */
   function invalidateCache(): void {
-    pitchCache = null
+    // Drawn again at the next frame, into the same bitmap if it is the same size.
+    pitchKey = ''
     transform2d = null
   }
 
