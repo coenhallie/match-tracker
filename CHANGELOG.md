@@ -6,6 +6,11 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-08
+
+A new option for the language of the moments' words. Everything is drawn as in
+0.6.1.
+
 ### API
 
 - A new option, `momentLocale`: the language of the words the moments write on the
