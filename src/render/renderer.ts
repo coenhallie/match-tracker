@@ -87,6 +87,7 @@ import {
   PLAYER_RADIUS,
   CARRIER_GROWTH,
   BALL_RADIUS,
+  BALL_SHADOW_FULL_HEIGHT_M,
   DIMMED_PLAYER_ALPHA,
   FOCUS_METRES,
   NEARBY_OUTLINE,
@@ -209,6 +210,8 @@ export interface FrameLayers {
   rings?: RingStrengths | undefined
   /** Whether players far from the ball are drawn faint. Default on. */
   fadeFar?: boolean | undefined
+  /** Whether a high ball casts a shadow on the pitch. The widget's own: off unless given. */
+  ballShadow?: boolean | undefined
   /** The ball's trail: the path it took, and where that turned. */
   trail?: BallTrail | undefined
   /** How the ball is turned, for a caller that rolls it. Default upright. */
@@ -385,6 +388,17 @@ export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTh
     const ballFade = (layers.corner?.ballFade ?? 0) + card
     const ballShown = 1 - Math.min(1, Math.max(0, ballFade))
     const alphaOf = (p: { faded: boolean }) => (p.faded && fadeFar ? DIMMED_PLAYER_ALPHA : 1) * shown
+    // During an attack the ball is held where it was when the attack was
+    // shown, and the tracked one only fades back in as the attack goes.
+    const held = overlay ? undefined : attack?.ball
+    const heldAlpha = held && attack?.leaving ? Math.min(1, Math.max(0, attack.intensity)) : 1
+    const trackedBallAlpha = (1 - (held ? heldAlpha : 0)) * ballShown
+
+    // A high ball's shadow lies on the grass, under everyone. Not the goal
+    // sequence's ball, nor the one an attack holds: neither says how high it is.
+    if (layers.ballShadow && !overlay && trackedBallAlpha > 0) {
+      for (const ball of frame.balls ?? []) drawBallShadow(ball, trackedBallAlpha)
+    }
     // The player with the ball is drawn bigger, so on top of those around them.
     const order = [...people].sort((a, b) => Number(possessionOf(a) > 0) - Number(possessionOf(b) > 0))
     for (const faded of shown > 0 ? [true, false] : []) {
@@ -423,14 +437,8 @@ export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTh
       })
       draw2DBall({ projected_coordinates: overlay.ball }, spin, 1, attack)
     } else {
-      // During an attack the ball is held where it was when the attack was
-      // shown, and the tracked one only fades back in as the attack goes.
-      const held = attack?.ball
-      const heldAlpha = held && attack.leaving ? Math.min(1, Math.max(0, attack.intensity)) : 1
       if ((!held || heldAlpha < 1) && ballShown > 0) {
-        for (const ball of frame.balls ?? []) {
-          draw2DBall(ball, spin, (1 - (held ? heldAlpha : 0)) * ballShown, held ? undefined : attack)
-        }
+        for (const ball of frame.balls ?? []) draw2DBall(ball, spin, trackedBallAlpha, held ? undefined : attack)
       }
       if (held) draw2DBall({ projected_coordinates: held }, spin, heldAlpha, attack)
       // A player who has just received the ball is drawn over it for a
@@ -641,8 +649,7 @@ export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTh
     if (!transform2d) return
 
     const [px, py] = worldToPx(x, y, transform2d)
-    // Grows with z, up to 6 m, and stays smaller than a player.
-    const r = BALL_RADIUS + Math.min(6, Math.max(0, z)) * 0.4
+    const r = ballRadius(z)
 
     const before = ctx.globalAlpha
     if (attack) drawBallRings(px, py, r, attack)
@@ -678,6 +685,44 @@ export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTh
     ctx.lineWidth = 1
     ctx.stroke()
     ctx.globalAlpha = before
+  }
+
+  /** The ball's radius at height `z`: it grows with z, up to 6 m, and stays smaller than a player. */
+  function ballRadius(z: number): number {
+    return BALL_RADIUS + Math.min(6, Math.max(0, z)) * 0.4
+  }
+
+  /**
+   * The shadow a high ball casts on the pitch, at `alpha`: a soft dark blot
+   * below and right of it, away from the light the ball is shaded by (top
+   * left). The higher the ball (z, up to BALL_SHADOW_FULL_HEIGHT_M), the
+   * further off, the wider and the fainter it is. A ball not called high
+   * casts none.
+   */
+  function drawBallShadow(ball: Ball, alpha: number): void {
+    const coords = ball.projected_coordinates
+    const x = coords?.x
+    const y = coords?.y
+    if (!ball.is_high_ball || x == null || y == null || isNaN(x) || isNaN(y) || !transform2d) return
+    const z = typeof coords?.z === 'number' && Number.isFinite(coords.z) ? Math.max(0, coords.z) : 0
+    const h = Math.min(1, z / BALL_SHADOW_FULL_HEIGHT_M)
+    const r = ballRadius(z)
+    const [px, py] = worldToPx(x, y, transform2d)
+    const off = (r * (0.6 + 1.6 * h)) / Math.SQRT2
+    const sx = px + off
+    const sy = py + off
+    const radius = r * (1.1 + 0.4 * h)
+    const dark = 0.5 - 0.25 * h
+    const shadow = ctx.createRadialGradient(sx, sy, 0, sx, sy, radius)
+    shadow.addColorStop(0, `rgba(0,0,0,${dark.toFixed(3)})`)
+    shadow.addColorStop(0.6, `rgba(0,0,0,${(dark * 0.6).toFixed(3)})`)
+    shadow.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.globalAlpha = alpha
+    ctx.beginPath()
+    ctx.arc(sx, sy, radius, 0, Math.PI * 2)
+    ctx.fillStyle = shadow
+    ctx.fill()
+    ctx.globalAlpha = 1
   }
 
   /**

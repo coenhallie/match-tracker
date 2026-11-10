@@ -408,7 +408,12 @@ class Tracker implements MatchTracker {
     this.renderer = rendererFor(this.canvas, themeFor(this.resolved, this.icons))
     // Frame size is a sane bitmap until the box arrives, as in the reference.
     if (this.renderer) sizeBitmap(this.canvas, null)
-    this.director = new Director({ layers: this.layers, ...directorOptions(this.resolved) })
+    // Only a live stream has invalid records; replay stays the reference's whatever its data carries.
+    this.director = new Director({
+      layers: this.layers,
+      ...directorOptions(this.resolved),
+      coverInvalidFrames: mode === 'live',
+    })
     this.loop = new FrameLoop(this.tick, () => this.director.animating)
 
     this.overlay.addEventListener('pointerdown', this.onOverlayPointerDown, { capture: true })
@@ -672,11 +677,17 @@ class Tracker implements MatchTracker {
   /** What the director is to see at `nowMs`, or null in replay before anything is presented. */
   private nextInput(nowMs: number): DirectorInput | null {
     if (this.mode === 'live') {
-      const latest = this.history.latest()
-      const record = latest && this.halves.shown(latest)
-      const { phase, trail } = this.derive([this.historyVersion, this.halves.from], () =>
-        latest && record ? deriveAt(this.halves.window(this.history.window(), latest), record) : null,
-      )
+      // An invalid record is shown on the last valid one's positions, and the phase and trail are
+      // the last valid one's: nothing reads what the pipeline made up while its camera was away.
+      // In the second half all of it is turned round, as the record shown is.
+      const shown = this.history.shown()
+      const record = shown && this.halves.shown(shown)
+      const { phase, trail } = this.derive([this.historyVersion, this.halves.from], () => {
+        const valid = this.history.latestValid()
+        // The window turned as the record shown is, so a half label on an invalid record turns
+        // the phase and trail with the picture. deriveAt finds `valid` in it by its frame number.
+        return valid && shown ? deriveAt(this.halves.window(this.history.window(), shown), valid) : null
+      })
       const playback = !this.resumed
       const rejoining = this.rejoining
       // The seek is for the first record shown: a frame with nothing held,

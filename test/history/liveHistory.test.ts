@@ -157,3 +157,139 @@ describe('LiveHistory', () => {
     expect(history.add(record(1))).toBe(true)
   })
 })
+
+describe('LiveHistory with invalid records', () => {
+  const at = (x: number) => ({ teams: [], balls: [{ projected_coordinates: { x, y: 0 } }] }) as unknown as Frame
+  function valid(frameCount: number, x = frameCount): TrackerRecord {
+    return { ...record(frameCount), frame: at(x), validity: { invalid: false, nextInvalidInS: null, nextValidInS: 0 } }
+  }
+  function invalid(frameCount: number, x = -frameCount): TrackerRecord {
+    return { ...record(frameCount), frame: at(x), validity: { invalid: true, nextInvalidInS: 0, nextValidInS: 1 } }
+  }
+
+  it('leaves invalid records out of the window, which ends at the last valid one', () => {
+    const history = new LiveHistory()
+    for (const r of [valid(1), valid(2), invalid(3), invalid(4)]) history.add(r)
+    expect(history.window().map((r) => r.frameCount)).toEqual([1, 2])
+    expect(history.latestValid()?.frameCount).toBe(2)
+    expect(history.latest()?.frameCount).toBe(4)
+    history.add(valid(5))
+    expect(history.window().map((r) => r.frameCount)).toEqual([1, 2, 5])
+  })
+
+  it('keeps the last valid record through a stretch longer than it keeps records for', () => {
+    const history = new LiveHistory()
+    history.add(valid(1))
+    const long = Math.ceil((HISTORY_S + 5) * HZ)
+    for (let n = 2; n <= long; n++) history.add(invalid(n))
+    expect(history.latestValid()?.frameCount).toBe(1)
+    expect(history.window().map((r) => r.frameCount)).toEqual([1])
+  })
+
+  it('shows the newest record while it is valid', () => {
+    const history = new LiveHistory()
+    const newest = valid(2)
+    history.add(valid(1))
+    history.add(newest)
+    expect(history.shown()).toBe(newest)
+  })
+
+  it('shows an invalid record held: the last valid positions at its own time', () => {
+    const history = new LiveHistory()
+    const last = valid(1, 7)
+    history.add(last)
+    history.add(invalid(2, 40))
+    const shown = history.shown()
+    expect(shown?.frameCount).toBe(2)
+    expect(shown?.t).toBe(record(2).t)
+    expect(shown?.validity?.invalid).toBe(true)
+    expect(shown?.frame.balls).toBe(last.frame.balls)
+  })
+
+  it('shows the same held object until a record arrives', () => {
+    const history = new LiveHistory()
+    history.add(valid(1))
+    history.add(invalid(2))
+    const first = history.shown()
+    expect(history.shown()).toBe(first)
+    history.add(invalid(3))
+    expect(history.shown()).not.toBe(first)
+    expect(history.shown()?.frameCount).toBe(3)
+  })
+
+  it('shows an invalid record as it is when nothing valid came before it', () => {
+    const history = new LiveHistory()
+    const only = invalid(1)
+    history.add(only)
+    expect(history.shown()).toBe(only)
+    expect(history.latestValid()).toBeNull()
+    expect(history.window()).toEqual([])
+  })
+
+  it('forgets the last valid record on clear and when the stream breaks', () => {
+    const history = new LiveHistory()
+    history.add(valid(1))
+    history.clear()
+    expect(history.latestValid()).toBeNull()
+    history.add(valid(5000))
+    history.add(invalid(1, -1))
+    expect(history.breaks).toBe(1)
+    expect(history.latestValid()).toBeNull()
+  })
+
+  it('does not take a late valid record over a newer one', () => {
+    const history = new LiveHistory()
+    history.add(valid(3))
+    history.add(valid(2))
+    expect(history.latestValid()?.frameCount).toBe(3)
+  })
+})
+
+describe('LiveHistory holding the last ball seen', () => {
+  const at = (x: number | null) =>
+    ({ teams: [], balls: x === null ? [{ projected_coordinates: { x: null, y: null } }] : [{ projected_coordinates: { x, y: 0 } }] }) as unknown as Frame
+  const valid = (frameCount: number, x: number | null, t?: number): TrackerRecord => ({
+    ...record(frameCount, t),
+    frame: at(x),
+    validity: { invalid: false, nextInvalidInS: null, nextValidInS: 0 },
+  })
+  const invalid = (frameCount: number, t?: number): TrackerRecord => ({
+    ...record(frameCount, t),
+    frame: at(-50),
+    validity: { invalid: true, nextInvalidInS: 0, nextValidInS: 1 },
+  })
+  const shownX = (history: LiveHistory) => history.shown()?.frame.balls?.[0]?.projected_coordinates?.x
+
+  it('holds the last ball a valid record had when the last valid record lost it', () => {
+    const history = new LiveHistory()
+    history.add(valid(1, 7))
+    history.add(valid(2, null))
+    history.add(invalid(3))
+    expect(shownX(history)).toBe(7)
+    expect(history.shown()?.frame.teams).toBe(history.latestValid()?.frame.teams)
+  })
+
+  it('holds no ball seen more than HISTORY_S before the last valid record', () => {
+    const history = new LiveHistory()
+    history.add(valid(1, 7, 1000))
+    history.add(valid(2, null, 1000 + HISTORY_S + 0.04))
+    history.add(invalid(3, 1000 + HISTORY_S + 0.08))
+    expect(shownX(history)).toBeNull()
+  })
+
+  it('shows a valid record without a ball as it is', () => {
+    const history = new LiveHistory()
+    history.add(valid(1, 7))
+    history.add(valid(2, null))
+    expect(shownX(history)).toBeNull()
+  })
+
+  it('forgets the ball on clear', () => {
+    const history = new LiveHistory()
+    history.add(valid(1, 7))
+    history.clear()
+    history.add(valid(2, null))
+    history.add(invalid(3))
+    expect(shownX(history)).toBeNull()
+  })
+})

@@ -9,6 +9,7 @@
  */
 import type { TeamId, TeamPhase, TeamState } from '../analysis/teamPhase.js'
 import type { PlayerLossState } from '../director/director.js'
+import { MIN_STRETCH_S } from '../director/playerLoss.js'
 import { formatText, type TrackerText } from '../i18n/text.js'
 
 /** What the row says the teams are, and how it draws them. */
@@ -149,9 +150,28 @@ export class ZoomBadge {
 /**
  * The debug badge, top left, while too few players are tracked on the
  * frame on screen: how many are, and whose attack covers the loss when one
- * does (the `debug` option). Nothing is in the DOM while it is off or there
- * is no loss.
+ * does (the `debug` option). In live mode it says so too while the frame on
+ * screen is invalid, so an attack covering made-up positions is not taken
+ * for a real one. Nothing is in the DOM while it is off or there is no loss.
  */
+/** What the badge says of invalid frames, before any countdown. */
+function invalidLabel(loss: PlayerLossState, team: string | null, text: TrackerText): string {
+  if (loss.short) return formatText(text.invalidFramesShort, { seconds: String(MIN_STRETCH_S) })
+  return team === null ? text.invalidFrames : formatText(text.invalidFramesCover, { team })
+}
+
+/** `label` with how long until the frames are valid again, when the state says. */
+function countdown(label: string, loss: PlayerLossState, text: TrackerText): string {
+  if (typeof loss.validInS === 'number') {
+    return formatText(text.invalidFramesValidIn, { label, seconds: loss.validInS.toFixed(1) })
+  }
+  if (loss.validInS === null && loss.horizonS !== undefined) {
+    // Whole seconds: the pipeline sends its 10 s as 9.999999999990905.
+    return formatText(text.invalidFramesValidLater, { label, seconds: String(Math.round(loss.horizonS)) })
+  }
+  return label
+}
+
 export class LossBadge {
   private readonly el = element('div', 'mt-loss')
 
@@ -163,12 +183,16 @@ export class LossBadge {
       return
     }
     const players = String(loss.players)
+    const team = loss.cover === null ? null : teamName(loss.cover)
     const label =
-      loss.cover === null
-        ? formatText(text.playerLoss, { players })
-        : formatText(text.playerLossCover, { players, team: teamName(loss.cover) })
+      loss.cause === 'invalidFrames'
+        ? countdown(invalidLabel(loss, team, text), loss, text)
+        : team === null
+          ? formatText(text.playerLoss, { players })
+          : formatText(text.playerLossCover, { players, team })
     if (this.el.textContent !== label) this.el.textContent = label
     this.el.dataset.cover = loss.cover === null ? 'none' : String(loss.cover)
+    this.el.dataset.cause = loss.cause
     if (this.el.parentNode !== this.parent) this.parent.append(this.el)
   }
 }

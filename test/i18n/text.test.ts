@@ -113,7 +113,7 @@ describe('the built-in text', () => {
     expect(formatText(en.zoomLevel, { zoom: '2.5' })).toBe('2.5x')
     // The corner is the widget's own: the reference has none. So is the throw-in's hint, as the widget's
     // throw-in fades in where the reference's slides in from the ball's half. And so is the zoom near goal.
-    const { corner, throwInBanner, playerLoss, goalZoom, varCheck, goalDisallowed, halfTime, secondHalf, fullTime, foul, shotOnGoal, headerOnGoal, ...referenceLayers } = en.layers
+    const { corner, throwInBanner, playerLoss, goalZoom, ballShadow, varCheck, goalDisallowed, halfTime, secondHalf, fullTime, foul, shotOnGoal, headerOnGoal, ...referenceLayers } = en.layers
     expect(en.corner).toBe('CORNER')
     expect(corner).toEqual({
       label: 'Corner',
@@ -153,8 +153,18 @@ describe('the built-in text', () => {
       label: 'Half time',
       hint: 'A banner across the middle of the pitch on a half time label, until the next label',
     })
-    // So is the attack over a player loss, and its debug badge.
-    expect(playerLoss).toEqual({ label: 'Attack over lost players', hint: 'An attack while fewer than 18 players are tracked' })
+    // So is the attack over a player loss or invalid frames, and its debug badge.
+    expect(playerLoss).toEqual({
+      label: 'Attack over lost players or invalid frames',
+      hint: 'An attack while fewer than 18 players are tracked, or while the live camera is away',
+    })
+    // So is the shadow under a high ball.
+    expect(ballShadow).toEqual({ label: 'High ball shadow', hint: 'A shadow on the pitch under a high ball, further off the higher it is' })
+    expect(en.invalidFrames).toBe('Invalid frames, no attacker')
+    expect(formatText(en.invalidFramesCover, { team: 'Red' })).toBe("Invalid frames: covered by Red's attack")
+    expect(formatText(en.invalidFramesValidIn, { label: 'X', seconds: '3.2' })).toBe('X, valid in 3.2 s')
+    expect(formatText(en.invalidFramesValidLater, { label: 'X', seconds: '10' })).toBe('X, valid in over 10 s')
+    expect(formatText(en.invalidFramesShort, { seconds: '1' })).toBe('Invalid frames, under 1 s: not covered')
     expect(formatText(en.playerLoss, { players: '9' })).toBe('Player loss: 9 tracked')
     expect(formatText(en.playerLossCover, { players: '9', team: 'Red' })).toBe("Player loss: 9 tracked, covered by Red's attack")
     expect(referenceLayers).toEqual({

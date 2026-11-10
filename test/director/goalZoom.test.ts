@@ -285,16 +285,37 @@ describe('the zoom near goal making way', () => {
     expect(camera(replay).zoom).toBeCloseTo(zoomedIn, 2)
   })
 
-  it('leaves the view in for an attack, whose edge and label stay in view however far in it is', () => {
+  it('eases out to the whole pitch for an attack, whose label is laid out on it, and back in once it has gone', () => {
     const replay = playing({ x: 40, y: 0 })
     settle(replay)
+    const zoomedIn = camera(replay).zoom
+    expect(zoomedIn).toBeGreaterThan(1.3)
     // Nobody attacking, but each team's direction known, so an attack can be played.
     replay.set({ phase: { possession: null, attacks: { 0: 1, 1: -1 }, states: { 0: null, 1: null } } })
-    const before = camera(replay)
     replay.trigger('attack', 0)
-    replay.animate(500)
+    const cameras = frames(replay, 120)
     expect(replay.last()?.attack).toBeDefined()
-    expect(camera(replay)).toEqual(before)
+    expect(cameras.at(-1)!.zoom).toBeLessThan(1.03)
+    // Out gently, as for the cards.
+    expect(Math.max(...zoomSteps([{ ...camera(replay), zoom: zoomedIn }, ...cameras]))).toBeLessThan(0.02)
+    settle(replay)
+    expect(replay.last()?.attack).toBeUndefined()
+    expect(camera(replay).zoom).toBeCloseTo(zoomedIn, 2)
+  })
+
+  it('eases out to the whole pitch for the attack over invalid frames', () => {
+    const replay = new FakeReplay({ goalZoom: true, playerLoss: true }, { coverInvalidFrames: true })
+    const phase = { possession: null, attacks: { 0: 1 as const, 1: -1 as const }, states: { 0: null, 1: null } }
+    replay.set({ time: 10, frame: ballFrame({ x: 40, y: 0 }), playing: true, phase })
+    settle(replay)
+    expect(camera(replay).zoom).toBeGreaterThan(1.3)
+    const invalid = { invalid: true, nextInvalidInS: 0, nextValidInS: 8 }
+    // A valid record by playback notes which way each team attacks; the invalid one after it is covered.
+    replay.set({ time: 10.04, frame: ballFrame({ x: 40, y: 0 }), validity: { ...invalid, invalid: false } })
+    replay.set({ time: 10.08, frame: ballFrame({ x: 40, y: 0 }), validity: invalid })
+    settle(replay)
+    expect(replay.last()?.attack).toMatchObject({ team: 0 })
+    expect(camera(replay)).toEqual(WHOLE_PITCH_CAMERA)
   })
 })
 

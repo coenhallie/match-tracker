@@ -173,8 +173,8 @@ function replay(golden: GoldenFile) {
   const renderer = createRenderer(canvas, { ...DEFAULT_THEME, icons: { corner: null, varCheck: null, goalDisallowed: null } })
   const director = new Director({
     // The zoom near goal is the widget's own (CHANGELOG, "Zoom near goal"): the reference has none, so it is
-    // off here, and the goal's camera is the reference's.
-    layers: { ...golden.layers, goalZoom: false },
+    // off here, and the goal's camera is the reference's. So is the shadow under a high ball.
+    layers: { ...golden.layers, goalZoom: false, ballShadow: false },
     reducedMotion: () => golden.reducedMotion,
     teamName: (team) => golden.teamNames[team],
     teamColor: (team) => (team === 0 ? PERSON_COLORS.home : PERSON_COLORS.away).fill,

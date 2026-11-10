@@ -115,10 +115,10 @@ describe('attack over a player loss', () => {
     const pitch = new Pitch()
     pitch.records(recordsFor(2), 9)
     expect(pitch.attack()).toBeUndefined()
-    expect(pitch.loss()).toEqual({ players: 9, cover: null })
+    expect(pitch.loss()).toEqual({ cause: 'playerLoss', players: 9, cover: null })
     pitch.records(recordsFor(0.5), 9, { dx: -0.5 })
     expect(pitch.attack()).toMatchObject({ team: 0 })
-    expect(pitch.loss()).toEqual({ players: 9, cover: 0 })
+    expect(pitch.loss()).toEqual({ cause: 'playerLoss', players: 9, cover: 0 })
   })
 
   it('leaves a loss shorter than LOSS_START_S alone', () => {
@@ -184,7 +184,7 @@ describe('attack over a player loss', () => {
     off.records(recordsFor(1), 9, { dx: 0.5 })
     expect(off.attack()).toBeUndefined()
     // The badge still says there is a loss.
-    expect(off.loss()).toEqual({ players: 9, cover: null })
+    expect(off.loss()).toEqual({ cause: 'playerLoss', players: 9, cover: null })
 
     const on = new Pitch()
     on.records(recordsFor(1), 9, { dx: 0.5 })

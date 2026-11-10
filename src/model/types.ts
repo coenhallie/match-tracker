@@ -46,6 +46,8 @@ export interface Team {
 /** A ball entry inside a frame. */
 export interface Ball {
   projected_coordinates?: ProjectedCoordinates
+  /** The pipeline calls it a high ball: in the air, `z` metres up. */
+  is_high_ball?: boolean
 }
 
 /** Pitch dimension metadata (metres). */
@@ -115,6 +117,24 @@ export interface Transform2D {
   pw: number
 }
 
+/**
+ * Whether the pipeline could see the match for a record, from the message's
+ * `raw_data`, which the live stream sends beside `match`. While the camera is
+ * away the pipeline keeps sending every player and the ball, but simulated,
+ * not tracked. The countdowns come from `raw_data.agentic.lookahead`, which
+ * sees 10 s ahead; they are relative to the record, so any clock fits them.
+ */
+export interface RecordValidity {
+  /** `raw_data.source_frame.frame_state` is `'invalid'`: the positions are made up. */
+  invalid: boolean
+  /** Seconds until the next invalid record: 0 while invalid, null when none is due within the horizon. */
+  nextInvalidInS: number | null
+  /** Seconds until the next valid record: 0 while valid, null when none is due within the horizon. */
+  nextValidInS: number | null
+  /** How far ahead the lookahead sees, in seconds (10 on the staging stream); absent when not given. */
+  horizonS?: number
+}
+
 /** One parsed pipeline message, reduced to what the tracker reads. */
 export interface TrackerRecord {
   /** Absolute record timestamp in seconds. Not zero-based. */
@@ -123,4 +143,6 @@ export interface TrackerRecord {
   frameCount: number
   /** The normalised frame, with `frame_data` reduced to `[{ frame_count }]`. */
   frame: Frame
+  /** Absent when the message says nothing about it, as replay data and older streams do not. */
+  validity?: RecordValidity
 }

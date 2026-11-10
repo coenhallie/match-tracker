@@ -94,10 +94,11 @@
  * view that comes in with the same zoom and pan, from a resize, changes
  * nothing. It leaves the view to a goal's camera (the reference's, which a
  * goal has only with the layer off as it started), and does nothing with
- * reduced motion, where it puts the whole pitch back. While a corner or a
- * throw-in shows, it eases out to the whole pitch their cards are laid out
- * for (the renderer keeps the cards whole on the frame meanwhile); the
- * attack's label stays in view however far in it is. It steps once in each
+ * reduced motion, where it puts the whole pitch back. While a corner, a
+ * throw-in, most label cards or an attack shows, it eases out to the whole
+ * pitch their cards and the attack's label are laid out for (the renderer
+ * keeps the cards whole on the frame meanwhile), and back in once they have
+ * gone. It steps once in each
  * animation frame, after the moments, and its move goes through the view's
  * push, which paints.
  *
@@ -226,6 +227,12 @@ export interface DirectorOptions {
   reducedMotion: () => boolean
   teamName: (team: TeamId) => string
   teamColor: (team: TeamId) => string
+  /**
+   * Cover the records the pipeline marks invalid with the attack over a player loss
+   * (playerLoss.ts). Live mode only: replay data has no such records, and replay must
+   * stay the reference's whatever its data carries. Read once, when the director is made.
+   */
+  coverInvalidFrames?: boolean
 }
 
 /** Which moments can be played by hand on the frame on screen (`momentAvailability`, `:1020-1036`). */
@@ -328,7 +335,7 @@ export class Director {
     this.corner = new Corner(this.context)
     this.throwIn = new ThrowIn(this.context)
     this.labelCards = LABEL_CARDS.map((card) => new LabelCard(this.context, card))
-    this.playerLoss = new PlayerLoss(this.context)
+    this.playerLoss = new PlayerLoss(this.context, options.coverInvalidFrames)
   }
 
   /** The user's view: their zoom and pan, or where a sequence has put them, and the width drawn at. */
@@ -470,7 +477,7 @@ export class Director {
   }
 
   /** Everything but the layers, which go through setLayers. Read at the next paint. */
-  setOptions(options: Partial<Omit<DirectorOptions, 'layers'>>): void {
+  setOptions(options: Partial<Omit<DirectorOptions, 'layers' | 'coverInvalidFrames'>>): void {
     this.options = { ...this.options, ...options }
   }
 
@@ -628,7 +635,7 @@ export class Director {
         this.request(this.attack)
       }
       // A player loss is covered when nothing but a throw-in is showing.
-      const cover = this.playerLoss.detect(frame, time, setPiece || this.attack.active)
+      const cover = this.playerLoss.detect(record, time, setPiece || this.attack.active)
       if (cover) {
         this.playerLoss.start(cover)
         this.request(this.playerLoss)
@@ -776,9 +783,15 @@ export class Director {
       this.flushView()
       return
     }
-    // The corner's card, the throw-in's banner and most label cards are laid out for the whole pitch: the small
-    // ones sit on the touchline, and a centre card fades out what the view would be following.
-    const makeWay = this.corner.active || this.throwIn.active || this.labelCards.some((card) => card.active && card.makesWay)
+    // The corner's card, the throw-in's banner, most label cards and the attack, its own or over a player loss or
+    // invalid frames, are laid out for the whole pitch: the small cards sit on the touchline, and a centre card and
+    // the attack's label sit in the middle of it, the attack's fading out what the view would be following.
+    const makeWay =
+      this.corner.active ||
+      this.throwIn.active ||
+      this.attack.active ||
+      this.playerLoss.active ||
+      this.labelCards.some((card) => card.active && card.makesWay)
     // The ball drawn: during a goal, its own, shot into the net.
     const ball = shownBall(record.frame, this.goal.overlay())
     const at = { ball, pitch: record.frame.pitch_dimensions, time: this.shown.time }
@@ -853,6 +866,7 @@ export class Director {
         possession: new Map(this.rings.possession),
       },
       fadeFar: this.layers.farFade,
+      ballShadow: this.layers.ballShadow,
       trail: this.layers.ballTrail ? ((held ? held.trail : trail) ?? undefined) : undefined,
       ballSpin: attackMoment ? attackMoment.spin : this.roll.spin,
       received: this.rings.covers(),
@@ -876,7 +890,7 @@ export class Director {
       paints: this.paints,
       camera,
       animating: this.animating,
-      loss: this.shown.record ? this.playerLoss.state(this.shown.record.frame) : null,
+      loss: this.shown.record ? this.playerLoss.state(this.shown.record) : null,
     }
   }
 }

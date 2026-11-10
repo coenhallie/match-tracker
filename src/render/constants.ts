@@ -123,3 +123,10 @@ export const CARRIER_GROWTH = 0.25
  * show, and smaller than a player.
  */
 export const BALL_RADIUS = 10.5
+
+/**
+ * Height (m) at which the shadow under a high ball is as far from it and as
+ * faint as it gets. High balls in the staging stream are up to about 20 m,
+ * most about 11 m, so from here up it looks the same.
+ */
+export const BALL_SHADOW_FULL_HEIGHT_M = 12

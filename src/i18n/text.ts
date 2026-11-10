@@ -60,6 +60,22 @@ export interface TrackerText extends Record<LabelCardKey | LabelCardTextKey, str
    */
   playerLoss: string
   playerLossCover: string
+  /**
+   * The debug badge in live mode while the frame on screen is one the pipeline marked
+   * invalid, so its positions were made up: with `{team}` for whose attack covers it,
+   * and without for when none could be chosen.
+   */
+  invalidFrames: string
+  invalidFramesCover: string
+  /**
+   * The same, counting down while the frame is invalid: `{label}` for the text above, and
+   * `{seconds}` for how long until a valid one, or how far ahead the pipeline sees when none
+   * is due by then.
+   */
+  invalidFramesValidIn: string
+  invalidFramesValidLater: string
+  /** The same for a run too short to cover, with `{seconds}` for how short (MIN_STRETCH_S). */
+  invalidFramesShort: string
   /** Each layer's name and hint in the layers menu, listed in REPLAY_LAYERS order. */
   layers: Record<ReplayLayerKey, LayerText>
 }

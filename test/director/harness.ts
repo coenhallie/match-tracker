@@ -9,7 +9,7 @@ import {
 } from '../../src/director/director'
 import { nextPlayback } from '../../src/director/playback'
 import { DEFAULT_REPLAY_LAYERS, type ReplayLayers, type ReplayMoment } from '../../src/model/replayLayers'
-import type { Frame, TrackerRecord } from '../../src/model/types'
+import type { Frame, RecordValidity, TrackerRecord } from '../../src/model/types'
 import type { FrameLayers } from '../../src/render/renderer'
 
 /** The view every test draws in: the reference's frame box, not zoomed. */
@@ -32,6 +32,8 @@ export interface Change {
   frame?: Frame | null
   phase?: TeamPhase | null
   trail?: BallTrail | null
+  /** The validity of the record `frame` makes, as a live stream's records carry it. */
+  validity?: RecordValidity
 }
 
 /**
@@ -99,6 +101,7 @@ export class FakeReplay {
     if (change.trail !== undefined) next.trail = change.trail
     if (change.frame !== undefined) {
       next.record = change.frame && { t: next.time, frameCount: ++this.frameCount, frame: change.frame }
+      if (next.record && change.validity) next.record.validity = change.validity
     }
     this.state = next
     const playback = nextPlayback(this.flag, next.time, next.playing)

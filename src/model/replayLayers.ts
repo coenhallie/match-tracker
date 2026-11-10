@@ -17,6 +17,7 @@ export type ReplayLayerKey =
   | 'throwInBanner'
   | LabelCardKey
   | 'ballTrail'
+  | 'ballShadow'
   | 'phaseLabels'
   | 'nearbyRings'
   | 'farFade'
@@ -46,6 +47,7 @@ export const REPLAY_LAYERS: ReadonlyArray<{ key: ReplayLayerKey }> = [
   { key: 'throwInBanner' },
   ...LABEL_CARD_KEYS.map((key) => ({ key })),
   { key: 'ballTrail' },
+  { key: 'ballShadow' },
   { key: 'phaseLabels' },
   { key: 'nearbyRings' },
   { key: 'farFade' },
@@ -61,6 +63,7 @@ export const DEFAULT_REPLAY_LAYERS: ReplayLayers = {
   throwInBanner: true,
   ...labelCardRecord(() => true),
   ballTrail: true,
+  ballShadow: true,
   phaseLabels: true,
   nearbyRings: true,
   farFade: true,

@@ -88,12 +88,65 @@ describe('the player loss badge', () => {
     const parent = document.createElement('div')
     const loss = new LossBadge(parent)
     const name = (team: 0 | 1) => (team === 0 ? 'Red' : 'Blue')
-    loss.update({ players: 9, cover: 1 }, true, en, name)
+    loss.update({ cause: 'playerLoss', players: 9, cover: 1 }, true, en, name)
     expect(parent.textContent).toBe("Player loss: 9 tracked, covered by Blue's attack")
     expect(parent.querySelector<HTMLElement>('.mt-loss')?.dataset.cover).toBe('1')
-    loss.update({ players: 9, cover: null }, true, en, name)
+    loss.update({ cause: 'playerLoss', players: 9, cover: null }, true, en, name)
     expect(parent.textContent).toBe('Player loss: 9 tracked')
     loss.update(null, true, en, name)
     expect(parent.children).toHaveLength(0)
+  })
+
+  it('says an attack covers invalid frames, or that no side could be chosen for them', () => {
+    const parent = document.createElement('div')
+    const loss = new LossBadge(parent)
+    const name = (team: 0 | 1) => (team === 0 ? 'Red' : 'Blue')
+    loss.update({ cause: 'invalidFrames', players: 22, cover: 0 }, true, en, name)
+    expect(parent.textContent).toBe("Invalid frames: covered by Red's attack")
+    expect(parent.querySelector<HTMLElement>('.mt-loss')?.dataset.cause).toBe('invalidFrames')
+    loss.update({ cause: 'invalidFrames', players: 22, cover: null }, true, en, name)
+    expect(parent.textContent).toBe('Invalid frames, no attacker')
+    loss.update({ cause: 'playerLoss', players: 9, cover: null }, true, en, name)
+    expect(parent.querySelector<HTMLElement>('.mt-loss')?.dataset.cause).toBe('playerLoss')
+  })
+
+  it('counts down to the frames being valid again', () => {
+    const parent = document.createElement('div')
+    const loss = new LossBadge(parent)
+    const name = (team: 0 | 1) => (team === 0 ? 'Red' : 'Blue')
+    loss.update({ cause: 'invalidFrames', players: 22, cover: 0, validInS: 3.24, horizonS: 10 }, true, en, name)
+    expect(parent.textContent).toBe("Invalid frames: covered by Red's attack, valid in 3.2 s")
+    loss.update({ cause: 'invalidFrames', players: 22, cover: null, validInS: 0.04 }, true, en, name)
+    expect(parent.textContent).toBe('Invalid frames, no attacker, valid in 0.0 s')
+    loss.update({ cause: 'invalidFrames', players: 22, cover: 0, validInS: null, horizonS: 10 }, true, en, name)
+    expect(parent.textContent).toBe("Invalid frames: covered by Red's attack, valid in over 10 s")
+    // The pipeline's horizon is 9.999999999990905: whole seconds.
+    loss.update({ cause: 'invalidFrames', players: 22, cover: 1, validInS: null, horizonS: 9.999999999990905 }, true, en, name)
+    expect(parent.textContent).toBe("Invalid frames: covered by Blue's attack, valid in over 10 s")
+    loss.update({ cause: 'invalidFrames', players: 22, cover: null, validInS: 0.8, short: true }, true, en, name)
+    expect(parent.textContent).toBe('Invalid frames, under 1 s: not covered, valid in 0.8 s')
+    // Beyond a horizon the record did not give, there is nothing to say.
+    loss.update({ cause: 'invalidFrames', players: 22, cover: 0, validInS: null }, true, en, name)
+    expect(parent.textContent).toBe("Invalid frames: covered by Red's attack")
+  })
+
+  it('says so in live mode while the frame on screen is invalid', () => {
+    const { host, tracker } = mount({ debug: true })
+    const at = (state: 'valid' | 'invalid') => {
+      const parsed = JSON.parse(withPlayers(22)) as { raw_data?: unknown }
+      parsed.raw_data = {
+        source_frame: { frame_state: state },
+        agentic: { lookahead: { horizon_s: 10, next_invalid_in_s: state === 'invalid' ? 0 : null, next_valid_in_s: state === 'invalid' ? 3 : 0 } },
+      }
+      tracker.push(JSON.stringify(parsed))
+      env.settle()
+    }
+    at('valid')
+    expect(badge(host)).toBeNull()
+    at('invalid')
+    expect(badge(host)?.textContent).toMatch(/^Invalid frames.*, valid in 3\.0 s$/)
+    at('valid')
+    env.settle()
+    expect(badge(host)).toBeNull()
   })
 })

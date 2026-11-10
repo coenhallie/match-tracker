@@ -1,5 +1,8 @@
 import { HISTORY_S, windowAt } from '../analysis/derive.js'
+import { hasBall, heldRecord } from '../model/heldRecord.js'
 import type { TrackerRecord } from '../model/types.js'
+
+const isValid = (record: TrackerRecord) => record.validity?.invalid !== true
 
 /**
  * The records a live stream has delivered lately, enough for the phase and trail at the newest
@@ -8,12 +11,31 @@ import type { TrackerRecord } from '../model/types.js'
  * It holds the records from HISTORY_S before the newest up to the newest, in time order, with
  * equal times in arrival order. It is a mirror of the replay's cache, so `window()` is exactly
  * what `windowAt` gives over the records as they arrived.
+ *
+ * An invalid record (RecordValidity) is held too, so its frame number is taken once, but
+ * nothing reads the positions the pipeline made up for it: the window leaves it out and ends
+ * at the last valid record, and `shown()` puts the last valid record's positions under it
+ * (heldRecord), with the last ball a valid record had, if it was seen within HISTORY_S of
+ * the last valid record: the tracking often loses the ball just as the broadcast cuts away.
+ * Records that say nothing about their validity, as replay data does not, are all valid, and
+ * for them nothing changes.
  */
 export class LiveHistory {
   /** Held records, oldest first. Records with one t are in arrival order. */
   private held: TrackerRecord[] = []
   private frames = new Set<number>()
   private newest: TrackerRecord | null = null
+  /** The newest valid record, kept however long a run of invalid ones lasts. */
+  private lastValid: TrackerRecord | null = null
+  /** The newest valid record with a ball, kept as `lastValid` is. */
+  private lastBall: TrackerRecord | null = null
+  /** What `shown()` gave for the newest record, so it is made once and keeps its identity. */
+  private shownFor: {
+    newest: TrackerRecord
+    lastValid: TrackerRecord
+    lastBall: TrackerRecord | null
+    shown: TrackerRecord
+  } | null = null
   /** How many times the stream broke (see `add`): each started the history afresh. */
   breaks = 0
 
@@ -46,6 +68,10 @@ export class LiveHistory {
     this.held.splice(at, 0, record)
     this.frames.add(record.frameCount)
 
+    if (isValid(record) && (!this.lastValid || record.t >= this.lastValid.t)) this.lastValid = record
+    if (isValid(record) && hasBall(record.frame) && (!this.lastBall || record.t >= this.lastBall.t)) {
+      this.lastBall = record
+    }
     if (!this.newest || record.t >= this.newest.t) {
       this.newest = record
       this.prune(record.t - HISTORY_S)
@@ -58,15 +84,47 @@ export class LiveHistory {
     return this.newest
   }
 
-  /** The records the newest one derives its phase and trail from: `windowAt(held, latest)`. */
+  /** The newest valid record, or null when there has been none since the history began. */
+  latestValid(): TrackerRecord | null {
+    return this.lastValid
+  }
+
+  /**
+   * The record to show: the newest, or, while it is invalid, it held on the last valid record's
+   * positions. With nothing valid to hold it on, the newest as it is.
+   */
+  shown(): TrackerRecord | null {
+    const newest = this.newest
+    const lastValid = this.lastValid
+    if (!newest || isValid(newest) || !lastValid) return newest
+    const lastBall = this.lastBall
+    const cached = this.shownFor
+    if (cached && cached.newest === newest && cached.lastValid === lastValid && cached.lastBall === lastBall) {
+      return cached.shown
+    }
+    const ballFrom =
+      !hasBall(lastValid.frame) && lastBall && lastBall.t >= lastValid.t - HISTORY_S ? lastBall : lastValid
+    const shown = heldRecord(newest, lastValid, ballFrom.frame.balls)
+    this.shownFor = { newest, lastValid, lastBall, shown }
+    return shown
+  }
+
+  /**
+   * The records the last valid one derives its phase and trail from: `windowAt` over the valid
+   * records held, at the last valid one. Empty when there is none.
+   */
   window(): TrackerRecord[] {
-    return this.newest ? windowAt(this.held, this.newest) : []
+    if (!this.lastValid) return []
+    return windowAt(this.held.every(isValid) ? this.held : this.held.filter(isValid), this.lastValid)
   }
 
   clear(): void {
     this.held = []
     this.frames.clear()
     this.newest = null
+    this.lastValid = null
+    this.lastBall = null
+    this.shownFor = null
   }
 
   /** Drop the records older than `from`, which sit at the front. */

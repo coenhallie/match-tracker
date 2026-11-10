@@ -90,6 +90,7 @@ describe('Director', () => {
           possession: new Map([[1, 1]]),
         },
         fadeFar: true,
+        ballShadow: true,
         trail: undefined,
         ballSpin: UPRIGHT,
         received: new Map(),

@@ -6,6 +6,40 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### What you see
+
+- **In live mode, frames the pipeline marks invalid are covered with an attack.**
+  While its camera is away the pipeline keeps sending every player and the ball,
+  with made-up positions, and the widget used to draw them drifting about. Now
+  each invalid frame is shown on the last valid frame's positions, standing
+  still (the ball where a valid frame last had it), under the attack the player
+  loss already shows, from the first invalid frame of a run of 1 s or more until
+  its first valid frame, through valid gaps under 1.5 s. A shorter run is held,
+  not covered. The side is chosen as for a player loss, from
+  valid frames only, and failing that from the half the ball is in. Labels on
+  invalid frames still play, a half label among them, which turns the held frame
+  round for the second half as one on a valid frame does. Replay is unchanged.
+- **The team phase and the ball trail leave invalid frames out**, so neither
+  reads a made-up position once the frames are valid again.
+- **The zoom near goal eases out to the whole pitch while an attack shows**, as
+  it does for the corner and the centre cards, and back in after it. It used to
+  stay in, and near a goal the attack's label was cut off at the frame's edge.
+  The attack over a player loss or invalid frames does the same.
+- **A high ball casts a shadow on the pitch**, below and right of it, further
+  off and fainter the higher it is. It is a new layer, `ballShadow` ("High ball
+  shadow"), on by default. video-annotation has none.
+- **The `playerLoss` layer is now "Attack over lost players or invalid frames".**
+
+### API
+
+- A new layer, `ballShadow`, and `Ball` has an optional `is_high_ball`.
+- `TrackerRecord` has an optional `validity`, read from the message's
+  `raw_data` by `parseRecord`; nothing else of `raw_data` is kept.
+- With `debug` on, the badge says when an attack covers invalid frames, and
+  counts down to the next valid frame, from the new `TrackerText` keys
+  `invalidFrames`, `invalidFramesCover`, `invalidFramesValidIn`,
+  `invalidFramesValidLater` and `invalidFramesShort`.
+
 ## [0.9.0] - 2026-11-09
 
 The host can keep the teams at the right ends through a reconnect or a reload.

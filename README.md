@@ -271,10 +271,10 @@ Also exported:
 | `formatAction` | `(actionType: string) => string` | as it comes | The bottom-left text for each of a frame's actions, from its `action_type` (for example `'EventType.FREE_KICK'` to `'Free kick'`). |
 | `aiLabels` | `boolean` | `false` | Whether the bottom-left action text lists the pipeline's AI labels too. Off, it lists only the labels a human gave, the ones the moments play on (see [Labels](#labels)). For developers, like `layersMenu`. Can be changed with `setOptions`. |
 | `secondHalfFrom` | `number \| null` | `null` | When the second half starts, as the host knows it: a record time (`TrackerRecord.t`, the pipeline's own timestamp, in seconds), as the `secondHalf` event says it. From it on the teams are shown at the other ends, as from a half label the widget sees (see [The teams change ends](#the-teams-change-ends)). Kept through `reset()`. Anything but a finite number counts as `null`. Can be changed with `setOptions`. |
-| `debug` | `boolean` | `false` | Developer mode. A red badge, top left of the pitch, while fewer than 18 players are tracked on the frame on screen: how many are, and whose attack covers the loss when one does (see [Player loss](#player-loss)). For telling a real attack from one shown over lost players. Can be changed with `setOptions`. |
+| `debug` | `boolean` | `false` | Developer mode. A red badge, top left of the pitch, while fewer than 18 players are tracked on the frame on screen: how many are, and whose attack covers the loss when one does (see [Player loss](#player-loss)). In live mode it also says when the frame on screen is invalid (see [Invalid frames](#invalid-frames)). For telling a real attack from one shown over lost players or invalid frames. Can be changed with `setOptions`. |
 
 The layers are `goal`, `goalZoom`, `attack`, `playerLoss`, `corner`, `throwInBanner`,
-`varCheck`, `goalDisallowed`, `halfTime`, `secondHalf`, `fullTime`, `foul`, `shotOnGoal`, `headerOnGoal`, `ballTrail`, `phaseLabels`, `nearbyRings`, `farFade` and `ringFades`.
+`varCheck`, `goalDisallowed`, `halfTime`, `secondHalf`, `fullTime`, `foul`, `shotOnGoal`, `headerOnGoal`, `ballTrail`, `ballShadow`, `phaseLabels`, `nearbyRings`, `farFade` and `ringFades`.
 
 #### Labels
 
@@ -405,6 +405,49 @@ default):
   during a loss isn't shown on top of it.
 - With `debug` on, a badge says when this is happening.
 
+#### Invalid frames
+
+In live mode, the pipeline marks a frame invalid while its camera is away
+(`raw_data.source_frame.frame_state` is `invalid`). It still sends every player
+and the ball, but their positions are made up. The widget never shows them:
+- Each invalid frame is shown on the last valid frame's positions, standing
+  still, with its own labels, so a label a human gives meanwhile still plays.
+  The tracking often loses the ball just before, as the broadcast cuts away, so
+  the ball is the last one a valid frame had, if seen within 10 s.
+  The team phase and the ball trail are worked out from valid frames only.
+  In the second half all of it is turned round with the frames around it,
+  and a half label on an invalid frame turns it as one on a valid frame does
+  (see [The teams change ends](#the-teams-change-ends)).
+- The attack of the player loss covers it, with the same layer (`playerLoss`),
+  from the first invalid frame of a run that lasts 1 s or more. The frame says
+  how long the run lasts (`raw_data.agentic.lookahead`); a run that does not say
+  is covered too. A shorter run is not covered: the last valid frame just stands
+  for it.
+- It shows the attack chosen as for a player loss, from valid frames only. While
+  neither tells, it shows the attack of the team attacking the half the ball is
+  in on the last valid frame.
+- It fades out from the first valid frame, unless another run of invalid frames
+  starts within 1.5 s, which it stays up through.
+- With `debug` on, the badge says "Invalid frames: covered by {team}'s attack",
+  or "Invalid frames, no attacker" when no side could be chosen, or "Invalid
+  frames, under 1 s: not covered". While the frame
+  is invalid it counts down to the next valid one from the pipeline's lookahead,
+  "valid in 3.2 s", or "valid in over 10 s" when none is due within it. A
+  regular attack never shows it.
+
+Replay mode never does any of this, whatever its data carries.
+
+#### High ball shadow
+
+While the pipeline calls the ball a high ball (`is_high_ball` on the frame's
+ball), it casts a shadow on the pitch (the `ballShadow` layer, on by default):
+- A soft dark blot below and right of the ball, away from the light it is
+  shaded by, on the grass under the players.
+- The higher the ball (its `z`), the further off, the wider and the fainter
+  the shadow, up to 12 m, from where it looks the same.
+- It fades with the ball under a card. The goal sequence's ball and the ball an
+  attack holds cast none.
+
 #### Zoom near goal
 
 As the ball nears a goal, the view eases in on the ball and that goal, a
@@ -419,8 +462,9 @@ little more the nearer it gets (the `goalZoom` layer, on by default):
   net and stays as close in as this goes. Without this layer a goal's camera
   lunges in over 400 ms and back out at the end, as video-annotation's does.
 - While a corner, a throw-in, a VAR check, a goal disallowed, a half time, a
-  second half, a full time or a foul shows, it eases out to the whole pitch, as their cards are laid out on
-  it. A shot or a header on goal is what it is there for, so for those it stays
+  second half, a full time, a foul or an attack shows (the attack over a player
+  loss or invalid frames too), it eases out to the whole pitch, as their cards
+  and the attack's label are laid out on it, and back in once it has gone. A shot or a header on goal is what it is there for, so for those it stays
   in. Zoomed in, those cards stay whole, on the frame where the whole pitch has
   them, as the goal's card does.
 - Zooming or panning yourself takes the view: it stays where you put it.
@@ -435,7 +479,7 @@ The `TrackerText` keys are:
 - the menu: `layersButton`, `layersTooltip`, `layersMenuLabel`, and `layers` (`{ label, hint }` per layer);
 - the zoom: `zoomLevel` (with `{zoom}`) and `zoomReset`;
 - for screen readers: `pitchLabel`, the pitch's name ("Match tracker");
-- the `debug` badge: `playerLoss` (with `{players}`) and `playerLossCover` (with `{players}` and `{team}`).
+- the `debug` badge: `playerLoss` (with `{players}`), `playerLossCover` (with `{players}` and `{team}`), `invalidFrames`, `invalidFramesCover` (with `{team}`), and `invalidFramesValidIn` and `invalidFramesValidLater` (with `{label}` and `{seconds}`), and `invalidFramesShort` (with `{seconds}`).
 
 ### Events
 

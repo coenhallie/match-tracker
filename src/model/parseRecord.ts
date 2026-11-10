@@ -1,4 +1,4 @@
-import type { Frame, TrackerRecord } from './types.js'
+import type { Frame, RecordValidity, TrackerRecord } from './types.js'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -63,9 +63,40 @@ export function parseRecord(message: unknown): TrackerRecord | null {
   const t = isRecord(last) ? last.timestamp : undefined
   if (typeof t !== 'number' || !Number.isFinite(t)) return null
 
-  return {
+  const record: TrackerRecord = {
     t,
     frameCount: meta.frame_count,
     frame: { ...frame, frame_data: [{ frame_count: meta.frame_count }] },
   }
+  const validity = readValidity(value.raw_data)
+  if (validity) record.validity = validity
+  return record
+}
+
+/** A countdown in seconds: a finite number, 0 or more. */
+const countdown = (value: unknown): number | null =>
+  typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null
+
+/**
+ * The record's validity from the envelope's `raw_data`, or null when it has no
+ * `source_frame.frame_state`. Nothing else of `raw_data` is kept: it holds
+ * every detection, and the live history keeps seconds of records.
+ *
+ * `source_frame` is the frame `match` describes; `raw_data.frame` is another
+ * one, and can be `'skipped'`. `agentic.is_valid_game_state` and
+ * `invalid_block_active` only say that the next 10 s are all invalid.
+ */
+function readValidity(raw: unknown): RecordValidity | null {
+  if (!isRecord(raw) || !isRecord(raw.source_frame)) return null
+  const state = raw.source_frame.frame_state
+  if (typeof state !== 'string') return null
+  const lookahead = isRecord(raw.agentic) && isRecord(raw.agentic.lookahead) ? raw.agentic.lookahead : {}
+  const validity: RecordValidity = {
+    invalid: state === 'invalid',
+    nextInvalidInS: countdown(lookahead.next_invalid_in_s),
+    nextValidInS: countdown(lookahead.next_valid_in_s),
+  }
+  const horizon = lookahead.horizon_s
+  if (typeof horizon === 'number' && Number.isFinite(horizon) && horizon > 0) validity.horizonS = horizon
+  return validity
 }
