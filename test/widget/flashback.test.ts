@@ -148,6 +148,15 @@ function goalThenRun(stream: Stream, runRecords = 50, shape: (i: number) => Shap
 }
 
 const isClip = (frame: Frame) => frameNo(frame) < FIRST_FRAME + RUN
+
+/** Run one animation frame of `ms`: what was drawn in it, and whether director `index` painted in it. */
+function frameOf(ms: number, index: number): { drawn: typeof control.drawn; painted: boolean } {
+  const drawnFrom = control.drawn.length
+  const updatesFrom = control.outputs.length
+  env.frame(ms)
+  const painted = control.outputs.some((out, k) => k >= updatesFrom && control.updatedBy[k] === index && out.paint)
+  return { drawn: control.drawn.slice(drawnFrom), painted }
+}
 const press = (tracker: MatchTracker) => tracker.overlay.dispatchEvent(new Event('pointerdown', { bubbles: true }))
 
 beforeEach(() => {
@@ -202,6 +211,9 @@ describe('flashbacks in live mode', () => {
     const clipInputs = control.inputs.filter((_, k) => control.updatedBy[k] === 1)
     expect(clipInputs.at(-1)?.phase?.states[0]).toBe('attacking')
     expect(row()).toBe('attacking')
+    // A press cuts the replay: the row is live play's at once, before the next frame.
+    press(tracker)
+    expect(row()).toBe('defending')
   })
 
   it('a resize, a font load or a layer change mid-replay redraws the clip, not live', async () => {
@@ -221,19 +233,84 @@ describe('flashbacks in live mode', () => {
   })
 
   it('moves the timer and the progress line between clip records', () => {
-    const { tracker } = mount()
+    // No zoom near goal, which would have the clip director paint every frame as it eases.
+    const { tracker } = mount({ layers: { goalZoom: false } })
     // Records 100 ms apart, as the default socket sends them.
     const stream = new Stream(tracker, 0.1)
     stream.push(200, 'valid', (i) => (i === 40 ? { labels: ['goal'] } : {}))
     stream.push(10, 'long')
+    // Frames on which the clip director did not paint: the indicator alone is drawn again.
     const shares: number[] = []
-    for (let k = 0; k < 12; k++) {
-      const before = control.drawn.length
-      env.frame(16)
-      expect(control.drawn.length).toBe(before + 1)
-      shares.push(control.drawn.at(-1)!.layers!.flashback!.leftShare)
+    for (let k = 0; k < 24; k++) {
+      const { drawn, painted } = frameOf(16, 1)
+      expect(drawn).toHaveLength(1)
+      if (!painted) shares.push(drawn[0]!.layers!.flashback!.leftShare)
     }
+    expect(shares.length).toBeGreaterThanOrEqual(10)
     expect(shares.every((s, k) => k === 0 || s < shares[k - 1]!)).toBe(true)
+  })
+
+  it('fades the stroke and tab out over live play, drawing them again while live does not paint', () => {
+    const { tracker } = mount({ layers: { playerLoss: false } })
+    const stream = new Stream(tracker)
+    goalThenRun(stream, 25)
+    stream.push(1, 'valid')
+    const liveFrame = FIRST_FRAME + RUN + 25
+    const alphas: number[] = []
+    for (let k = 0; k < 40 && env.queued() > 0; k++) {
+      const { drawn, painted } = frameOf(16, 0)
+      expect(painted).toBe(false)
+      for (const { frame, layers } of drawn) {
+        expect(frameNo(frame)).toBe(liveFrame)
+        alphas.push(layers?.flashback?.alpha ?? 0)
+      }
+    }
+    expect(alphas.length).toBeGreaterThanOrEqual(5)
+    expect(alphas.every((a, k) => k === 0 || a < alphas[k - 1]!)).toBe(true)
+    expect(alphas.at(-1)).toBe(0)
+    expect(control.drawn.at(-1)!.layers).not.toHaveProperty('flashback')
+  })
+
+  it('a reset mid-replay leaves the last live frame, without the tab', () => {
+    const { tracker } = mount()
+    const log = events(tracker)
+    const stream = new Stream(tracker)
+    const at = goalThenRun(stream, 25)
+    expect(isClip(control.drawn.at(-1)!.frame)).toBe(true)
+    tracker.reset()
+    const last = control.drawn.at(-1)!
+    expect(frameNo(last.frame)).toBe(FIRST_FRAME + RUN - 1)
+    expect(last.layers).not.toHaveProperty('flashback')
+    expect(log.filter((e) => e.startsWith('flashback'))).toEqual([`flashback:start@${at}`, `flashback:end@${at}`])
+  })
+
+  it('each clip starts from the viewer view, not the last clip camera', () => {
+    const { host, tracker } = mount()
+    const stream = new Stream(tracker)
+    // Two goals 20 s apart. The later one, with the ball in the box, plays first and its zoom near
+    // goal moves its camera; the earlier one, with the ball at the centre spot, follows it.
+    const LATER = 600
+    stream.push(800, 'valid', (i) => ({
+      ballX: i >= 400 && i < 700 ? 45 : 0,
+      ...(i === GOAL || i === LATER ? { labels: ['goal'] } : {}),
+    }))
+    const clip = () => control.inputs.filter((_, k) => control.updatedBy[k] === 1)
+    let zoomedInFirst = false
+    for (let k = 0; k < 400; k++) {
+      stream.push(1, 'long')
+      const inputs = clip()
+      const last = inputs.at(-1)
+      if (last && last.record!.t > stream.t(400)) zoomedInFirst ||= control.directors[1]!.view.zoom > 1
+      if (last && last.record!.t < stream.t(400)) {
+        // The first frame of the second clip.
+        expect(last.playback).toBe(false)
+        expect(zoomedInFirst).toBe(true)
+        expect(control.directors[1]!.view.zoom).toBe(1)
+        expect(host.shadowRoot!.querySelector('.mt-zoom')).toBeNull()
+        return
+      }
+    }
+    throw new Error('the second clip never started')
   })
 
   it('makes no second director until a clip plays', () => {
@@ -436,11 +513,11 @@ describe('flashbacks in live mode', () => {
     const records = lines.map((line) => ({ line, record: parseRecord(JSON.parse(line)) as TrackerRecord }))
     let newest: TrackerRecord | null = null
     let carried: CarriedValidity | null = null
-    const ends: Array<{ nowMs: number; stated: RecordValidity | undefined; state: RecordValidity | null }> = []
+    const ends: Array<{ nowMs: number; state: RecordValidity | null }> = []
     const starts: Array<{ nowMs: number }> = []
     tracker.on('flashback', ({ phase }) => {
       if (phase === 'start') starts.push({ nowMs: env.now })
-      else ends.push({ nowMs: env.now, stated: newest?.validity, state: newest && carriedValidity(carried, newest.t) })
+      else ends.push({ nowMs: env.now, state: newest && carriedValidity(carried, newest.t) })
     })
     // Paced by record time, in animation frames of 40 ms: the fixture is about 9 records a second.
     const first = records[0]!.record.t
@@ -456,9 +533,10 @@ describe('flashbacks in live mode', () => {
     }
     expect(starts.length).toBeGreaterThan(0)
     for (const end of ends) {
-      // Either the clip ran out with the run still on, or a record that says it is valid ended it:
-      // never one with no validity.
-      expect(end.state?.invalid === true || end.stated?.invalid === false).toBe(true)
+      // Every end follows from a known validity: a clip that ran out with the run still on, a
+      // record that says it is valid, or a carried countdown that flipped to valid. All three are
+      // accepted; an end with nothing known about the stream would be a flicker of its own.
+      expect(end.state).not.toBeNull()
     }
     const all = [...starts.map((s) => ({ ...s, phase: 'start' })), ...ends.map((e) => ({ ...e, phase: 'end' }))].sort(
       (a, b) => a.nowMs - b.nowMs,

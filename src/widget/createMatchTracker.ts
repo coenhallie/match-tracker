@@ -186,6 +186,8 @@ const sameView = (a: DirectorView, b: DirectorView | null) =>
 
 const cameraOf = (view: DirectorCamera): DirectorCamera => ({ zoom: view.zoom, panX: view.panX, panY: view.panY })
 
+const sameCamera = (a: DirectorCamera, b: DirectorCamera) => a.zoom === b.zoom && a.panX === b.panX && a.panY === b.panY
+
 const sameIndicator = (a: FlashbackIndicator | null, b: FlashbackIndicator | null) =>
   a === b ||
   (a !== null && b !== null && a.alpha === b.alpha && a.side === b.side && a.agoS === b.agoS && a.leftShare === b.leftShare)
@@ -346,6 +348,8 @@ class Tracker implements MatchTracker {
   private indicator: FlashbackIndicator | null = null
   /** The last paint drawn, and with what indicator: drawn again when only the indicator moves. */
   private drawn: { paint: DirectorPaint; indicator: FlashbackIndicator | null } | null = null
+  /** The last paint of live play drawn: what a reset leaves on screen in place of a replay. */
+  private liveDrawn: DirectorPaint | null = null
   private readonly emitter = new Emitter<TrackerEvents>()
   private readonly moments = new MomentWatch()
   private readonly loop: FrameLoop
@@ -505,6 +509,8 @@ class Tracker implements MatchTracker {
     if (this.destroyed) return
     // The controller's reset drops an `end` still to come: the host hears it here.
     const openAt = this.flashback?.openAt ?? null
+    // A replay's stroke and tab on screen go: the last live frame is drawn again without them.
+    const redraw = this.drawn?.indicator ? this.liveDrawn : null
     this.flashback?.cut(performance.now())
     this.flashback?.reset()
     this.clipShown = false
@@ -532,6 +538,7 @@ class Tracker implements MatchTracker {
     // The director stops its moments without a paint.
     for (const change of this.moments.clear()) this.emitter.emit('moment', change)
     if (openAt !== null) this.emitter.emit('flashback', { phase: 'end', at: openAt })
+    if (redraw) this.draw(redraw)
   }
 
   trigger(moment: ReplayMoment, team: TeamId = 0): boolean {
@@ -748,7 +755,11 @@ class Tracker implements MatchTracker {
    */
   private followStage(): boolean {
     const clipView = this.flashback?.active ? this.flashback.clipView : null
-    if ((clipView !== null) === this.clipShown) return false
+    if ((clipView !== null) === this.clipShown) {
+      // A clip that follows another starts from the viewer's view (FlashbackStage.tick).
+      if (clipView && !sameCamera(clipView, this.view)) this.adoptCamera(clipView)
+      return false
+    }
     this.clipShown = clipView !== null
     if (clipView) for (const change of this.moments.clear()) this.emitter.emit('moment', change)
     const { zoom } = this.view
@@ -763,7 +774,10 @@ class Tracker implements MatchTracker {
     this.flashback.cut(performance.now())
     // For its `end`, which the next frame gives.
     this.loop.request()
-    if (this.followStage() && redraw) this.repaint()
+    if (!this.followStage()) return
+    this.phase = this.lastInput?.phase ?? null
+    this.renderHud()
+    if (redraw) this.repaint()
   }
 
   /** What the director is to see at `nowMs`, or null in replay before anything is presented. */
@@ -844,7 +858,9 @@ class Tracker implements MatchTracker {
     // Asked for before drawing, so a draw that throws leaves the moments going.
     if (out.animating) this.loop.request()
     const last = out.paints.at(-1)
-    if (last) this.draw(last)
+    if (!last) return
+    this.liveDrawn = last
+    this.draw(last)
   }
 
   /**

@@ -122,6 +122,7 @@ export class FlashbackStage {
   tick(nowMs: number, live: FlashbackLive, halves: SecondHalf, renderedWidth: number): FlashbackTick {
     const frame = this.controller.step(nowMs, live)
     for (const event of frame.events) this.open = event.phase === 'start' ? event.at : null
+    const started = frame.shot !== null && frame.shot.clip.id !== this.shot?.clip.id
     this.shot = frame.shot
     this.agoS = frame.agoS
     let out: DirectorOutput | null = null
@@ -131,7 +132,9 @@ export class FlashbackStage {
       const record = halves.shown(shot.record)
       const derived = this.derive(shot, halves)
       phase = derived.phase
-      const director = this.clipDirector(renderedWidth)
+      const director = this.clipDirector()
+      // A clip is a seek: it starts from the viewer's own view, never the camera of the clip before.
+      if (started) director.setView({ ...this.viewer, renderedWidth })
       const view = { ...cameraOf(director.view), renderedWidth }
       const input = { nowMs, time: shot.time, playing: true, playback: shot.playback, record, phase, trail: derived.trail }
       out = director.update(input, view)
@@ -207,12 +210,8 @@ export class FlashbackStage {
     return this.derived
   }
 
-  private clipDirector(renderedWidth: number): Director {
-    if (this.director) return this.director
-    const director = new Director({ ...this.options(), coverInvalidFrames: false })
-    // Its first view is the one it starts in: the viewer's own, never live play's camera.
-    director.setView({ ...this.viewer, renderedWidth })
-    this.director = director
-    return director
+  private clipDirector(): Director {
+    this.director ??= new Director({ ...this.options(), coverInvalidFrames: false })
+    return this.director
   }
 }
