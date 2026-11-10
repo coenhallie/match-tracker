@@ -655,21 +655,20 @@ The measured numbers for each release are in [CHANGELOG.md](CHANGELOG.md). The t
 
 ```sh
 npm install
-npm run dev        # the demo page, http://127.0.0.1:5180/
-npm test           # vitest
+npm test           # vitest, against src
 npm run typecheck
 npm run lint       # oxlint --deny-warnings
-npm run build      # dist/, then checks it (scripts/check-dist.mjs)
+npm run build      # dist/, then checks it (below)
 npm run size
 ```
 
-The demo (`demo/`) plays the test fixtures through two widgets, one live and
-one in replay. It has a button for every moment, disabled while the moment
-cannot be played, a locale toggle, a width selector and a "hostile CSS" switch.
-A badge styled by the page's stylesheet sits in each overlay, showing the box. `window.demo` holds the hooks the
-performance checks use: `perf.start()` / `perf.stop()` time every animation
-frame, and `bench()` times the renderer over a goal. Screenshots taken
-from it go in `demo/screenshots/`, which git ignores.
+`npm run build` bundles and minifies the code into `dist`, and writes the
+declarations, keeping only those the entries reach. Then
+`scripts/check-dist.mjs` checks what `dist` holds, and type-checks the
+declarations strictly under `bundler`, `node16` and `nodenext` resolution.
+Last, `npm run test:dist` (test/dist) plays real match data through
+the built widget and the source side by side, and fails on any difference in
+what they draw or build.
 
 To try a change in an app before it is released, use `npm link` or a `file:`
 path. Never commit either. Apps only ever install published versions.

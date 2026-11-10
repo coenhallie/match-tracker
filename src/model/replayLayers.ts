@@ -28,7 +28,7 @@ export type ReplayLayers = Record<ReplayLayerKey, boolean>
 /**
  * The moments the replay plays over the data. Each plays by itself on its
  * label (or, for an attack, its phase) while its layer is on, and can be
- * played by hand from the demo controls whether or not it is.
+ * played by hand with the tracker's `trigger()` whether or not it is.
  */
 export type ReplayMoment = 'goal' | 'attack' | 'corner' | 'throwIn' | LabelCardKey
 

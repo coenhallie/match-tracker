@@ -28,18 +28,17 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "dist",
-    "CHANGELOG.md"
+    "dist"
   ],
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   },
   "scripts": {
-    "dev": "vite",
-    "build": "vite build && tsc -p tsconfig.build.json && node scripts/check-dist.mjs",
+    "build": "vite build && tsc -p tsconfig.build.json && node scripts/prune-declarations.mjs && node scripts/check-dist.mjs && npm run test:dist",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint --deny-warnings",
-    "test": "vitest run",
+    "test": "vitest run --project src",
+    "test:dist": "vitest run --project dist",
     "size": "node scripts/size.mjs",
     "copy-fonts": "node scripts/copy-fonts.mjs"
   },

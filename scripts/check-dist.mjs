@@ -12,9 +12,15 @@
 //    from a host's entry loads nothing else.
 //  - index.js never imports Vue, which is an optional peer; vue.js imports
 //    it, rather than bundling it, and takes the widget from ./index.js.
+//  - Every file index.js loads by `new URL(..., import.meta.url)` is in dist
+//    beside it, and every font in dist is one it loads.
+//  - The declarations are only those the entries reach
+//    (scripts/prune-declarations.mjs), and they type-check, strictly and with
+//    Vue's checked too, under each module resolution the README promises.
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
-import { dirname, join, relative } from 'node:path'
+import { basename, dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { declarationProgram, ENTRY_DECLARATIONS, errorsOf, reachedFiles, RESOLUTIONS } from './declarations.mjs'
 
 const LICENCES = ['Montserrat-OFL.txt', 'Inter-OFL.txt']
 const ENTRIES = ['index.js', 'vue.js', 'banner.js']
@@ -57,12 +63,36 @@ for (const marker of WIDGET_MARKERS) {
   if (banner.includes(marker)) problems.push(`banner.js holds widget code: ${marker}`)
 }
 
+const loaded = new Set([...index.matchAll(/new URL\((["'`])([^"'`]+)\1,\s*import\.meta\.url\)/g)].map((m) => m[2]))
+for (const file of loaded) {
+  if (!existsSync(join(dist, file))) problems.push(`index.js loads a file dist does not hold: ${file}`)
+}
+for (const font of fonts) {
+  if (!loaded.has(basename(font))) problems.push(`a font index.js never loads: ${relative(dist, font)}`)
+}
+
+for (const file of ENTRY_DECLARATIONS) {
+  if (!existsSync(join(dist, file))) problems.push(`no ${file}`)
+}
+const declarations = files
+  .filter((entry) => entry.name.endsWith('.d.ts'))
+  .map((entry) => resolve(entry.parentPath, entry.name))
+for (const resolution of Object.keys(RESOLUTIONS)) {
+  const program = declarationProgram(dist, resolution)
+  for (const error of errorsOf(program)) problems.push(`declarations under ${resolution} resolution: ${error}`)
+  const reached = reachedFiles(program, dist)
+  for (const file of declarations) {
+    if (!reached.has(file)) problems.push(`a declaration no entry reaches under ${resolution} resolution: ${relative(dist, file)}`)
+  }
+}
+
 if (problems.length > 0) {
   for (const problem of problems) console.error(`dist: ${problem}`)
   process.exit(1)
 }
 console.log(
   `dist: ${ENTRIES.join(', ')}, vue only in vue.js, banner.js alone; ` +
+    `${declarations.length} declarations, all reached, type-checking under ${Object.keys(RESOLUTIONS).join(', ')}; ` +
     (fonts.length > 0
       ? `${fonts.length} font files, with ${LICENCES.join(' and ')} beside them`
       : 'no fonts bundled, so no licences needed beside them'),

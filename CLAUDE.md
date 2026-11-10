@@ -35,11 +35,10 @@ of all of them, so keep dependencies pointing down towards `model`.
 ## Commands
 
 ```sh
-npm run dev        # demo page, http://127.0.0.1:5180/
-npm test           # vitest
+npm test           # vitest, against src
 npm run typecheck
 npm run lint       # oxlint --deny-warnings
-npm run build      # dist/, then scripts/check-dist.mjs
+npm run build      # dist/, pruned declarations, scripts/check-dist.mjs, then test/dist
 npm run size       # fails over 60 kB gzipped for dist/index.js, or 2 kB for dist/banner.js
 ```
 

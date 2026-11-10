@@ -11,8 +11,8 @@ describe('package.json', () => {
     expect(pkg.repository).toEqual({ type: 'git', url: 'git+https://github.com/coenhallie/match-tracker.git' })
   })
 
-  it('ships the changelog with dist, and lets tools read package.json through exports', () => {
-    expect(pkg.files).toEqual(['dist', 'CHANGELOG.md'])
+  it('ships dist alone, and lets tools read package.json through exports', () => {
+    expect(pkg.files).toEqual(['dist'])
     expect(pkg.exports).toMatchObject({ './package.json': './package.json' })
     expect(pkg.exports['./banner']).toEqual({ types: './dist/banner.d.ts', import: './dist/banner.js' })
     expect(Object.keys(pkg.exports)).toEqual(['.', './vue', './banner', './package.json'])
