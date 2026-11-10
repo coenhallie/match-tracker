@@ -150,9 +150,10 @@ describe('the player loss badge', () => {
     expect(badge(host)).toBeNull()
   })
 
-  it('says what replay is playing, in developer mode', () => {
+  it('says what replay is playing, and the run\'s countdown, in developer mode', () => {
     const { host, tracker } = mount({ debug: true })
-    const at = (i: number, state: 'valid' | 'long', labels?: string[]) => {
+    /** Record `i`: valid, in a run of 10 s or more, or in a run with `validIn` s to go. */
+    const at = (i: number, state: 'valid' | 'long' | { validIn: number }, labels?: string[]) => {
       const parsed = JSON.parse(message(sent++, { withBall: true, t: 2700 + i * 0.04 })) as {
         match: { state?: unknown }
         raw_data?: unknown
@@ -164,7 +165,7 @@ describe('the player loss badge', () => {
           lookahead: {
             horizon_s: 9.999999999990905,
             next_invalid_in_s: state === 'valid' ? null : 0,
-            next_valid_in_s: state === 'valid' ? 0 : null,
+            next_valid_in_s: state === 'valid' ? 0 : state === 'long' ? null : state.validIn,
           },
         },
       }
@@ -174,15 +175,22 @@ describe('the player loss badge', () => {
     // A human goal 16 s before a long run: the run replays it.
     for (let i = 0; i < 500; i++) at(i, 'valid', i === 100 ? ['goal'] : undefined)
     for (let i = 500; i < 525; i++) at(i, 'long')
-    expect(badge(host)?.textContent).toBe('Replay: GOAL, 0:16 ago')
+    expect(badge(host)?.textContent).toBe('Replay: GOAL, 0:16 ago, valid in over 10 s')
     expect(badge(host)?.dataset.cause).toBe('flashback')
     // In the badge's own language, by the moment's word on the canvas.
     tracker.setOptions({ locale: 'zh' })
-    expect(badge(host)?.textContent).toBe('回放：进球，0:16前')
+    expect(badge(host)?.textContent).toBe('回放：进球，0:16前，超过 10 秒后恢复有效')
     tracker.setOptions({ locale: 'en' })
     at(525, 'valid')
     expect(badge(host)?.dataset.cause).not.toBe('flashback')
     env.settle()
     expect(badge(host)).toBeNull()
+
+    // A run whose end is known: its countdown, as the badge counts down invalid frames.
+    for (let i = 526; i < 1000; i++) at(i, 'valid', i === 600 ? ['goal'] : undefined)
+    for (let i = 1000; i < 1025; i++) at(i, { validIn: 8 - (i - 1000) * 0.04 })
+    expect(badge(host)?.textContent).toBe('Replay: GOAL, 0:16 ago, valid in 7.0 s')
+    tracker.setOptions({ locale: 'zh' })
+    expect(badge(host)?.textContent).toBe('回放：进球，0:16前，7.0 秒后恢复有效')
   })
 })

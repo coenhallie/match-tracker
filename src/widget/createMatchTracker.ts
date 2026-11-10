@@ -497,7 +497,7 @@ class Tracker implements MatchTracker {
       this.resumed = true
       this.rejoining = false
       // Its clips went with the old clock (ClipStore.add); the one playing goes now.
-      this.cutFlashback()
+      this.cutFlashback({ holdOff: false })
     }
     this.historyVersion++
     this.loop.request()
@@ -515,7 +515,7 @@ class Tracker implements MatchTracker {
     const openAt = this.flashback?.openAt ?? null
     // A replay's stroke and tab on screen go: the last live frame is drawn again without them.
     const redraw = this.drawn?.indicator ? this.liveDrawn : null
-    this.flashback?.cut(performance.now())
+    this.flashback?.cut(performance.now(), false)
     this.flashback?.reset()
     this.clipShown = false
     this.indicator = null
@@ -550,7 +550,7 @@ class Tracker implements MatchTracker {
     if (this.destroyed) return false
     // A frame due now is run first, so the moment plays on what is on screen by now.
     this.loop.flush()
-    this.cutFlashback()
+    this.cutFlashback({ holdOff: true })
     const input = this.lastInput
     // What the director can play is read from the frame it was last given,
     // which is `input`: taking it in again inside trigger changes nothing.
@@ -661,7 +661,7 @@ class Tracker implements MatchTracker {
   private applyLayers(layers: ReplayLayers, keep: boolean): void {
     if (this.layers.flashback && !layers.flashback) {
       // Drawn live just below; the `end` comes with the next frame.
-      this.cutFlashback(false)
+      this.cutFlashback({ holdOff: false, redraw: false })
       this.flashback?.forget()
     }
     this.layers = { ...layers }
@@ -773,10 +773,13 @@ class Tracker implements MatchTracker {
     return clipView === null
   }
 
-  /** End a clip playing, for someone who wants the live frame: live play is painted from here, and drawn unless `redraw` is false. */
-  private cutFlashback(redraw = true): void {
+  /**
+   * End a clip playing: live play is painted from here, and drawn unless `redraw` is false. With
+   * `holdOff`, for someone who wants the live frame, no other clip starts until the run ends.
+   */
+  private cutFlashback({ holdOff, redraw = true }: { holdOff: boolean; redraw?: boolean }): void {
     if (!this.flashback?.active) return
-    this.flashback.cut(performance.now())
+    this.flashback.cut(performance.now(), holdOff)
     // For its `end`, which the next frame gives.
     this.loop.request()
     if (!this.followStage()) return
@@ -1052,7 +1055,8 @@ class Tracker implements MatchTracker {
   private resumeAfterAbsence(): void {
     if (this.destroyed) return
     if (this.mode === 'live') {
-      this.cutFlashback()
+      // A seek: the replay on screen ends, but nobody asked for the live frame, so the next may start.
+      this.cutFlashback({ holdOff: false })
       // Unless a seek for another reason is waiting already.
       if (!this.resumed) this.rejoining = true
       this.resumed = true
@@ -1068,7 +1072,7 @@ class Tracker implements MatchTracker {
    */
   private readonly onOverlayPointerDown = (event: Event): void => {
     if (this.destroyed || this.keeps(event.target)) return
-    this.cutFlashback()
+    this.cutFlashback({ holdOff: true })
     this.show(this.director.stopAll())
   }
 

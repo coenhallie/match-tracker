@@ -247,7 +247,7 @@ describe('Flashback', () => {
       (d) => d.step(rec(202, longRun()), { labelMoment: true }),
       (d) => d.step(rec(202, longRun()), { layerOn: false }),
       (d) => {
-        d.fb.cut(d.nowMs)
+        d.fb.cut(d.nowMs, true)
         expect(d.fb.active).toBe(false)
         // Nothing to start in the next step, for the store has no clip left.
         return d.step(rec(202, longRun()))
@@ -268,7 +268,7 @@ describe('Flashback', () => {
     const { store } = storeWith(100, 130)
     const d = make(store)
     d.run(200, 2, () => longRun())
-    d.fb.cut(d.nowMs)
+    d.fb.cut(d.nowMs, true)
     // The rest of the run: someone wants the live frame, so nothing starts, though a clip is ready.
     const rest = d.run(202, 5, () => longRun())
     expect(rest[0]!.events).toEqual([{ phase: 'end', at: 130 }])
@@ -280,10 +280,22 @@ describe('Flashback', () => {
     expect(d.step(rec(207.04, invalid(FLASHBACK_MIN_RUN_S))).events).toEqual([{ phase: 'start', at: 100 }])
   })
 
+  it('lets the next clip start after a cut that does not hold off', () => {
+    const d = make(storeWith(100, 130).store)
+    d.run(200, 2, () => longRun())
+    // A seek, as the widget coming back into view: the clip on screen ends, and the next may start.
+    d.fb.cut(d.nowMs, false)
+    expect(d.fb.active).toBe(false)
+    expect(d.step(rec(202, longRun())).events).toEqual([
+      { phase: 'end', at: 130 },
+      { phase: 'start', at: 100 },
+    ])
+  })
+
   it('a short valid gap does not end the hold-off', () => {
     const d = make(storeWith(100, 130).store)
     d.run(200, 2, () => longRun())
-    d.fb.cut(d.nowMs)
+    d.fb.cut(d.nowMs, true)
     d.step(rec(202, valid(0.28)))
     d.run(202.04, 1, () => longRun())
     d.step(rec(203.04, valid(MERGE_GAP_S - 0.01)))
@@ -436,7 +448,7 @@ describe('Flashback', () => {
     d.run(200, 2, () => longRun())
     expect(d.events('start')).toEqual([{ phase: 'start', at: 130 }])
     // The viewer presses the pitch, and the run then ends.
-    d.fb.cut(d.nowMs)
+    d.fb.cut(d.nowMs, true)
     d.step(rec(202, valid()))
     expect(d.fb.active).toBe(false)
     d.run(202.04, 1, () => valid())
@@ -524,7 +536,7 @@ describe('Flashback', () => {
   it('ends the hold-off of a cut on reset', () => {
     const d = make(storeWith(100, 130).store)
     d.run(200, 2, () => longRun())
-    d.fb.cut(d.nowMs)
+    d.fb.cut(d.nowMs, true)
     d.fb.reset()
     expect(d.step(rec(202, longRun())).events).toEqual([{ phase: 'start', at: 100 }])
   })

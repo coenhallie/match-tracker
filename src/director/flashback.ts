@@ -11,9 +11,11 @@
  * under MERGE_GAP_S holds its last frame instead, until the next invalid record says whether the
  * next clip follows, for MERGE_GAP_S at most (`holds`): a split run is one replay. It is cut off
  * at once by a valid live record (unless an invalid one is due within MERGE_GAP_S, as the attack
- * cover rides such gaps), a live label moment, the layer going off, or `cut()`. After `cut()`, which means someone
- * wants the live frame, nothing starts again until the run ends (a valid live record not in such
- * a gap) or `reset()`; after a live label moment, the next clip may start as soon as it ends.
+ * cover rides such gaps), a live label moment, the layer going off, or `cut()`. After a cut that
+ * holds off, which means someone wants the live frame (a press, `trigger()`), nothing starts
+ * again until the run ends (a valid live record not in such a gap) or `reset()`. After any other
+ * cut (a seek, a stream break, the layer going off) or a live label moment, the next clip may
+ * start as soon as the start rule holds.
  *
  * A live record with no validity counts as the validity the last one that had it carries
  * (carriedValidity). A carried state that flipped is a guess with no horizon, so it can keep a
@@ -140,8 +142,10 @@ export class Flashback {
   private alpha = 0
   /** Events from `cut()`, given out by the next step. */
   private pending: FlashbackEvent[] = []
-  /** Set by `cut()`: no clip starts until the live run ends. */
+  /** Set by a `cut()` that holds off: no clip starts until the live run ends. */
   private held = false
+  /** What the newest live record says, or carries, as of the last step. */
+  private state: RecordValidity | null = null
 
   constructor(
     private readonly store: ClipStore,
@@ -151,6 +155,11 @@ export class Flashback {
   /** Whether a clip is playing. */
   get active(): boolean {
     return this.playing !== null
+  }
+
+  /** What the newest live record says of the run, or carries, as of the last step: its countdown. */
+  get run(): RecordValidity | null {
+    return this.state
   }
 
   /** Whether the next animation frame has anything to show: a clip playing, a fade, an event. */
@@ -167,6 +176,7 @@ export class Flashback {
       if (newest.validity) this.carried = { t: newest.t, validity: newest.validity }
     }
     const state = newest ? (newest.validity ?? carriedValidity(this.carried, newest.t)) : null
+    this.state = state
     if (this.held && runEnded(state)) this.held = false
 
     if (this.playing) {
@@ -188,13 +198,15 @@ export class Flashback {
   }
 
   /**
-   * End the clip playing at once, as when someone wants the live frame, and start none until the
-   * live run ends. Its `end` comes with the next step. With no clip playing it does nothing.
+   * End the clip playing at once. With `holdOff`, as when someone wants the live frame (a press,
+   * `trigger()`), start none until the live run ends; without it (a seek, a stream break), the
+   * next may start as soon as the start rule holds. Its `end` comes with the next step. With no
+   * clip playing it does nothing.
    */
-  cut(nowMs: number): void {
+  cut(nowMs: number, holdOff: boolean): void {
     if (!this.playing) return
     this.end(nowMs, this.pending)
-    this.held = true
+    if (holdOff) this.held = true
   }
 
   reset(): void {
@@ -206,6 +218,7 @@ export class Flashback {
     this.alpha = 0
     this.pending = []
     this.held = false
+    this.state = null
     // `time` is kept: it only goes up.
   }
 

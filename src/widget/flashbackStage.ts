@@ -28,10 +28,11 @@ import {
 import { Flashback, type FlashbackFrame, type FlashbackLive, type FlashbackShot } from '../director/flashback.js'
 import { FlashbackSpotter } from '../director/flashbackSpotter.js'
 import { ClipStore } from '../history/clipStore.js'
-import { carriedValidity, type CarriedValidity, type FlashbackKind } from '../model/flashback.js'
+import { carriedValidity, type CarriedValidity } from '../model/flashback.js'
 import type { ReplayLayers } from '../model/replayLayers.js'
 import type { TrackerRecord } from '../model/types.js'
 import { flashbackSide, type FlashbackIndicator } from '../render/flashback.js'
+import type { FlashbackDebug } from './hud.js'
 
 /** What one animation frame of the stage gives the widget. */
 export interface FlashbackTick {
@@ -170,9 +171,12 @@ export class FlashbackStage {
     this.director?.releaseCamera()
   }
 
-  /** End the clip playing at once, for someone who wants the live frame. Its `end` comes with the next tick. */
-  cut(nowMs: number): void {
-    this.controller.cut(nowMs)
+  /**
+   * End the clip playing at once. With `holdOff`, for someone who wants the live frame, no other
+   * starts until the live run ends (Flashback.cut). Its `end` comes with the next tick.
+   */
+  cut(nowMs: number, holdOff: boolean): void {
+    this.controller.cut(nowMs, holdOff)
   }
 
   /** Forget every clip and all that was spotted, for a reconnect or a new match. Says nothing to the host. */
@@ -188,10 +192,16 @@ export class FlashbackStage {
     this.open = null
   }
 
-  /** What is playing, for the debug badge, or null while nothing is. */
-  debug(): { kind: FlashbackKind; agoS: number } | null {
+  /** What is playing, and while the run is invalid its countdown, for the debug badge; null while nothing is. */
+  debug(): FlashbackDebug | null {
     if (!this.controller.active || !this.shot || this.agoS === null) return null
-    return { kind: this.shot.clip.kind, agoS: this.agoS }
+    const debug: FlashbackDebug = { kind: this.shot.clip.kind, agoS: this.agoS }
+    const run = this.controller.run
+    if (run?.invalid) {
+      debug.validInS = run.nextValidInS
+      if (run.horizonS !== undefined) debug.horizonS = run.horizonS
+    }
+    return debug
   }
 
   /** The stroke and tab: on every paint of a clip, from its fade's first frame, and over live play while they fade out. */

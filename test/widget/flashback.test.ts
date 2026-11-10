@@ -296,6 +296,16 @@ describe('flashbacks in live mode', () => {
     )
   })
 
+  it('moves the HUD controls to and from the stroke with a short transition, none with reduced motion', () => {
+    const css = STYLES.replace(/\s+/g, ' ')
+    // On the controls' own rule, not the flashback's, so they glide both ways: the style after a change decides.
+    expect(css).toContain(
+      '.mt-layers, .mt-zoom, .mt-loss { transition-property: top, right, bottom, left; transition-timing-function: ease-out; transition-duration: 200ms; }',
+    )
+    const reduced = /@media \(prefers-reduced-motion: reduce\) \{ ([^}]*)\{ transition-property: none; \}/.exec(css)?.[1] ?? ''
+    for (const control of ['.mt-layers,', '.mt-zoom,', '.mt-loss ']) expect(reduced).toContain(control)
+  })
+
   it('keeps the zoom badge low beside a left-hand tab', () => {
     const { host, tracker } = mount()
     const hud = host.shadowRoot!.querySelector<HTMLElement>('.mt-hud')!
@@ -471,6 +481,26 @@ describe('flashbacks in live mode', () => {
     stream2.push(5, 'long')
     expect(log2.filter((e) => e.startsWith('flashback'))).toEqual([`flashback:start@${at2}`, `flashback:end@${at2}`])
     expect(drawnSince(back).every(({ frame }) => !isClip(frame))).toBe(true)
+  })
+
+  it('a tab switch mid-run cuts the replay but lets the next one start', () => {
+    const { tracker } = mount()
+    const log = events(tracker)
+    const stream = new Stream(tracker)
+    // Two goals 20 s apart: the later one plays first.
+    const LATER = 600
+    stream.push(800, 'valid', (i) => (i === GOAL || i === LATER ? { labels: ['goal'] } : {}))
+    stream.push(25, 'long')
+    env.setVisibility('hidden')
+    env.setVisibility('visible')
+    // Back in view: a seek, so the replay on screen ends; nobody asked for the live frame, so the next may start.
+    stream.push(5, 'long')
+    expect(log.filter((e) => e.startsWith('flashback'))).toEqual([
+      `flashback:start@${stream.t(LATER)}`,
+      `flashback:end@${stream.t(LATER)}`,
+      `flashback:start@${stream.t(GOAL)}`,
+    ])
+    expect(isClip(control.drawn.at(-1)!.frame)).toBe(true)
   })
 
   it('cuts the replay on a press, and trigger plays on the live frame', () => {

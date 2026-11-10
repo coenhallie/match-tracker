@@ -183,49 +183,62 @@ export class ZoomBadge {
   }
 }
 
-/**
- * The debug badge, top left, while too few players are tracked on the
- * frame on screen: how many are, and whose attack covers the loss when one
- * does (the `debug` option). In live mode it says so too while the frame on
- * screen is invalid, so an attack covering made-up positions is not taken
- * for a real one, and while a replay plays, which one. Nothing is in the DOM
- * while it is off or there is neither a loss nor a replay.
- */
 /** What the badge says of invalid frames, before any countdown. */
 function invalidLabel(loss: PlayerLossState, team: string | null, text: TrackerText): string {
   if (loss.short) return formatText(text.invalidFramesShort, { seconds: String(MIN_STRETCH_S) })
   return team === null ? text.invalidFrames : formatText(text.invalidFramesCover, { team })
 }
 
+/** A run's countdown: seconds until the frames are valid again, or null when none is due within `horizonS`. */
+interface Countdown {
+  validInS?: number | null
+  horizonS?: number
+}
+
 /** `label` with how long until the frames are valid again, when the state says. */
-function countdown(label: string, loss: PlayerLossState, text: TrackerText): string {
-  if (typeof loss.validInS === 'number') {
-    return formatText(text.invalidFramesValidIn, { label, seconds: loss.validInS.toFixed(1) })
+function countdown(label: string, run: Countdown, text: TrackerText): string {
+  if (typeof run.validInS === 'number') {
+    return formatText(text.invalidFramesValidIn, { label, seconds: run.validInS.toFixed(1) })
   }
-  if (loss.validInS === null && loss.horizonS !== undefined) {
+  if (run.validInS === null && run.horizonS !== undefined) {
     // Whole seconds: the pipeline sends its 10 s as 9.999999999990905.
-    return formatText(text.invalidFramesValidLater, { label, seconds: String(Math.round(loss.horizonS)) })
+    return formatText(text.invalidFramesValidLater, { label, seconds: String(Math.round(run.horizonS)) })
   }
   return label
 }
 
+/** The replay playing, for the debug badge: what it is of, how long ago, and the run's countdown while it is invalid. */
+export interface FlashbackDebug extends Countdown {
+  kind: FlashbackKind
+  agoS: number
+}
+
+/**
+ * The debug badge, top left, while too few players are tracked on the
+ * frame on screen: how many are, and whose attack covers the loss when one
+ * does (the `debug` option). In live mode it says so too while the frame on
+ * screen is invalid, so an attack covering made-up positions is not taken
+ * for a real one, and while a replay plays, which one, with the run's
+ * countdown. Nothing is in the DOM while it is off or there is neither a
+ * loss nor a replay.
+ */
 export class LossBadge {
   private readonly el = element('div', 'mt-loss')
 
   constructor(private readonly parent: HTMLElement) {}
 
-  /** With `flashback`, a replay is on screen: it says which, over any loss. */
+  /** With `flashback`, a replay is on screen: it says which, and the run's countdown, over any loss. */
   update(
     loss: PlayerLossState | null,
     on: boolean,
     text: TrackerText,
     teamName: (team: TeamId) => string,
-    flashback: { kind: FlashbackKind; agoS: number } | null = null,
+    flashback: FlashbackDebug | null = null,
   ): void {
     if (on && flashback) {
       const kind = text[KIND_WORD[flashback.kind]]
       const label = formatText(text.flashbackDebug, { kind, ago: formatAgo(flashback.agoS, '{time}') })
-      this.show(label, 'none', 'flashback')
+      this.show(countdown(label, flashback, text), 'none', 'flashback')
       return
     }
     if (!on || !loss) {

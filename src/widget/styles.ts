@@ -399,27 +399,6 @@ svg {
 }
 
 /*
- * While a replay's stroke and tab show (clearOfFlashback, hud.ts), the HUD's controls keep off
- * them: inside the stroke, and the zoom badge above a right-hand tab. Its sizes come from the
- * canvas, in CSS px.
- */
-.mt-hud.mt-flashback .mt-layers {
-  top: calc(8px + var(--mt-flashback-stroke, 0px));
-  right: calc(8px + var(--mt-flashback-stroke, 0px));
-}
-.mt-hud.mt-flashback .mt-zoom {
-  bottom: calc(8px + var(--mt-flashback-stroke, 0px));
-  right: calc(8px + var(--mt-flashback-stroke, 0px));
-}
-.mt-hud.mt-flashback-right .mt-zoom {
-  bottom: calc(8px + var(--mt-flashback-tab, 0px));
-}
-.mt-hud.mt-flashback .mt-loss {
-  top: calc(8px + var(--mt-flashback-stroke, 0px));
-  left: calc(8px + var(--mt-flashback-stroke, 0px));
-}
-
-/*
  * The debug badge for a player loss, top left: the widget's own, in the zoom
  * badge's type, on red so it reads as a warning about the data. It keeps
  * clear of the layers button, top right, at any width, wrapping rather than
@@ -440,11 +419,43 @@ svg {
   pointer-events: none;
 }
 
+/*
+ * While a replay's stroke and tab show (clearOfFlashback, hud.ts), the HUD's controls keep off
+ * them: inside the stroke, and the zoom badge above a right-hand tab. Its sizes come from the
+ * canvas, in CSS px. The controls glide there and back rather than jump: the transition is on
+ * their own rule, not the rules below, so it runs both ways.
+ */
+.mt-layers,
+.mt-zoom,
+.mt-loss {
+  transition-property: top, right, bottom, left;
+  transition-timing-function: ease-out;
+  transition-duration: 200ms;
+}
+.mt-hud.mt-flashback .mt-layers {
+  top: calc(8px + var(--mt-flashback-stroke, 0px));
+  right: calc(8px + var(--mt-flashback-stroke, 0px));
+}
+.mt-hud.mt-flashback .mt-zoom {
+  bottom: calc(8px + var(--mt-flashback-stroke, 0px));
+  right: calc(8px + var(--mt-flashback-stroke, 0px));
+}
+.mt-hud.mt-flashback-right .mt-zoom {
+  bottom: calc(8px + var(--mt-flashback-tab, 0px));
+}
+.mt-hud.mt-flashback .mt-loss {
+  top: calc(8px + var(--mt-flashback-stroke, 0px));
+  left: calc(8px + var(--mt-flashback-stroke, 0px));
+}
+
 /* "motion-reduce:transition-none" */
 @media (prefers-reduced-motion: reduce) {
   .mt-phase-team,
   .mt-layers-toggle,
-  .mt-layer-option {
+  .mt-layer-option,
+  .mt-layers,
+  .mt-zoom,
+  .mt-loss {
     transition-property: none;
   }
 }
