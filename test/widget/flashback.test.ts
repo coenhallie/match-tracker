@@ -708,8 +708,9 @@ describe('flashbacks in live mode', () => {
     expect(starts.length).toBeGreaterThan(0)
     for (const end of ends) {
       // Every end follows from a known validity: a clip that ran out with the run still on, a
-      // record that says it is valid, or a carried countdown that flipped to valid. All three are
-      // accepted; an end with nothing known about the stream would be a flicker of its own.
+      // record that says it is valid, or a carried countdown that flipped to valid with no record
+      // saying more for MERGE_GAP_S. All three are accepted; an end with nothing known about the
+      // stream would be a flicker of its own.
       expect(end.state).not.toBeNull()
     }
     const all = [...starts.map((s) => ({ ...s, phase: 'start' })), ...ends.map((e) => ({ ...e, phase: 'end' }))].sort(

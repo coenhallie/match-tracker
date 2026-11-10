@@ -476,7 +476,9 @@ live mode only.
   next run of invalid frames starts within 1.5 s. A frame that does not say
   whether it is valid is taken as the last one that did, its countdown run on;
   a run said to last over 10 s is taken as unknown once 10 s have gone with no
-  frame saying more, so no further replay starts on it. It also ends when a
+  frame saying more, so no further replay starts on it. Such a frame never ends
+  a replay: when the countdown it is taken by runs out, the replay waits for
+  the next frame that says, for 1.5 s at most. It also ends when a
   moment a human label started comes on in live play (the next may start once
   that ends), when the widget comes back after being hidden or scrolled away
   (the next may start at once), when the layer is switched off, and on

@@ -35,10 +35,12 @@ Replays of earlier moments while the live camera is away, invalid frames covered
   moments within one clip the more important plays: a goal, a corner, a shot or
   header, then the attack near goal.
 - **Each moment plays once**, and is dropped 15 minutes after it happened.
-- **Live play always comes first**: a replay ends at once on a valid frame
-  (riding valid gaps under 1.5 s, as the attack does), on a moment a human
-  label starts in live play, on a press on the pitch, on `trigger()`, when the
-  widget comes back into view, and on `reset()`. After a press or `trigger()`,
+- **Live play always comes first**: a replay ends at once on a frame that says
+  it is valid (riding valid gaps under 1.5 s, as the attack does; a frame that
+  does not say never ends it, and when the run's countdown runs out with no
+  frame saying so, it waits 1.5 s at most for one that does), on a moment a
+  human label starts in live play, on a press on the pitch, on `trigger()`,
+  when the widget comes back into view, and on `reset()`. After a press or `trigger()`,
   no replay starts again until the camera is back; after the others, the next
   may start.
 - **A stretch split by a short valid gap is one replay.** A clip that runs out
@@ -87,9 +89,9 @@ Replays of earlier moments while the live camera is away, invalid frames covered
 
 ### Package
 
-- **The package is 210.6 kB packed and 423.5 kB unpacked, in 44 files**, the
+- **The package is 210.7 kB packed and 423.9 kB unpacked, in 44 files**, the
   replays included, down from 235.4 kB, 513.9 kB and 77 files.
-- **The code is minified in full**: `dist/index.js` is 132.12 kB, 44.83 kB
+- **The code is minified in full**: `dist/index.js` is 132.34 kB, 44.88 kB
   gzipped, the replays included (0.10.0's was 138.26 kB, 41.83 kB, and its code
   minified 111.69 kB, 38.05 kB). Vite used to leave its whitespace and its
   source path comments in. An app's own build minifies it anyway, so what a

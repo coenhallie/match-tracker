@@ -216,7 +216,14 @@ Noted as they happen in live mode, from valid records only:
   its countdown aged by record time. A carried state whose countdown has run out
   is a guess, and a carried null countdown loses its horizon once 10 s (its
   `horizonS`) have gone with no record saying more: either may keep a clip
-  going, but neither starts or chains one. (Builder's call.)
+  going, but neither starts or chains one. A guess that the run ended does not
+  end a replay either, whether the clip is still playing or has run out: the
+  next record that says its validity decides, by the rules of the hold below
+  (valid outside a short gap ends it, valid in one holds, invalid chains if the
+  start rule holds and ends it if not). If none says within 1.5 s of the
+  guess, the replay ends then. On the default socket about 14% of records come
+  without `raw_data`, and cutting on such a guess at a split run's gap
+  brought the flicker back. (Builder's call.)
 - **Short valid gaps.** The replay plays on through a valid gap under 1.5 s
   (`MERGE_GAP_S`, as the attack cover does): a valid live record whose
   `nextInvalidInS` is under 1.5 s does not end it. Real runs are split this

@@ -549,6 +549,55 @@ describe('Flashback', () => {
     ])
   })
 
+  it('a carried guess that the run ended does not end a replay: the next stated record does', () => {
+    // On time: the clip reaches its end on the gap's first record, which says nothing.
+    const gap = make(storeWith(100, 130).store)
+    exactRun(gap, 200, 6)
+    expect(gap.step(rec(206, undefined)).events).toEqual([])
+    // A stated short gap: it holds, and the long run after it chains.
+    shortGap(gap, 206.04, 0.28)
+    gap.run(206.32, 1, () => longRun())
+    expect(gap.events()).toEqual([
+      { phase: 'start', at: 130 },
+      { phase: 'start', at: 100 },
+    ])
+
+    // A stated valid record outside a short gap ends it, on that record and not before.
+    const back = make(storeWith(100, 130).store)
+    exactRun(back, 200, 6)
+    const guessed = back.run(206, 0.4, () => undefined)
+    expect(guessed.every((f) => f.shot !== null && f.events.length === 0)).toBe(true)
+    expect(back.step(rec(206.4, valid())).events).toEqual([{ phase: 'end', at: 130 }])
+    expect(back.events('end')).toHaveLength(1)
+  })
+
+  it('a replay on a carried guess that the run ended ends MERGE_GAP_S after the guess, if no record says', () => {
+    const steps = Math.round((MERGE_GAP_S * 1000) / STEP_MS)
+    // The clip still playing: a 10 s run, its countdown cut to 1 s, then records with no validity.
+    const playing = make(storeWith(100).store)
+    playing.step(rec(200, invalid(10)))
+    playing.step(rec(201, invalid(1)))
+    const flipped = playing.run(202, 3, () => undefined)
+    expect(flipped.every((f) => f.shot === null || f.shot.leftShare > 0)).toBe(true)
+    const end = flipped.findIndex((f) => f.events.length > 0)
+    expect(flipped[end]!.events).toEqual([{ phase: 'end', at: 100 }])
+    expect(end).toBeGreaterThanOrEqual(steps)
+    expect(end).toBeLessThanOrEqual(steps + 1)
+
+    // The clip run out: it holds its last frame for MERGE_GAP_S from the guess, then ends.
+    const ranOut = make(storeWith(100, 130).store)
+    exactRun(ranOut, 200, 6)
+    const held = ranOut.run(206, 3, () => undefined)
+    const heldEnd = held.findIndex((f) => f.events.length > 0)
+    expect(held[heldEnd]!.events).toEqual([{ phase: 'end', at: 130 }])
+    expect(heldEnd).toBeGreaterThanOrEqual(steps)
+    expect(heldEnd).toBeLessThanOrEqual(steps + 1)
+    expect(ranOut.events()).toEqual([
+      { phase: 'start', at: 130 },
+      { phase: 'end', at: 130 },
+    ])
+  })
+
   it('rides through records with no validity', () => {
     const d = make(storeWith(100).store)
     const frames = d.run(200, 6, (_t, i) => (i % 7 === 3 ? undefined : longRun()))

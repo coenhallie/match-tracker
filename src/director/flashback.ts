@@ -20,7 +20,8 @@
  *
  * A live record with no validity counts as the validity the last one that had it carries
  * (carriedValidity). A carried state that flipped is a guess with no horizon, so it can keep a
- * clip going but never start or chain one.
+ * clip going but never start, chain or end one: a carried guess that the run ended leaves the
+ * replay to the next record that says, for MERGE_GAP_S at most.
  *
  * It owns no DOM and draws nothing: `step` says what to show, and its caller paints it.
  */
@@ -160,6 +161,11 @@ export class Flashback {
   private held = false
   /** What the newest live record says, or carries, as of the last step. */
   private state: RecordValidity | null = null
+  /**
+   * When the carried state flipped to valid as its countdown ran out, with no record saying so,
+   * while it still has; null otherwise. Such a guess never ends a replay on its own.
+   */
+  private guessMs: number | null = null
 
   constructor(
     private readonly store: ClipStore,
@@ -192,10 +198,12 @@ export class Flashback {
     const state = newest ? (newest.validity ?? carriedValidity(this.carried, newest.t)) : null
     this.state = state
     if (this.held && runEnded(state)) this.held = false
+    const guess = newest !== null && !newest.validity && this.carried?.validity.invalid === true && !state?.invalid
+    this.guessMs = guess ? (this.guessMs ?? nowMs) : null
 
     if (this.playing) {
       const ranOut = this.clock(nowMs) > this.playing.to + EPS
-      if (this.cuts(live, state, ranOut)) this.end(nowMs, events)
+      if (this.cuts(nowMs, live)) this.end(nowMs, events)
       else if (ranOut && !this.start(nowMs, live, state, events) && !this.holds(nowMs, state)) {
         this.end(nowMs, events)
       }
@@ -230,6 +238,7 @@ export class Flashback {
     this.pending = []
     this.held = false
     this.state = null
+    this.guessMs = null
     // `time` is kept: it only goes up.
   }
 
@@ -238,10 +247,12 @@ export class Flashback {
    * live play is not shown for a fraction of a second between two runs a short gap splits. It
    * holds when it ran out in a short valid gap, or while the newest record that said its validity
    * is invalid with its run about to end: the clip is fitted to the run in record time but plays on
-   * the wall clock, so with live records a little late it runs out just before the gap.
+   * the wall clock, so with live records a little late it runs out just before the gap. It holds
+   * too on a carried guess that the run ended, until a record says (`cuts` bounds the guess).
    *
-   * Only a record that says its validity decides. The run's own last records, still invalid and
-   * about to end, decide nothing until a valid one has been seen. A valid record in a short gap
+   * Only a record that says its validity decides, and one from before a guess decides nothing. The
+   * run's own last records, still invalid and about to end, decide nothing until a valid one has
+   * been seen. A valid record in a short gap
    * keeps it holding, and one outside such a gap ends it (`cuts`). An invalid record after the gap,
    * or one whose run is no longer about to end, decides: `start` has already chained on it if the
    * start rule holds, so here the replay ends.
@@ -255,27 +266,31 @@ export class Flashback {
     const stated = this.carried?.validity ?? null
     if (!playing.hold) {
       if (inShortGap(state)) playing.hold = { untilMs: nowMs + MERGE_GAP_S * 1000, gap: true }
-      else if (runEnding(stated)) {
+      else if (runEnding(stated) || this.guessMs !== null) {
         // Carried on, the countdown may have run out: a guess that the run ended, with none left.
         const leftS = state?.invalid ? Math.min(Math.max(0, state.nextValidInS ?? 0), MERGE_GAP_S) : 0
         playing.hold = { untilMs: nowMs + (leftS + MERGE_GAP_S) * 1000, gap: false }
       } else return false
     }
     const { hold } = playing
-    if (stated?.invalid) {
-      if (hold.gap || !runEnding(stated)) return false
-    } else if (stated) hold.gap = true
+    if (this.guessMs === null) {
+      if (stated?.invalid) {
+        if (hold.gap || !runEnding(stated)) return false
+      } else if (stated) hold.gap = true
+    }
     return nowMs < hold.untilMs
   }
 
   /**
-   * Whether the clip playing is cut off now. A clip that is holding, or has just run out and may
-   * hold (`holds`), is ended only by a record that says it is valid, never by a carried guess.
+   * Whether the clip playing is cut off now: by a live label moment, the layer going off, or a
+   * record that says it is valid outside a short gap. A carried guess that the run ended never
+   * cuts it on its own: the next record that says decides, and if none has by MERGE_GAP_S after
+   * the guess, it ends then.
    */
-  private cuts(live: FlashbackLive, state: RecordValidity | null, ranOut: boolean): boolean {
+  private cuts(nowMs: number, live: FlashbackLive): boolean {
     if (live.labelMoment || !live.layerOn) return true
-    if (ranOut) return runEnded(this.carried?.validity ?? null)
-    return runEnded(state)
+    if (this.guessMs !== null && nowMs - this.guessMs >= MERGE_GAP_S * 1000) return true
+    return runEnded(this.carried?.validity ?? null)
   }
 
   /** Start the next clip if the start rule holds. True when one started. */
