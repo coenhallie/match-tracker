@@ -131,7 +131,12 @@ export class ClipStore {
   /** Note a moment the spotter found on the record just added. */
   note(moment: SpottedMoment): void {
     const lastInvalid = lastBefore(this.invalidTimes, moment.at)
-    let from = moment.at - CLIP_LEAD_S
+    // Never before the first record kept: a stream that began within the lead (a mount, a reset)
+    // would otherwise start the clip on its first frame, held while the clock ran up to it.
+    const lead = moment.at - CLIP_LEAD_S
+    // Record times are sums of floats: a record this close to the lead is on it.
+    const firstKept = this.kept.find((k) => k.record.t >= lead - 1e-9)
+    let from = Math.max(lead, firstKept ? firstKept.record.t : moment.at)
     if (lastInvalid !== null) {
       const firstValid = this.kept.find((k) => k.record.t > lastInvalid)
       from = Math.max(from, firstValid ? firstValid.record.t : moment.at)

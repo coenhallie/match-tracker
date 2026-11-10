@@ -109,6 +109,12 @@ describe('ClipStore', () => {
     expect(times).toEqual([...times].sort((a, b) => a - b))
   })
 
+  it('starts the clip at its first record when the stream began within the lead', () => {
+    feed(store, 100, 102.96, () => valid)
+    moment(store, 'goal', 103)
+    expect(store.clips()[0]!.from).toBe(100)
+  })
+
   it('starts the clip after invalid records before the moment, and ends it at the first invalid one after', () => {
     feed(store, 80, 94.96)
     feed(store, 95, 97, () => invalid(null))
