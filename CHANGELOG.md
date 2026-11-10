@@ -6,6 +6,8 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-10
+
 Replays of earlier moments while the live camera is away, invalid frames
 covered without a blink, and a smaller package.
 
