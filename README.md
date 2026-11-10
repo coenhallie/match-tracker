@@ -235,7 +235,7 @@ destroyed on can have a new one.
 |---|---|
 | `push(message)` | Live: one websocket message. |
 | `present(state)` | Replay: `{ time, playing, record, lookback }` at the host's clock. |
-| `reset()` | Forget everything seen and end every moment. What comes next is a seek. The last picture stays until new data arrives. |
+| `reset()` | Forget everything seen and end every moment. What comes next is a seek. The last picture stays until new data arrives. In live mode the clips kept for replays go too, and a replay playing ends, with a `flashback` `end` (see [Flashbacks](#flashbacks)). |
 | `trigger(moment, team?)` | Play `'goal'`, `'attack'`, `'corner'`, `'throwIn'`, `'varCheck'`, `'goalDisallowed'`, `'halfTime'`, `'secondHalf'`, `'fullTime'`, `'foul'`, `'shotOnGoal'` or `'headerOnGoal'` now, on the frame on screen. `team` (0 home, 1 away, default 0) is for an attack. Returns false when the moment cannot be played on that frame (for example before the first frame, or a goal with no ball). |
 | `setOptions(options)` | Change any option but `mode` and `layersStorageKey`, which are fixed at mount. The HUD and the canvas follow at once, without a remount. Options that throw change nothing. |
 | `on(event, listener)` | Listen to an event. Returns a function that unsubscribes. |
@@ -271,9 +271,9 @@ Also exported:
 | `formatAction` | `(actionType: string) => string` | as it comes | The bottom-left text for each of a frame's actions, from its `action_type` (for example `'EventType.FREE_KICK'` to `'Free kick'`). |
 | `aiLabels` | `boolean` | `false` | Whether the bottom-left action text lists the pipeline's AI labels too. Off, it lists only the labels a human gave, the ones the moments play on (see [Labels](#labels)). For developers, like `layersMenu`. Can be changed with `setOptions`. |
 | `secondHalfFrom` | `number \| null` | `null` | When the second half starts, as the host knows it: a record time (`TrackerRecord.t`, the pipeline's own timestamp, in seconds), as the `secondHalf` event says it. From it on the teams are shown at the other ends, as from a half label the widget sees (see [The teams change ends](#the-teams-change-ends)). Kept through `reset()`. Anything but a finite number counts as `null`. Can be changed with `setOptions`. |
-| `debug` | `boolean` | `false` | Developer mode. A red badge, top left of the pitch, while fewer than 18 players are tracked on the frame on screen: how many are, and whose attack covers the loss when one does (see [Player loss](#player-loss)). In live mode it also says when the frame on screen is invalid (see [Invalid frames](#invalid-frames)). For telling a real attack from one shown over lost players or invalid frames. Can be changed with `setOptions`. |
+| `debug` | `boolean` | `false` | Developer mode. A red badge, top left of the pitch, while fewer than 18 players are tracked on the frame on screen: how many are, and whose attack covers the loss when one does (see [Player loss](#player-loss)). In live mode it also says when the frame on screen is invalid (see [Invalid frames](#invalid-frames)), and which replay plays while one does (see [Flashbacks](#flashbacks)). For telling a real attack from one shown over lost players or invalid frames. Can be changed with `setOptions`. |
 
-The layers are `goal`, `goalZoom`, `attack`, `playerLoss`, `corner`, `throwInBanner`,
+The layers are `goal`, `goalZoom`, `attack`, `playerLoss`, `flashback`, `corner`, `throwInBanner`,
 `varCheck`, `goalDisallowed`, `halfTime`, `secondHalf`, `fullTime`, `foul`, `shotOnGoal`, `headerOnGoal`, `ballTrail`, `ballShadow`, `phaseLabels`, `nearbyRings`, `farFade` and `ringFades`.
 
 #### Labels
@@ -422,7 +422,9 @@ and the ball, but their positions are made up. The widget never shows them:
   from the first invalid frame of a run that lasts 1 s or more. The frame says
   how long the run lasts (`raw_data.agentic.lookahead`); a run that does not say
   is covered too. A shorter run is not covered: the last valid frame just stands
-  for it.
+  for it. A run of 5 s or more plays replays of earlier moments instead, while
+  the `flashback` layer is on (see [Flashbacks](#flashbacks)): the attack covers
+  it while no replay is ready, and for the rest of the run once they run out.
 - It shows the attack chosen as for a player loss, from valid frames only. While
   neither tells, it shows the attack of the team attacking the half the ball is
   in on the last valid frame.
@@ -444,6 +446,63 @@ and the ball, but their positions are made up. The widget never shows them:
   `raw_data` is all valid, as before.
 
 Replay mode never does any of this, whatever its data carries.
+
+##### Flashbacks
+
+While the live camera is away for 5 s or more, the widget plays a replay of an
+earlier moment of the match in place of the held frame (the `flashback` layer,
+"Replays while the camera is away", on by default). The layers menu lists it in
+live mode only.
+- What counts, from valid frames only: a goal, a corner, or a shot or header on
+  goal that a human labelled (see [Labels](#labels)), and the ball going into the
+  penalty area of the goal the team with the ball attacks. A label counts once
+  for each run of it, as for the moments, and the penalty area again only after
+  the ball has been out of it for 15 s. AI labels never count.
+- Each clip is 8 s of play before the moment and 4 s after, of valid frames
+  only: invalid ones before the moment start it later, and after it end it
+  sooner. Of two moments within one clip, the more important is kept: a goal,
+  then a corner, then a shot or header, then the attack near goal.
+- A replay starts on an invalid frame whose run has 5 s or more to go (its
+  lookahead says so, or says no valid frame is due within its 10 s), while no
+  moment a human label started is on screen. It plays the most important clip
+  ready, the newest of its kind. When the run's time left is known and the clip
+  is longer, its start is cut, keeping at least 2 s after the moment and 1 s
+  before it, and if even that does not fit, its end too. When it ends with 5 s
+  or more of the run to go, the next one follows; otherwise the attack covers
+  the rest of the run, as above (with `playerLoss` off, the held frame is left
+  uncovered).
+- Each clip plays once: it is gone as it starts, however it ends.
+- Live play always wins. A replay ends at once on a valid frame, unless the
+  next run of invalid frames starts within 1.5 s. A frame that does not say
+  whether it is valid is taken as the last one that did, its countdown run on.
+  It also ends when a moment a human label started comes on in live play (the
+  next may start once that ends), when the layer is switched off, and on
+  `reset()`. A press on the pitch or the overlay, `trigger()`, or the widget
+  coming back after being hidden or scrolled away ends it too, and then no
+  replay starts again until the camera is back.
+- It is marked as the past: a white stroke round the pitch, and a white tab in
+  the bottom corner away from where the ball was at the moment, with "REPLAY",
+  how long ago the moment was ("2:47 AGO", from the frames' own times, so a
+  stalled stream does not run it on) and a line along its bottom, the share of
+  the clip left. The stroke and tab fade in as the first clip starts and out
+  over live play as the last ends, and stay from one clip to the next. With
+  reduced motion they do not fade.
+- The clip is drawn as live play is, its own moments, cards and zoom near goal
+  included, and starts from the viewer's own zoom. The row above the pitch
+  shows the clip's phase. Its moments send no `moment` events. As a replay
+  starts, the moments on screen in live play send their `end`, and those still
+  on when live play is back, their `start`. `trigger()` and `availability()`
+  stay on live play.
+- The host hears of each replay through the `flashback` event.
+- Clips are kept until played, for 15 minutes after their moment, 8 at most,
+  in under 20 MB. `reset()` drops them: a host that calls it on every
+  reconnect loses them. So does switching the layer off, and while it is off
+  nothing is kept, and so does a jump back of over 10 s in the frames' times,
+  as when the pipeline starts again.
+- With `debug` on, the badge says which replay plays, "Replay of a goal from
+  2:47 ago", over whatever else it would say.
+- It needs the pipeline's `raw_data` validity, as above. A stream without it
+  never plays a replay.
 
 #### High ball shadow
 
@@ -481,13 +540,13 @@ little more the nearer it gets (the `goalZoom` layer, on by default):
 - With reduced motion it does nothing.
 
 The `TrackerText` keys are:
-- on the canvas: `goal`, `corner`, `throwIn`, `varCheck`, `goalDisallowed`, `halfTime`, `halfTimeText`, `secondHalf`, `secondHalfText`, `fullTime`, `fullTimeText`, `foul`, `shotOnGoal`, `headerOnGoal`, `attack`;
+- on the canvas: `goal`, `corner`, `throwIn`, `varCheck`, `goalDisallowed`, `halfTime`, `halfTimeText`, `secondHalf`, `secondHalfText`, `fullTime`, `fullTimeText`, `foul`, `shotOnGoal`, `headerOnGoal`, `attack`, and the replay's tab, `flashback` ("REPLAY") and `flashbackAgo` (with `{time}`);
 - the row: `attacking`, `defending`, `versus`, `phaseTooltip`, `red` and `blue` (the default team names);
 - ARIA templates: `phaseAttackingAria` and `phaseDefendingAria` (with `{team}`), and `phaseAria` (with `{home}` and `{away}`);
 - the menu: `layersButton`, `layersTooltip`, `layersMenuLabel`, and `layers` (`{ label, hint }` per layer);
 - the zoom: `zoomLevel` (with `{zoom}`) and `zoomReset`;
 - for screen readers: `pitchLabel`, the pitch's name ("Match tracker");
-- the `debug` badge: `playerLoss` (with `{players}`), `playerLossCover` (with `{players}` and `{team}`), `invalidFrames`, `invalidFramesCover` (with `{team}`), and `invalidFramesValidIn` and `invalidFramesValidLater` (with `{label}` and `{seconds}`), and `invalidFramesShort` (with `{seconds}`).
+- the `debug` badge: `playerLoss` (with `{players}`), `playerLossCover` (with `{players}` and `{team}`), `invalidFrames`, `invalidFramesCover` (with `{team}`), and `invalidFramesValidIn` and `invalidFramesValidLater` (with `{label}` and `{seconds}`), and `invalidFramesShort` (with `{seconds}`), and `flashbackDebug` (with `{kind}` and `{ago}`).
 
 ### Events
 
@@ -495,9 +554,10 @@ The `TrackerText` keys are:
 |---|---|---|
 | `zoom` | `{ zoom }` | The view's zoom changed: by the viewer, by a goal's camera, or by the zoom near goal, which sends one for each step as it eases. |
 | `layers` | `ReplayLayers` | The layers in force changed, from the menu or from `setOptions`. |
-| `moment` | `{ moment, phase: 'start' \| 'end' }` | A moment came on screen, or went. |
+| `moment` | `{ moment, phase: 'start' \| 'end' }` | A moment came on screen, or went. Never for the moments in a replay (see [Flashbacks](#flashbacks)). |
 | `box` | `TrackerBox` | The pitch's box moved or changed size. The box measured at mount is not sent, because no listener exists yet: read `tracker.box` for it. |
 | `availability` | `MomentAvailability` | What can be played changed: a new frame, or a reset. |
+| `flashback` | `{ phase: 'start' \| 'end', at }` | Live mode: a replay of an earlier moment started (`start`, for each clip), or the last one ended or was cut off (`end`). `at` is the moment's record time (`TrackerRecord.t`, in seconds). `start` comes for each clip, and `end` once, when the last one ends: a host that had a `start` always gets its `end`, `reset()` included. |
 | `secondHalf` | `{ from }` | A human half label the widget saw starts the second half at `from` (a record time, in seconds), earlier than any it saw before. Keep it for the match and give it back as `secondHalfFrom` (see [The teams change ends](#the-teams-change-ends)). Not sent for `secondHalfFrom` itself. |
 
 A listener that throws is reported (`reportError`) and does not stop the widget.

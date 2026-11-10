@@ -35,8 +35,11 @@
  * In live mode (`coverInvalidFrames`) it also covers the records the pipeline
  * marks invalid (RecordValidity): while its camera is away it sends every
  * player and the ball, but made up. The widget shows the last valid record's
- * positions instead (LiveHistory.shown), and this covers them, for now, until
- * the cover the spec has in mind is built.
+ * positions instead (LiveHistory.shown), and this covers them. A run of 5 s or
+ * more plays flashbacks instead, earlier clips of live play, while the
+ * `flashback` layer is on (src/director/flashback.ts). This attack is the
+ * fallback under them, for a run with no clip ready and for the rest of a run
+ * once its clips run out, and the cover for shorter runs.
  *
  *  - It starts on an invalid record that says the run lasts MIN_STRETCH_S or
  *    more (its lookahead's `next_valid_in_s`), or does not say: a shorter run

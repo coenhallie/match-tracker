@@ -6,7 +6,7 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-A smaller package, and invalid frames covered without a blink.
+Replays of earlier moments while the live camera is away, invalid frames covered without a blink, and a smaller package.
 
 ### What you see
 
@@ -22,6 +22,52 @@ A smaller package, and invalid frames covered without a blink.
   carried only as far as its lookahead reached, 10 s on staging, so a stream
   that stops sending `raw_data` never leaves the picture held. A stream that never sends
   `raw_data` is unchanged, and so is replay.
+- **In live mode, a long stretch of invalid frames plays replays of earlier
+  moments instead of the held frame.** While the pipeline's camera is away for
+  5 s or more, the widget plays an earlier clip of the match: 8 s before a
+  moment and 4 s after it, cut to fit the stretch, one after another while it
+  lasts. In 0.10.0 such a stretch showed the last valid frame under an
+  attack, however long it was; that attack now covers shorter stretches, and
+  the rest of a long one once no clip is left.
+- **What counts**: a goal, a corner, or a shot or header on goal that a human
+  labelled, and the ball going into the penalty area of the goal the team with
+  the ball attacks, from valid frames only. AI labels never count. Of two
+  moments within one clip the more important plays: a goal, a corner, a shot or
+  header, then the attack near goal.
+- **Each moment plays once**, and is dropped 15 minutes after it happened.
+- **Live play always comes first**: a replay ends at once on a valid frame
+  (riding valid gaps under 1.5 s, as the attack does), on a moment a human
+  label starts in live play, on a press on the pitch, on `trigger()`, and on
+  `reset()`. After a press or `trigger()`, no replay starts again until the
+  camera is back.
+- **It looks like the past**: a white stroke round the pitch and, in the bottom
+  corner away from the action, a white tab with "REPLAY", how long ago the
+  moment was ("2:47 AGO") and a line that shortens as the clip plays. They fade
+  in and out (not with reduced motion). The clip is drawn as live play is, its
+  own goal, cards and zoom near goal included, from the viewer's own zoom, and
+  the attacking/defending row shows its phase.
+- **It is a new layer, `flashback`** ("Replays while the camera is away"), on
+  by default, listed in the layers menu in live mode only. Off, nothing is kept
+  for replays and long stretches are covered by the attack, as in 0.10.0.
+- **Live mode keeps what it needs for the replays**, at most 8 clips, under
+  20 MB (about 13 MB at worst on real staging data). `reset()` drops them.
+- **The bottom-left action text is drawn under the replay's tab**, never over
+  it. Nothing changes where no replay shows.
+- Replay is unchanged.
+
+### API
+
+- A new layer, `flashback`, in `ReplayLayers`. The layers menu lists it in live
+  mode only. In replay mode the `layers` option, the `layers` event and the
+  layers kept under `layersStorageKey` now carry a `flashback` key too, which
+  does nothing there, so a host that compares layer objects sees it.
+- A new event, `flashback`: `{ phase: 'start' | 'end', at }`, `start` for each
+  clip and `end` once the last one ends or is cut off, `reset()` included; `at`
+  is the moment's record time. A replay's own moments send no `moment` event.
+- New `TrackerText` keys: `flashback` ("REPLAY"; zh "回放") and `flashbackAgo`
+  ("{time} AGO"; zh "{time}前") for the tab, `flashbackDebug` (with `{kind}`
+  and `{ago}`) for the `debug` badge, which says which replay plays, and
+  `layers.flashback` for the menu.
 
 ### Package
 
