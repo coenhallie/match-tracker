@@ -210,3 +210,14 @@ describe('the built-in text', () => {
     }
   })
 })
+
+describe('flashback text', () => {
+  it('says REPLAY in both languages', () => {
+    expect(en.flashback).toBe('REPLAY')
+    expect(zh.flashback).toBe('回放')
+    expect(formatText(en.flashbackAgo, { time: '2:47' })).toBe('2:47 AGO')
+    expect(formatText(zh.flashbackAgo, { time: '2:47' })).toBe('2:47前')
+    expect(formatText(en.flashbackDebug, { kind: 'goal', ago: '2:47' })).toBe('Replay of a goal from 2:47 ago')
+    expect(formatText(zh.flashbackDebug, { kind: '进球', ago: '2:47' })).toBe('2:47前的进球回放')
+  })
+})

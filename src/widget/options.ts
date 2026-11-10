@@ -147,6 +147,8 @@ export function themeFor(resolved: Resolved, icons: RenderTheme['icons']): Rende
       corner: text.corner,
       throwIn: text.throwIn,
       attack: text.attack,
+      flashback: text.flashback,
+      flashbackAgo: text.flashbackAgo,
       ...labelCardRecord((key) => text[key]),
       ...labelCardTextRecord((key) => text[key]),
     },

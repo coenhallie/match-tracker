@@ -14,7 +14,7 @@ export type PersonRole = 'home' | 'away' | 'goalkeeper' | 'official' | 'unknown'
 export interface RenderTheme {
   colors: Record<PersonRole, PersonColors>
   /** The event cards' titles, and the word under the team's name in the attack's label. */
-  text: { goal: string; corner: string; throwIn: string; attack: string } & Record<LabelCardKey | LabelCardTextKey, string>
+  text: { goal: string; corner: string; throwIn: string; attack: string; flashback: string; flashbackAgo: string } & Record<LabelCardKey | LabelCardTextKey, string>
   /**
    * Family lists, fallbacks included: `label` for the attack's label,
    * `title` for the event cards' titles.
@@ -59,6 +59,8 @@ export const DEFAULT_THEME: Readonly<RenderTheme> = Object.freeze({
     corner: 'CORNER',
     throwIn: 'THROW IN',
     attack: 'Attack',
+    flashback: 'REPLAY',
+    flashbackAgo: '{time} AGO',
     varCheck: 'VAR CHECK',
     goalDisallowed: 'GOAL DISALLOWED',
     halfTime: 'HALF TIME',

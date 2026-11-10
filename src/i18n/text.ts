@@ -21,6 +21,12 @@ export interface TrackerText extends Record<LabelCardKey | LabelCardTextKey, str
   throwIn: string
   /** The word under the team's name in the attack's label. */
   attack: string
+  /** The flashback tab's title, on screen "REPLAY". */
+  flashback: string
+  /** The flashback timer, with `{time}` for how long ago the moment was, as m:ss. */
+  flashbackAgo: string
+  /** The debug line for a flashback, with `{kind}` for the moment and `{ago}` for how long ago it was. */
+  flashbackDebug: string
   /** A team's state in the phase row above the pitch. */
   attacking: string
   defending: string

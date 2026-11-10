@@ -110,6 +110,7 @@ import { trailOpacity, type BallTrail, type TrailPoint } from '../analysis/ballT
 import { drawLabelCard, drawSmallLabelCard, type LabelCardIndicator } from './labelCard.js'
 import { drawThrowInIndicator, type ThrowInIndicator } from './throwIn.js'
 import { drawCornerCard, drawCornerCone, type CornerBanner } from './corner.js'
+import { drawFlashback, type FlashbackIndicator } from './flashback.js'
 import { drawGoalBanner, type GoalBanner } from './goalBanner.js'
 import { footballPatches, UPRIGHT, type Spin } from '../analysis/football.js'
 import { computeViewMatrix, IDENTITY_VIEW, type PipelineView, type ViewMatrix } from './viewTransform.js'
@@ -206,6 +207,8 @@ export interface FrameLayers {
   smallLabelCard?: LabelCardIndicator | undefined
   /** The goal's card, over everything, fixed to the frame while the view zooms. */
   goalBanner?: GoalBanner | undefined
+  /** The flashback's stroke and tab, over the goal's card, fixed to the frame while the view zooms. */
+  flashback?: FlashbackIndicator | undefined
   /** Ring strengths, for a caller that fades the rings in and out. */
   rings?: RingStrengths | undefined
   /** Whether players far from the ball are drawn faint. Default on. */
@@ -476,6 +479,11 @@ export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTh
       // behind it, and at that scale the card would cover the screen.
       ctx.setTransform(sx, 0, 0, sy, 0, 0)
       drawGoalBanner(ctx as CanvasRenderingContext2D, transform2d, layers.goalBanner, theme)
+      ctx.setTransform(...matrix)
+    }
+    if (layers.flashback) {
+      ctx.setTransform(sx, 0, 0, sy, 0, 0)
+      drawFlashback(ctx as CanvasRenderingContext2D, transform2d, layers.flashback, theme)
       ctx.setTransform(...matrix)
     }
 
