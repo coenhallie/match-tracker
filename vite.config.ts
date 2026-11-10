@@ -86,7 +86,9 @@ export default defineConfig({
       // `npm test`: everything but test/dist, against the source.
       { extends: true, test: { name: 'src', include: ['test/**/*.test.ts'], exclude: ['test/dist/**'] } },
       // `npm run test:dist`, the last step of `npm run build`: the built dist against the source.
-      { extends: true, test: { name: 'dist', include: ['test/dist/**/*.test.ts'] } },
+      // Each test plays real match data through two widgets and compares every draw: about
+      // 3 s here and over 6 s on a CI runner for the longest, so the 5 s default is too tight.
+      { extends: true, test: { name: 'dist', include: ['test/dist/**/*.test.ts'], testTimeout: 30_000 } },
     ],
   },
 })
