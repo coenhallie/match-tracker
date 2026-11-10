@@ -6,6 +6,19 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### What you see
+
+- **The teams change ends for the second half.** From the first human half time
+  label ("End FirstHalf", the labelling tool's "Half Time" button) or second half
+  label ("Start second half", its "Second Half" button), every player and the
+  ball are shown turned half round the centre spot, and the attacking direction,
+  the goal side, the corner and throw-in sides, the ball trail and the zoom near
+  goal all follow. The turn is hidden under the half time's or the second half's
+  card. It goes by the labels the widget has seen: a seek back before the label
+  shows the first half as it was, and a widget that never saw either label, after
+  a `reset()` or a seek past both, shows the frames as the pipeline sends them.
+  video-annotation has no such turn.
+
 ## [0.7.1] - 2026-11-08
 
 Lighter and leaner, with nothing drawn differently.

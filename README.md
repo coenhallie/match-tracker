@@ -340,6 +340,30 @@ out over 0.4 s, and that label's own moment, if it has one, plays as it goes:
   a corner, and back as it goes. Zoomed in, it stays whole, on the frame where
   the whole pitch has it.
 
+#### The teams change ends
+
+From the first human half time or second half label on, written in any of the
+ways above, the teams are shown at the other ends: every player and the ball
+turned half round the centre spot, so a team's far touchline becomes its near one,
+as it does in the stadium. Their height is kept.
+- Whichever of the two labels comes first starts it. Neither turns the pitch back,
+  so both labels, or one twice, turn it once. A label from the pipeline's AI, or
+  one without an origin, turns nothing.
+- Everything goes by the turned frames: the attacking direction, the goal a goal
+  goes in, the corner's and the throw-in's side, the ball trail and the zoom near
+  goal. A frame's phase and trail are worked out from its window turned as it is,
+  so they never read across the turn.
+- The turn happens under the half time's or the second half's card, so the jump
+  to the other ends is not seen. It happens with their layers off too.
+- The widget remembers the time of the label it saw, and turns every frame from
+  then on, however it gets there: playing, or seeking back or forward. A seek
+  back before it shows the first half as it was.
+- It only knows of labels it has seen. A replay seeking into the second half
+  without having played past either label (or having it within `lookback`), or
+  a live widget joined or `reset` after both, shows the second half as the
+  pipeline sends it.
+- `reset()` forgets it, as everything else.
+
 #### Small cards: foul, shot and header on goal
 
 A title on a small dark band along the bottom touchline, the same card as the

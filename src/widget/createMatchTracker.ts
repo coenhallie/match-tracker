@@ -55,6 +55,7 @@
  * pointer events through, against whatever the page's CSS says of divs.
  */
 import { deriveAt, windowAt } from '../analysis/derive.js'
+import { SecondHalf } from '../analysis/secondHalf.js'
 import type { BallTrail } from '../analysis/ballTrail.js'
 import type { TeamId, TeamPhase } from '../analysis/teamPhase.js'
 import { ensureFonts } from '../assets/fonts.js'
@@ -357,9 +358,13 @@ class Tracker implements MatchTracker {
   private rejoining = false
 
   private readonly history = new LiveHistory()
+  /** Where the second half starts, from the half labels seen: from there on every frame is shown turned round. */
+  private readonly halves = new SecondHalf()
   /** Bumped on every record the history takes, so the derived phase and trail are worked out once per change. */
   private historyVersion = 0
   private presented: ReplayState | null = null
+  /** Replay: the last lookback the half labels were read from, so the same one is not read again every frame. */
+  private seenLookback: readonly TrackerRecord[] | null = null
   /** Replay: the clock and playback flag of the update before (nextPlayback). */
   private flag: { time: number; playback: boolean } | null = null
   private derived: { keys: readonly unknown[]; phase: TeamPhase | null; trail: BallTrail | null } | null = null
@@ -449,6 +454,7 @@ class Tracker implements MatchTracker {
     if (!record) return
     const breaks = this.history.breaks
     if (!this.history.add(record)) return
+    this.halves.see(record)
     // The stream broke and started again (LiveHistory.add): what it shows next is a seek.
     if (this.history.breaks !== breaks) {
       this.resumed = true
@@ -467,8 +473,10 @@ class Tracker implements MatchTracker {
   reset(): void {
     if (this.destroyed) return
     this.history.clear()
+    this.halves.reset()
     this.historyVersion++
     this.presented = null
+    this.seenLookback = null
     this.flag = null
     this.derived = null
     this.director.reset()
@@ -653,9 +661,10 @@ class Tracker implements MatchTracker {
   /** What the director is to see at `nowMs`, or null in replay before anything is presented. */
   private nextInput(nowMs: number): DirectorInput | null {
     if (this.mode === 'live') {
-      const record = this.history.latest()
-      const { phase, trail } = this.derive([this.historyVersion], () =>
-        record ? deriveAt(this.history.window(), record) : null,
+      const latest = this.history.latest()
+      const record = latest && this.halves.shown(latest)
+      const { phase, trail } = this.derive([this.historyVersion, this.halves.from], () =>
+        latest && record ? deriveAt(this.halves.window(this.history.window(), latest), record) : null,
       )
       const playback = !this.resumed
       const rejoining = this.rejoining
@@ -671,9 +680,16 @@ class Tracker implements MatchTracker {
     if (!state) return null
     const playback = nextPlayback(this.flag, state.time, state.playing)
     this.flag = { time: state.time, playback }
-    const { record, lookback } = state
-    const { phase, trail } = this.derive([record, lookback], () =>
-      record ? deriveAt(windowAt(lookback, record), record) : null,
+    const { lookback } = state
+    // The lookback too: a seek can land past a half label that the record on screen no longer carries.
+    if (lookback !== this.seenLookback) {
+      for (const r of lookback) this.halves.see(r)
+      this.seenLookback = lookback
+    }
+    if (state.record) this.halves.see(state.record)
+    const record = state.record && this.halves.shown(state.record)
+    const { phase, trail } = this.derive([state.record, lookback, this.halves.from], () =>
+      state.record && record ? deriveAt(this.halves.window(windowAt(lookback, state.record), state.record), record) : null,
     )
     return { nowMs, time: state.time, playing: state.playing, playback, record, phase, trail }
   }
