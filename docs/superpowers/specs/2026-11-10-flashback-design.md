@@ -213,7 +213,9 @@ Noted as they happen in live mode, from valid records only:
     gap) or `reset()`. (Builder's call.)
 - **Records with no validity.** A live record with no `validity` neither
   starts, chains nor ends a replay: the last known validity is carried forward,
-  its countdown aged by record time. A carried state whose countdown has run out
+  its countdown aged by record time (`carriedValidity`, `src/model/validity.ts`,
+  the same rule `LiveHistory` uses for the held frame and the attack cover since
+  the cover-blink fix on main). A carried state whose countdown has run out
   is a guess, and a carried null countdown loses its horizon once 10 s (its
   `horizonS`) have gone with no record saying more: either may keep a clip
   going, but neither starts or chains one. A guess that the run ended does not

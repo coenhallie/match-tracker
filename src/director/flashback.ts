@@ -26,7 +26,8 @@
  * It owns no DOM and draws nothing: `step` says what to show, and its caller paints it.
  */
 import type { ClipStore } from '../history/clipStore.js'
-import { carriedValidity, type CarriedValidity, type Clip } from '../model/flashback.js'
+import type { Clip } from '../model/flashback.js'
+import { carriedValidity, type CarriedValidity } from '../model/validity.js'
 import type { RecordValidity, TrackerRecord } from '../model/types.js'
 import { ATTACK_IN_MS, ATTACK_OUT_MS } from '../render/attackIndicator.js'
 import { MERGE_GAP_S } from './playerLoss.js'

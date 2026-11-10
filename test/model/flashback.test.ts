@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 import { describe, expect, it } from 'vitest'
-import { KIND_RANK, carriedValidity } from '../../src/model/flashback'
+import { KIND_RANK } from '../../src/model/flashback'
+import { carriedValidity } from '../../src/model/validity'
 import { parseRecord } from '../../src/model/parseRecord'
 
 describe('carriedValidity', () => {

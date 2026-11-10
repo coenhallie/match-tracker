@@ -1,5 +1,6 @@
 import { HISTORY_S } from '../analysis/derive.js'
-import { KIND_RANK, carriedValidity, type CarriedValidity, type Clip, type SpottedMoment } from '../model/flashback.js'
+import { KIND_RANK, type Clip, type SpottedMoment } from '../model/flashback.js'
+import { carriedValidity, type CarriedValidity } from '../model/validity.js'
 import type { Ball, Frame, FrameAction, Player, Team, TrackerRecord } from '../model/types.js'
 
 /** How far before its moment a clip starts, and how far after it ends. */

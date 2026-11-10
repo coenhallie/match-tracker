@@ -28,7 +28,7 @@ import {
 import { Flashback, type FlashbackFrame, type FlashbackLive, type FlashbackShot } from '../director/flashback.js'
 import { FlashbackSpotter } from '../director/flashbackSpotter.js'
 import { ClipStore } from '../history/clipStore.js'
-import { carriedValidity, type CarriedValidity } from '../model/flashback.js'
+import { carriedValidity, type CarriedValidity } from '../model/validity.js'
 import type { ReplayLayers } from '../model/replayLayers.js'
 import type { TrackerRecord } from '../model/types.js'
 import { flashbackSide, type FlashbackIndicator } from '../render/flashback.js'

@@ -6,7 +6,8 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-Replays of earlier moments while the live camera is away, invalid frames covered without a blink, and a smaller package.
+Replays of earlier moments while the live camera is away, invalid frames
+covered without a blink, and a smaller package.
 
 ### What you see
 
@@ -20,8 +21,8 @@ Replays of earlier moments while the live camera is away, invalid frames covered
   time: inside the run it is held and covered like the frames around it, and
   once the run was due to end it counts as valid. What the stream said is
   carried only as far as its lookahead reached, 10 s on staging, so a stream
-  that stops sending `raw_data` never leaves the picture held. A stream that never sends
-  `raw_data` is unchanged, and so is replay.
+  that stops sending `raw_data` never leaves the picture held. A stream that
+  never sends `raw_data` is unchanged, and so is replay.
 - **In live mode, a long stretch of invalid frames plays replays of earlier
   moments instead of the held frame.** While the pipeline's camera is away for
   5 s or more, the widget plays an earlier clip of the match: 8 s before a
@@ -89,9 +90,9 @@ Replays of earlier moments while the live camera is away, invalid frames covered
 
 ### Package
 
-- **The package is 210.7 kB packed and 423.9 kB unpacked, in 44 files**, the
+- **The package is 211.2 kB packed and 425.1 kB unpacked, in 44 files**, the
   replays included, down from 235.4 kB, 513.9 kB and 77 files.
-- **The code is minified in full**: `dist/index.js` is 132.34 kB, 44.88 kB
+- **The code is minified in full**: `dist/index.js` is 133.00 kB, 45.08 kB
   gzipped, the replays included (0.10.0's was 138.26 kB, 41.83 kB, and its code
   minified 111.69 kB, 38.05 kB). Vite used to leave its whitespace and its
   source path comments in. An app's own build minifies it anyway, so what a
