@@ -63,6 +63,30 @@ function slimAction(action: FrameAction): FrameAction {
 interface Kept {
   record: TrackerRecord
   size: number
+  /** Cut down to what the phase and the trail read: it is only some clip's lookback. */
+  thin: boolean
+}
+
+/**
+ * What `deriveAt` reads of a record, and nothing else: the ball, and of the players only the
+ * goalkeepers (which end a team attacks) and whoever has the ball (possession). It is never drawn.
+ */
+function thinRecord(record: TrackerRecord): TrackerRecord {
+  const teams = (record.frame.teams ?? []).map((team) => ({
+    team_id: team.team_id,
+    players: (team.players ?? []).filter(
+      (p) =>
+        p.in_possession ||
+        String(p.person_type ?? '')
+          .toUpperCase()
+          .includes('GOALKEEPER'),
+    ),
+  }))
+  const frame: Frame = { teams }
+  if (record.frame.balls) frame.balls = record.frame.balls
+  const out: TrackerRecord = { t: record.t, frameCount: record.frameCount, frame }
+  if (record.validity) out.validity = record.validity
+  return out
 }
 
 /**
@@ -96,13 +120,12 @@ export class ClipStore {
       const size = JSON.stringify(slim).length
       let at = this.kept.length
       while (at > 0 && this.kept[at - 1]!.record.t > record.t) at--
-      this.kept.splice(at, 0, { record: slim, size })
+      this.kept.splice(at, 0, { record: slim, size, thin: false })
       this.size += size
     }
     if (this.newest === null || record.t > this.newest) this.newest = record.t
     this.close()
-    this.expire()
-    this.prune()
+    this.prune(this.expire())
   }
 
   /** Note a moment the spotter found on the record just added. */
@@ -210,10 +233,13 @@ export class ClipStore {
     }
   }
 
-  private expire(): void {
-    if (this.newest === null) return
+  /** Drop the clips that are too old. True when it dropped any. */
+  private expire(): boolean {
+    if (this.newest === null) return false
     const cutoff = this.newest - CLIP_EXPIRY_S
+    const before = this.clipList.length
     this.clipList = this.clipList.filter((c) => c.at >= cutoff)
+    return this.clipList.length < before
   }
 
   /**
@@ -232,12 +258,21 @@ export class ClipStore {
       return
     }
     this.compactedAt = newest
-    const ranges = this.clipList.map((c) => [c.from - HISTORY_S, c.ready ? c.to : Infinity] as const)
-    const needed = (t: number) => t >= keepFrom || ranges.some(([lo, hi]) => t >= lo && t <= hi)
+    const shown = this.clipList.map((c) => [c.from, c.ready ? c.to : Infinity] as const)
+    const lookback = this.clipList.map((c) => [c.from - HISTORY_S, c.from] as const)
     const next: Kept[] = []
     for (const k of this.kept) {
-      if (needed(k.record.t)) next.push(k)
-      else this.size -= k.size
+      const t = k.record.t
+      if (t >= keepFrom || within(shown, t)) {
+        next.push(k)
+      } else if (within(lookback, t)) {
+        if (!k.thin) {
+          const thin = thinRecord(k.record)
+          const size = JSON.stringify(thin).length
+          this.size += size - k.size
+          next.push({ record: thin, size, thin: true })
+        } else next.push(k)
+      } else this.size -= k.size
     }
     this.kept = next
   }
@@ -247,6 +282,10 @@ export class ClipStore {
     while (n < this.kept.length && this.kept[n]!.record.t < before) this.size -= this.kept[n++]!.size
     if (n > 0) this.kept.splice(0, n)
   }
+}
+
+function within(ranges: readonly (readonly [number, number])[], t: number): boolean {
+  return ranges.some(([lo, hi]) => t >= lo && t <= hi)
 }
 
 function insertSorted(list: number[], t: number): void {

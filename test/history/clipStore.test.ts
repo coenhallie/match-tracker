@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 import { describe, it, expect, beforeEach } from 'vitest'
-import { HISTORY_S } from '../../src/analysis/derive'
+import { HISTORY_S, deriveAt, windowAt } from '../../src/analysis/derive'
 import {
   CLIP_CAP,
   CLIP_EXPIRY_S,
@@ -234,17 +234,62 @@ describe('ClipStore', () => {
   })
 
   it('stays under 20 MB at its cap', () => {
-    // The worst case: 8 clips that do not overlap, each with a lookback of its own, 30 s apart.
+    // The worst case: 8 clips that do not overlap, each with a lookback of its own, 30 s apart, all
+    // left unplayed through a long stretch of valid play after the last.
     const gap = 30
+    let peak = 0
+    const watch = (from: number, to: number) => {
+      for (let i = 0; from + i / HZ <= to + 1e-9; i++) {
+        store.add(rec(from + i / HZ))
+        peak = Math.max(peak, store.bytes())
+      }
+    }
     for (let i = 0; i < CLIP_CAP; i++) {
       const at = 100 + i * gap
-      feed(store, i === 0 ? 80 : at - gap + 0.04, at - 0.04)
+      watch(i === 0 ? 80 : at - gap + 0.04, at - 0.04)
       moment(store, 'goal', at)
+      peak = Math.max(peak, store.bytes())
     }
-    feed(store, 100 + 7 * gap + 0.04, 100 + 7 * gap + CLIP_TAIL_S + 0.5)
+    watch(100 + 7 * gap + 0.04, 100 + 7 * gap + 60)
     expect(store.clips()).toHaveLength(CLIP_CAP)
     expect(store.clips().every((c) => c.ready)).toBe(true)
-    expect(store.bytes()).toBeLessThan(20_000_000)
+    expect(peak).toBeLessThan(20_000_000)
+  })
+
+  it('thins lookback records without changing phase or trail', () => {
+    // The staging capture is valid again from about t 1589; take real consecutive records.
+    const live = staging.filter((r) => r.t >= 1590)
+    const slim = live.map(slimRecord)
+    const moment0 = live.find((r) => r.t >= 1630)!
+    for (const r of live) {
+      store.add(r)
+      if (r === moment0) store.note({ kind: 'goal', at: r.t, frameCount: r.frameCount })
+    }
+    const clip = store.next()!
+    expect(clip).not.toBeNull()
+    const stored = store.records(clip.id)
+    const lookback = stored.filter((r) => r.t < clip.from)
+    expect(lookback.length).toBeGreaterThan(50)
+    const fullSize = (r: TrackerRecord) => JSON.stringify(slim.find((x) => x.frameCount === r.frameCount)).length
+    expect(lookback.every((r) => JSON.stringify(r).length < fullSize(r) / 2)).toBe(true)
+    const shown = stored.filter((r) => r.t >= clip.from)
+    expect(shown.length).toBeGreaterThan(30)
+    for (const r of shown) {
+      const fullWindow = slim.filter((x) => x.t >= clip.from - HISTORY_S && x.t <= clip.to)
+      const full = slim.find((x) => x.frameCount === r.frameCount)!
+      expect(deriveAt(windowAt(stored, r), r)).toEqual(deriveAt(windowAt(fullWindow, full), full))
+    }
+  })
+
+  it("frees an expired clip's records at once", () => {
+    feed(store, 90, 99.96)
+    moment(store, 'goal', 100)
+    feed(store, 100.04, 105)
+    store.add(rec(999.9))
+    expect(store.clips()).toHaveLength(1)
+    store.add(rec(1000.2))
+    expect(store.clips()).toHaveLength(0)
+    expect(store.bytes()).toBeLessThan(3 * 6_000)
   })
 
   it('keeps only the records kept clips and the next moment need', () => {
