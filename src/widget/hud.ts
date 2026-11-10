@@ -11,6 +11,8 @@ import type { TeamId, TeamPhase, TeamState } from '../analysis/teamPhase.js'
 import type { PlayerLossState } from '../director/director.js'
 import { MIN_STRETCH_S } from '../director/playerLoss.js'
 import { formatText, type TrackerText } from '../i18n/text.js'
+import type { FlashbackKind } from '../model/flashback.js'
+import { formatAgo } from '../render/flashback.js'
 
 /** What the row says the teams are, and how it draws them. */
 export interface PhaseLook {
@@ -152,7 +154,8 @@ export class ZoomBadge {
  * frame on screen: how many are, and whose attack covers the loss when one
  * does (the `debug` option). In live mode it says so too while the frame on
  * screen is invalid, so an attack covering made-up positions is not taken
- * for a real one. Nothing is in the DOM while it is off or there is no loss.
+ * for a real one, and while a replay plays, which one. Nothing is in the DOM
+ * while it is off or there is neither a loss nor a replay.
  */
 /** What the badge says of invalid frames, before any countdown. */
 function invalidLabel(loss: PlayerLossState, team: string | null, text: TrackerText): string {
@@ -177,7 +180,19 @@ export class LossBadge {
 
   constructor(private readonly parent: HTMLElement) {}
 
-  update(loss: PlayerLossState | null, on: boolean, text: TrackerText, teamName: (team: TeamId) => string): void {
+  /** With `flashback`, a replay is on screen: it says which, over any loss. */
+  update(
+    loss: PlayerLossState | null,
+    on: boolean,
+    text: TrackerText,
+    teamName: (team: TeamId) => string,
+    flashback: { kind: FlashbackKind; agoS: number } | null = null,
+  ): void {
+    if (on && flashback) {
+      const label = formatText(text.flashbackDebug, { kind: flashback.kind, ago: formatAgo(flashback.agoS, '{time}') })
+      this.show(label, 'none', 'flashback')
+      return
+    }
     if (!on || !loss) {
       this.el.remove()
       return
@@ -190,9 +205,13 @@ export class LossBadge {
         : team === null
           ? formatText(text.playerLoss, { players })
           : formatText(text.playerLossCover, { players, team })
+    this.show(label, loss.cover === null ? 'none' : String(loss.cover), loss.cause)
+  }
+
+  private show(label: string, cover: string, cause: string): void {
     if (this.el.textContent !== label) this.el.textContent = label
-    this.el.dataset.cover = loss.cover === null ? 'none' : String(loss.cover)
-    this.el.dataset.cause = loss.cause
+    this.el.dataset.cover = cover
+    this.el.dataset.cause = cause
     if (this.el.parentNode !== this.parent) this.parent.append(this.el)
   }
 }

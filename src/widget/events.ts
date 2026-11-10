@@ -32,6 +32,11 @@ export interface TrackerEvents {
    * match, and give back as `secondHalfFrom`. Not said for `secondHalfFrom` itself.
    */
   secondHalf: { from: number }
+  /**
+   * A replay of an earlier moment started, while the live camera is away, or the last one ended.
+   * `at` is the moment's record time. Every `start` has its `end`.
+   */
+  flashback: { phase: 'start' | 'end'; at: number }
 }
 
 type Listener<T> = (value: T) => void
@@ -97,6 +102,22 @@ function shows(layers: FrameLayers, moment: ReplayMoment): boolean {
     default:
       return layers.labelCard?.key === moment || layers.smallLabelCard?.key === moment
   }
+}
+
+/**
+ * Whether `layers` show a moment a label starts: a goal, a corner, a throw-in or a label card.
+ * The attack, which the phase or a player loss starts, does not count.
+ */
+export function labelMomentShowing(layers: FrameLayers | null): boolean {
+  if (!layers) return false
+  return (
+    layers.goal !== undefined ||
+    layers.goalBanner !== undefined ||
+    layers.corner !== undefined ||
+    layers.throwIn !== undefined ||
+    layers.labelCard !== undefined ||
+    layers.smallLabelCard !== undefined
+  )
 }
 
 /** The moments on screen, from paint to paint: what came on and what went at each. */

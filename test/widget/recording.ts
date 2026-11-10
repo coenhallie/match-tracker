@@ -1,7 +1,7 @@
 /**
  * The real Director and renderer, wrapped to note what the widget hands
  * them: every director's options, update inputs and outputs, the stopAll and
- * releaseCamera calls, and every view the renderer is given. A test file
+ * releaseCamera calls, and every view and frame the renderer is given. A test file
  * mocks src/director/director with `recordingDirector` and
  * src/render/renderer with `recordingRenderer`, and reads `control` back.
  */
@@ -12,13 +12,20 @@ import type {
   DirectorOutput,
   DirectorView,
 } from '../../src/director/director'
-import type { createRenderer } from '../../src/render/renderer'
+import type { Frame } from '../../src/model/types'
+import type { FrameLayers, createRenderer } from '../../src/render/renderer'
 import type { RenderTheme } from '../../src/render/theme'
 
 /** What the tests read back. */
 export const control = {
   /** The options every director was made with, in order. */
   options: [] as DirectorOptions[],
+  /** Every director made, in order. */
+  directors: [] as Director[],
+  /** Which director made each entry of `inputs` and `outputs`: its index in `directors`. */
+  updatedBy: [] as number[],
+  /** Every frame a renderer drew, with the layers it was given, in order. */
+  drawn: [] as Array<{ frame: Frame; layers: FrameLayers | undefined }>,
   /** Every update input, in order. */
   inputs: [] as DirectorInput[],
   /** What every update gave back, in order. */
@@ -36,6 +43,9 @@ export const control = {
   failMessage: 'the renderer failed',
   reset() {
     control.options = []
+    control.directors = []
+    control.updatedBy = []
+    control.drawn = []
     control.inputs = []
     control.outputs = []
     control.releases = 0
@@ -52,8 +62,10 @@ export function recordingDirector(Real: typeof Director): typeof Director {
   function Recording(options: DirectorOptions) {
     control.options.push(options)
     const real = new Real(options)
+    const index = control.directors.push(real) - 1
     const update = real.update.bind(real)
     real.update = (input, view) => {
+      control.updatedBy.push(index)
       control.inputs.push(input)
       const out = update(input, view)
       control.outputs.push(out)
@@ -95,6 +107,7 @@ export function recordingRenderer(real: typeof createRenderer): typeof createRen
         control.failRenders--
         throw new Error(control.failMessage)
       }
+      control.drawn.push({ frame: args[0], layers: args[1] })
       renderFrame(...args)
     }
     return renderer

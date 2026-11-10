@@ -77,10 +77,12 @@ import { parseRecord } from '../model/parseRecord.js'
 import type { ReplayLayerKey, ReplayLayers, ReplayMoment } from '../model/replayLayers.js'
 import type { TrackerRecord } from '../model/types.js'
 import { createRenderer } from '../render/renderer.js'
+import type { FlashbackIndicator } from '../render/flashback.js'
 import type { RenderTheme } from '../render/theme.js'
 import type { FrameBox } from '../render/viewTransform.js'
 import { MATCH_TRACKER_VERSION } from '../version.js'
-import { Emitter, MomentWatch, type TrackerBox, type TrackerEvents } from './events.js'
+import { Emitter, MomentWatch, labelMomentShowing, type TrackerBox, type TrackerEvents } from './events.js'
+import { FlashbackStage } from './flashbackStage.js'
 import { measureBox, pixelRatio, place, sameBox, sizeBitmap } from './layout.js'
 import { LossBadge, PhaseRow, ZoomBadge } from './hud.js'
 import { LayersMenu } from './layersMenu.js'
@@ -181,6 +183,12 @@ const samePublicBox = (a: TrackerBox, b: TrackerBox | null) =>
 
 const sameView = (a: DirectorView, b: DirectorView | null) =>
   b !== null && a.zoom === b.zoom && a.panX === b.panX && a.panY === b.panY && a.renderedWidth === b.renderedWidth
+
+const cameraOf = (view: DirectorCamera): DirectorCamera => ({ zoom: view.zoom, panX: view.panX, panY: view.panY })
+
+const sameIndicator = (a: FlashbackIndicator | null, b: FlashbackIndicator | null) =>
+  a === b ||
+  (a !== null && b !== null && a.alpha === b.alpha && a.side === b.side && a.agoS === b.agoS && a.leftShare === b.leftShare)
 
 /** The shadow roots trackers made, which a tracker may mount in again once the one before is destroyed. */
 const ownRoots = new WeakSet<ShadowRoot>()
@@ -330,6 +338,14 @@ class Tracker implements MatchTracker {
   private phase: TeamPhase | null = null
   private readonly renderer: Renderer | null
   private readonly director: Director
+  /** Live: the replays of earlier moments while the camera is away (flashbackStage.ts). Null in replay. */
+  private readonly flashback: FlashbackStage | null
+  /** Whether a clip is painted: live play's outputs are then not drawn, and `view` is the clip's. */
+  private clipShown = false
+  /** The flashback's stroke and tab, drawn over every paint while it shows them. */
+  private indicator: FlashbackIndicator | null = null
+  /** The last paint drawn, and with what indicator: drawn again when only the indicator moves. */
+  private drawn: { paint: DirectorPaint; indicator: FlashbackIndicator | null } | null = null
   private readonly emitter = new Emitter<TrackerEvents>()
   private readonly moments = new MomentWatch()
   private readonly loop: FrameLoop
@@ -414,14 +430,19 @@ class Tracker implements MatchTracker {
       ...directorOptions(this.resolved),
       coverInvalidFrames: mode === 'live',
     })
-    this.loop = new FrameLoop(this.tick, () => this.director.animating)
+    this.flashback =
+      mode === 'live' ? new FlashbackStage(() => ({ layers: this.layers, ...directorOptions(this.resolved) })) : null
+    this.loop = new FrameLoop(this.tick, () => this.director.animating || (this.flashback?.animating ?? false))
 
     this.overlay.addEventListener('pointerdown', this.onOverlayPointerDown, { capture: true })
     this.zoomPan = new ZoomPan(
       this.viewport,
       {
         view: () => this.view,
-        takeCamera: () => this.director.releaseCamera(),
+        takeCamera: () => {
+          this.director.releaseCamera()
+          this.flashback?.releaseCamera()
+        },
         setView: this.setUserView,
         keeps: (target) => this.keeps(target),
       },
@@ -460,11 +481,14 @@ class Tracker implements MatchTracker {
     if (!record) return
     const breaks = this.history.breaks
     if (!this.history.add(record)) return
+    this.flashback?.see(record, this.history.window())
     if (this.halves.see(record)) this.saySecondHalf()
     // The stream broke and started again (LiveHistory.add): what it shows next is a seek.
     if (this.history.breaks !== breaks) {
       this.resumed = true
       this.rejoining = false
+      // Its clips went with the old clock (ClipStore.add); the one playing goes now.
+      this.cutFlashback()
     }
     this.historyVersion++
     this.loop.request()
@@ -478,6 +502,13 @@ class Tracker implements MatchTracker {
 
   reset(): void {
     if (this.destroyed) return
+    // The controller's reset drops an `end` still to come: the host hears it here.
+    const openAt = this.flashback?.openAt ?? null
+    this.flashback?.cut(performance.now())
+    this.flashback?.reset()
+    this.clipShown = false
+    this.indicator = null
+    this.drawn = null
     this.history.clear()
     this.halves.reset()
     this.historyVersion++
@@ -499,12 +530,14 @@ class Tracker implements MatchTracker {
     this.updateAvailability()
     // The director stops its moments without a paint.
     for (const change of this.moments.clear()) this.emitter.emit('moment', change)
+    if (openAt !== null) this.emitter.emit('flashback', { phase: 'end', at: openAt })
   }
 
   trigger(moment: ReplayMoment, team: TeamId = 0): boolean {
     if (this.destroyed) return false
     // A frame due now is run first, so the moment plays on what is on screen by now.
     this.loop.flush()
+    this.cutFlashback()
     const input = this.lastInput
     // What the director can play is read from the frame it was last given,
     // which is `input`: taking it in again inside trigger changes nothing.
@@ -533,6 +566,7 @@ class Tracker implements MatchTracker {
     if (this.halves.from !== from) this.loop.request()
     this.renderer?.setTheme(theme)
     this.director.setOptions(directorOptions(this.resolved))
+    this.flashback?.setOptions(directorOptions(this.resolved))
     this.layersMenu.setText(this.resolved.text)
     this.layersMenu.setShown(this.hud, layersMenuOn(this.options))
     this.renderHud()
@@ -597,6 +631,7 @@ class Tracker implements MatchTracker {
     this.zoomPan.destroy()
     this.emitter.clear()
     this.history.clear()
+    this.flashback?.reset()
     this.presented = null
     this.shadow.replaceChildren()
     if ('adoptedStyleSheets' in this.shadow) this.shadow.adoptedStyleSheets = []
@@ -611,11 +646,14 @@ class Tracker implements MatchTracker {
    * says whether the choice is kept under the storage key.
    */
   private applyLayers(layers: ReplayLayers, keep: boolean): void {
+    // Drawn live just below.
+    if (this.layers.flashback && !layers.flashback) this.cutFlashback(false)
     this.layers = { ...layers }
     if (keep) storeLayers(this.options, this.layers)
     this.layersMenu.setLayers(this.layers)
     this.renderHud()
     this.show(this.director.setLayers(this.layers))
+    this.showClip(this.flashback?.setLayers(this.layers))
     this.emitter.emit('layers', { ...this.layers })
   }
 
@@ -628,7 +666,8 @@ class Tracker implements MatchTracker {
   /** The HUD as the phase, the layers, the view and the options are now, and the pitch's name. */
   /** The debug badge, in developer mode, while too few players are tracked on the frame on screen. */
   private renderLoss(): void {
-    this.lossBadge.update(this.loss, this.options.debug === true, this.resolved.text, this.resolved.teamName)
+    const { text, teamName } = this.resolved
+    this.lossBadge.update(this.loss, this.options.debug === true, text, teamName, this.flashback?.debug() ?? null)
   }
 
   private renderHud(): void {
@@ -665,13 +704,62 @@ class Tracker implements MatchTracker {
     const input = this.nextInput(nowMs)
     if (!input) return
     this.lastInput = input
-    this.show(this.director.update(input, this.directorView()))
+    const out = this.director.update(input, this.liveView())
+    const clip = this.flashback && this.stepFlashback(nowMs, out)
+    this.show(out)
+    if (clip?.liveTookOver && !out.paint) this.repaint()
+    this.showClip(clip?.out)
     if (this.destroyed) return
-    this.phase = input.phase
+    this.phase = clip?.out ? clip.phase : input.phase
     this.renderHud()
     this.updateAvailability()
     if (this.destroyed) return
+    // Only the stroke and tab moved (the fades, the timer, the progress line between clip records).
+    if (this.drawn && !sameIndicator(this.drawn.indicator, this.indicator)) this.draw(this.drawn.paint)
     if (this.stale) this.repaint()
+    if (this.flashback?.animating) this.loop.request()
+  }
+
+  /**
+   * The flashback's animation frame, after live play's (`live`): which is painted from here, and
+   * what the host hears of it. Live play taking over is drawn with or after `live`.
+   */
+  private stepFlashback(nowMs: number, live: DirectorOutput) {
+    const flashback = this.flashback!
+    const step = flashback.tick(
+      nowMs,
+      { newest: this.history.latest(), labelMoment: labelMomentShowing(live.layers), layerOn: this.layers.flashback },
+      this.halves,
+      this.frameBox?.width ?? 0,
+    )
+    this.indicator = step.indicator
+    const liveTookOver = this.followStage()
+    for (const event of step.events) this.emitter.emit('flashback', event)
+    return { ...step, liveTookOver }
+  }
+
+  /**
+   * Paint the director the stage says: as a clip starts, live play's moments go off screen and
+   * the view is the clip director's; as live play takes over, its own. True when live play took over.
+   */
+  private followStage(): boolean {
+    const clipView = this.flashback?.active ? this.flashback.clipView : null
+    if ((clipView !== null) === this.clipShown) return false
+    this.clipShown = clipView !== null
+    if (clipView) for (const change of this.moments.clear()) this.emitter.emit('moment', change)
+    const { zoom } = this.view
+    this.view = cameraOf(clipView ?? this.director.view)
+    this.viewMoved(zoom)
+    return clipView === null
+  }
+
+  /** End a clip playing, for someone who wants the live frame: live play is painted from here, and drawn unless `redraw` is false. */
+  private cutFlashback(redraw = true): void {
+    if (!this.flashback?.active) return
+    this.flashback.cut(performance.now())
+    // For its `end`, which the next frame gives.
+    this.loop.request()
+    if (this.followStage() && redraw) this.repaint()
   }
 
   /** What the director is to see at `nowMs`, or null in replay before anything is presented. */
@@ -736,6 +824,13 @@ class Tracker implements MatchTracker {
    */
   private show(out: DirectorOutput): void {
     if (this.destroyed) return
+    if (this.clipShown) {
+      // Live play is not on screen: its camera stays its director's own, and its paints are neither drawn nor watched.
+      this.loss = out.loss
+      this.renderLoss()
+      if (out.animating) this.loop.request()
+      return
+    }
     if (out.camera) this.adoptCamera(out.camera)
     this.loss = out.loss
     this.renderLoss()
@@ -748,7 +843,18 @@ class Tracker implements MatchTracker {
     if (last) this.draw(last)
   }
 
-  /** Draw `paint` as the director made it: its frame and layers, in its view. */
+  /**
+   * Take in what the clip director did, while its clip is painted: the view its camera moved to,
+   * and its last paint, drawn. Its moments are never the host's (`moment`).
+   */
+  private showClip(out: DirectorOutput | null | undefined): void {
+    if (!out || !this.clipShown || this.destroyed) return
+    if (out.camera) this.adoptCamera(out.camera)
+    const last = out.paints.at(-1)
+    if (last) this.draw(last)
+  }
+
+  /** Draw `paint` as the director made it: its frame and layers, in its view, with the flashback's stroke and tab over it. */
   private draw(paint: DirectorPaint): void {
     if (!this.renderer) return
     if (!this.frameBox || !this.visible()) {
@@ -759,8 +865,10 @@ class Tracker implements MatchTracker {
       this.rendererView = { ...paint.view }
       this.renderer.setView(this.rendererView)
     }
-    this.renderer.renderFrame(paint.frame, paint.layers)
+    const indicator = this.indicator
+    this.renderer.renderFrame(paint.frame, indicator ? { ...paint.layers, flashback: indicator } : paint.layers)
     this.stale = false
+    this.drawn = { paint, indicator }
   }
 
   /** Draw again what is on screen, through the director, as the reference's pushView paints. */
@@ -771,6 +879,7 @@ class Tracker implements MatchTracker {
       return
     }
     this.show(this.director.setLayers(this.layers))
+    if (this.clipShown) this.showClip(this.flashback?.setLayers(this.layers))
   }
 
   private visible(): boolean {
@@ -781,6 +890,11 @@ class Tracker implements MatchTracker {
 
   private directorView(): DirectorView {
     return { ...this.view, renderedWidth: this.frameBox?.width ?? 0 }
+  }
+
+  /** The view for live play's director: the widget's, or while a clip is painted, its own. */
+  private liveView(): DirectorView {
+    return this.clipShown ? this.director.view : this.directorView()
   }
 
   /**
@@ -804,6 +918,7 @@ class Tracker implements MatchTracker {
     const { zoom } = this.view
     this.view = { zoom: view.zoom, panX: view.panX, panY: view.panY }
     this.show(this.director.setView(this.directorView()))
+    this.showClip(this.flashback?.setView(this.directorView()))
     this.viewMoved(zoom)
   }
 
@@ -828,7 +943,11 @@ class Tracker implements MatchTracker {
     const cleared = this.renderer ? sizeBitmap(this.canvas, next) : false
     // A new width changes how a pan in screen pixels lands, so it goes in as
     // a view change, which pushes the view and paints.
-    if (moved || cleared) this.show(this.director.setView(this.directorView()))
+    if (moved || cleared) {
+      // Each director in its own view, at the new width.
+      this.show(this.director.setView({ ...this.liveView(), renderedWidth: next.width }))
+      this.showClip(this.flashback?.resize(next.width))
+    }
     this.updateHostBox(rect, next)
   }
 
@@ -890,6 +1009,7 @@ class Tracker implements MatchTracker {
   private resumeAfterAbsence(): void {
     if (this.destroyed) return
     if (this.mode === 'live') {
+      this.cutFlashback()
       // Unless a seek for another reason is waiting already.
       if (!this.resumed) this.rejoining = true
       this.resumed = true
@@ -905,6 +1025,7 @@ class Tracker implements MatchTracker {
    */
   private readonly onOverlayPointerDown = (event: Event): void => {
     if (this.destroyed || this.keeps(event.target)) return
+    this.cutFlashback()
     this.show(this.director.stopAll())
   }
 

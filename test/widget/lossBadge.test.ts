@@ -149,4 +149,36 @@ describe('the player loss badge', () => {
     env.settle()
     expect(badge(host)).toBeNull()
   })
+
+  it('says what replay is playing, in developer mode', () => {
+    const { host, tracker } = mount({ debug: true })
+    const at = (i: number, state: 'valid' | 'long', labels?: string[]) => {
+      const parsed = JSON.parse(message(sent++, { withBall: true, t: 2700 + i * 0.04 })) as {
+        match: { state?: unknown }
+        raw_data?: unknown
+      }
+      if (labels) parsed.match.state = { actions: labels.map((action_type) => ({ action_type, action_origin: 'human' })) }
+      parsed.raw_data = {
+        source_frame: { frame_state: state === 'valid' ? 'valid' : 'invalid' },
+        agentic: {
+          lookahead: {
+            horizon_s: 9.999999999990905,
+            next_invalid_in_s: state === 'valid' ? null : 0,
+            next_valid_in_s: state === 'valid' ? 0 : null,
+          },
+        },
+      }
+      tracker.push(JSON.stringify(parsed))
+      env.frame(40)
+    }
+    // A human goal 16 s before a long run: the run replays it.
+    for (let i = 0; i < 500; i++) at(i, 'valid', i === 100 ? ['goal'] : undefined)
+    for (let i = 500; i < 525; i++) at(i, 'long')
+    expect(badge(host)?.textContent).toBe('Replay of a goal from 0:16 ago')
+    expect(badge(host)?.dataset.cause).toBe('flashback')
+    at(525, 'valid')
+    expect(badge(host)?.dataset.cause).not.toBe('flashback')
+    env.settle()
+    expect(badge(host)).toBeNull()
+  })
 })
