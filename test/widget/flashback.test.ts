@@ -565,6 +565,25 @@ describe('flashbacks in live mode', () => {
     expect(layers?.flashback?.side).toBe('left')
   })
 
+  it('rides a split run without ending the replay', () => {
+    const { tracker } = mount()
+    const stream = new Stream(tracker)
+    // Two goals 20 s apart, so both are kept.
+    const LATER = 600
+    stream.push(800, 'valid', (i) => (i === GOAL || i === LATER ? { labels: ['goal'] } : {}))
+    const log = events(tracker)
+    // A 6 s run with its exact countdown: the first clip is fitted to it and runs out at the gap.
+    for (let k = 0; k < 150; k++) stream.push(1, { validIn: 6 - k * 0.04 })
+    expect(log).toEqual([`flashback:start@${stream.t(LATER)}`])
+    // A 0.3 s valid gap, then a long run.
+    for (let k = 0; k < 8; k++) stream.push(1, { invalidIn: 0.3 - k * 0.04 })
+    const gapEnd = log.length
+    stream.push(150, 'long')
+    // No end at the gap, and no live moment between the clips: the second follows the first.
+    expect(log.slice(0, gapEnd)).toEqual([`flashback:start@${stream.t(LATER)}`])
+    expect(log).toEqual([`flashback:start@${stream.t(LATER)}`, `flashback:start@${stream.t(GOAL)}`])
+  })
+
   it('plays through the staging fixture without flicker', () => {
     const { tracker } = mount()
     const lines = gunzipSync(readFileSync(resolve(process.cwd(), 'test/fixtures/staging-validity.jsonl.gz')))
@@ -605,6 +624,10 @@ describe('flashbacks in live mode', () => {
     for (let k = 1; k < all.length; k++) {
       if (all[k - 1]!.phase === 'start' && all[k]!.phase === 'end') {
         expect(all[k]!.nowMs - all[k - 1]!.nowMs).toBeGreaterThanOrEqual(1000)
+      }
+      // A replay that ends and starts again within MERGE_GAP_S is the flicker of a split run.
+      if (all[k - 1]!.phase === 'end' && all[k]!.phase === 'start') {
+        expect(all[k]!.nowMs - all[k - 1]!.nowMs).toBeGreaterThanOrEqual(1500)
       }
     }
   })
