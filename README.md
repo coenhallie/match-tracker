@@ -483,9 +483,12 @@ live mode only.
   `reset()`. A press on the pitch or the overlay or `trigger()` ends it too,
   and then no replay starts again until the camera is back.
 - A run split by a valid gap under 1.5 s is one replay: a clip that runs out
-  in the gap holds its last frame, with the tab, until the next invalid frame,
-  when the next clip follows or the replay ends. It ends at once if the gap
-  turns out longer, and after 1.5 s if no invalid frame comes.
+  in the gap, or just before it (as when live frames come a little late),
+  holds its last frame, with the tab, until the next invalid frame after the
+  gap, when the next clip follows or the replay ends. Only frames that say
+  whether they are valid decide. It ends at once if the gap turns out longer,
+  and if no frame decides, 1.5 s after the run was due to end or the clip ran
+  out, whichever is later.
 - It is marked as the past: a white stroke round the pitch, and a white tab in
   the bottom corner away from where the ball was at the moment, with "REPLAY",
   how long ago the moment was ("2:47 AGO", from the frames' own times, so a

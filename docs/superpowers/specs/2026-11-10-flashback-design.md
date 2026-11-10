@@ -1,6 +1,7 @@
 # Flashback: replays of earlier moments while the live camera is away
 
-Status: design, 2026-11-10. Not built.
+Status: built, 2026-11-10. This reads as what was built; where the build
+settled something the design left open, it says so.
 
 ## Why
 
@@ -118,7 +119,11 @@ zh (see API).
   the next moment is in the other half.
 - When live play takes over, the pitch is live at once. Only the stroke and tab
   fade, over live play.
-- With reduced motion, nothing fades.
+- While a replay shows, the HUD controls glide clear of the stroke: the layers
+  button and the badges keep inside it, and the zoom badge sits above the tab
+  when the tab is bottom right. They glide there and back over 200 ms, and go
+  back once the stroke has faded out (at once on `reset()`).
+- With reduced motion, nothing fades and the HUD controls jump.
 
 ## Behaviour
 
@@ -165,9 +170,10 @@ Noted as they happen in live mode, from valid records only:
   clock with it) drops them all, since their ages, expiry and order are all in
   the old clock. (Builder's call.)
 - Memory: store only what the renderer and the analysis read from a record,
-  and store records that overlapping clips share once. Budget: under 20 MB for
-  the store at its cap, measured on the worst case: 8 clips with separate
-  lookbacks, from real staging records.
+  and store records that overlapping clips share once. A record kept only for
+  a clip's lookback is thinned to what the phase and the trail read. The store
+  stays under 20 MB at its cap: on the worst case, 8 clips with separate
+  lookbacks from real staging records, its retained heap measures about 19 MB.
 
 ### When a replay plays
 
@@ -196,21 +202,43 @@ Noted as they happen in live mode, from valid records only:
     card or a throw-in on an invalid record). When that moment ends, the next
     clip may start if the rule above holds;
   - the layer is switched off, or `reset()`, or the widget goes out of view and
-    comes back (a seek);
+    comes back (a seek), or the stream breaks (a jump back in record time of
+    more than 10 s). None of these holds off the next replay: it may start as
+    soon as the start rule holds;
   - the viewer presses the pitch or the overlay, which the README says stops
     every moment, or the host calls `trigger()`, which then plays on the live
     frame. A replay is treated as a moment here: anything that means someone
-    wants the real frame stops it. The clip counts as played. (Builder's call.)
+    wants the real frame stops it. The clip counts as played. These two hold
+    off further replays until the live run ends (a valid record not in a short
+    gap) or `reset()`. (Builder's call.)
 - **Records with no validity.** A live record with no `validity` neither
   starts, chains nor ends a replay: the last known validity is carried forward,
-  its countdown aged by record time. (Builder's call.)
+  its countdown aged by record time. A carried state whose countdown has run out
+  is a guess, and a carried null countdown loses its horizon once 10 s (its
+  `horizonS`) have gone with no record saying more: either may keep a clip
+  going, but neither starts or chains one. (Builder's call.)
 - **Short valid gaps.** The replay plays on through a valid gap under 1.5 s
   (`MERGE_GAP_S`, as the attack cover does): a valid live record whose
   `nextInvalidInS` is under 1.5 s does not end it. Real runs are split this
   way: in the staging data a 0.28 s valid gap joins a 4.1 s and a 7.4 s run,
   and cutting there would show a quarter second of live play and use up the
-  clip. The run's time left, for fitting and chaining, then counts the runs
-  either side of such a gap as one, as far as the lookahead shows.
+  clip.
+- **A clip that runs out at a gap holds its last frame.** A clip fitted to a
+  run under 10 s ends with the run, so it runs out at the gap. It then holds
+  its last frame, the tab up and the progress line run down, through the gap,
+  and the next invalid record decides: the next clip follows if the start rule
+  holds, and the replay ends if not. It holds too when the clip runs out just
+  before the gap, while the newest record that says its validity is invalid
+  with its run about to end (a valid record due within 1.5 s): the clip is
+  fitted in record time but plays on the wall clock, so live records that come
+  a little late have it run out on the run's last records. Only a record that
+  says its validity decides: the run's own last records decide nothing until a
+  valid one has come; a valid record in a short gap keeps it holding; one
+  outside such a gap ends it at once. The hold is bounded from when the clip
+  ran out, by the run's countdown left then (under 1.5 s, none in a gap) plus
+  1.5 s, so a stalled stream does not keep the frame up. A live label moment,
+  the layer going off and the cuts above end it at once. A split run is one
+  replay, with one `flashback` `end`. (Builder's call.)
 
 ### Live play underneath
 

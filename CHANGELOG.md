@@ -42,9 +42,11 @@ Replays of earlier moments while the live camera is away, invalid frames covered
   no replay starts again until the camera is back; after the others, the next
   may start.
 - **A stretch split by a short valid gap is one replay.** A clip that runs out
-  in a valid gap under 1.5 s holds its last frame, the tab up, until the next
-  invalid frame: then the next clip follows, or the replay ends. It ends at
-  once if the gap turns out longer, and after 1.5 s with no invalid frame.
+  in a valid gap under 1.5 s, or just before it (as when live frames come a
+  little late), holds its last frame, the tab up, until the next invalid frame
+  after the gap: then the next clip follows, or the replay ends. It ends at
+  once if the gap turns out longer, and if no frame decides, 1.5 s after the
+  stretch was due to end or the clip ran out, whichever is later.
 - **It looks like the past**: a white stroke round the pitch and, in the bottom
   corner away from the action, a white tab with "REPLAY", how long ago the
   moment was ("2:47 AGO") and a line that shortens as the clip plays. They fade
@@ -85,9 +87,9 @@ Replays of earlier moments while the live camera is away, invalid frames covered
 
 ### Package
 
-- **The package is 210.4 kB packed and 423.0 kB unpacked, in 44 files**, the
+- **The package is 210.6 kB packed and 423.5 kB unpacked, in 44 files**, the
   replays included, down from 235.4 kB, 513.9 kB and 77 files.
-- **The code is minified in full**: `dist/index.js` is 131.80 kB, 44.71 kB
+- **The code is minified in full**: `dist/index.js` is 132.12 kB, 44.83 kB
   gzipped, the replays included (0.10.0's was 138.26 kB, 41.83 kB, and its code
   minified 111.69 kB, 38.05 kB). Vite used to leave its whitespace and its
   source path comments in. An app's own build minifies it anyway, so what a
