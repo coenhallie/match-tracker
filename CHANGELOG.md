@@ -37,9 +37,14 @@ Replays of earlier moments while the live camera is away, invalid frames covered
 - **Each moment plays once**, and is dropped 15 minutes after it happened.
 - **Live play always comes first**: a replay ends at once on a valid frame
   (riding valid gaps under 1.5 s, as the attack does), on a moment a human
-  label starts in live play, on a press on the pitch, on `trigger()`, and on
-  `reset()`. After a press or `trigger()`, no replay starts again until the
-  camera is back.
+  label starts in live play, on a press on the pitch, on `trigger()`, when the
+  widget comes back into view, and on `reset()`. After a press or `trigger()`,
+  no replay starts again until the camera is back; after the others, the next
+  may start.
+- **A stretch split by a short valid gap is one replay.** A clip that runs out
+  in a valid gap under 1.5 s holds its last frame, the tab up, until the next
+  invalid frame: then the next clip follows, or the replay ends. It ends at
+  once if the gap turns out longer, and after 1.5 s with no invalid frame.
 - **It looks like the past**: a white stroke round the pitch and, in the bottom
   corner away from the action, a white tab with "REPLAY", how long ago the
   moment was ("2:47 AGO") and a line that shortens as the clip plays. They fade
@@ -47,12 +52,14 @@ Replays of earlier moments while the live camera is away, invalid frames covered
   own goal, cards and zoom near goal included, from the viewer's own zoom, and
   the attacking/defending row shows its phase. While the stroke shows, the
   layers button and the badges keep inside it, and the zoom badge sits above a
-  tab in the bottom right.
+  tab in the bottom right. They glide there and back over 200 ms (not with
+  reduced motion).
 - **It is a new layer, `flashback`** ("Replays while the camera is away"), on
   by default, listed in the layers menu in live mode only. Off, nothing is kept
   for replays and long stretches are covered by the attack, as in 0.10.0.
-- **Live mode keeps what it needs for the replays**, at most 8 clips, under
-  20 MB (about 13 MB at worst on real staging data). `reset()` drops them.
+- **Live mode keeps what it needs for the replays**, at most 8 clips, in under
+  20 MB of memory at worst, measured on real staging data. `reset()` drops
+  them.
 - **The bottom-left action text is drawn under the replay's tab**, never over
   it. Nothing changes where no replay shows.
 - Replay is unchanged.
@@ -64,19 +71,23 @@ Replays of earlier moments while the live camera is away, invalid frames covered
   layers kept under `layersStorageKey` now carry a `flashback` key too, which
   does nothing there, so a host that compares layer objects sees it.
 - A new event, `flashback`: `{ phase: 'start' | 'end', at }`, `start` for each
-  clip and `end` once the last one ends or is cut off, `reset()` included; `at`
-  is the moment's record time. A replay's own moments send no `moment` event.
+  clip and `end` once the last one ends or is cut off, `reset()` included
+  (`destroy()` sends none); `at` is the moment's record time. A replay's own
+  moments send no `moment` event.
+- The Vue component emits `flashback` too.
 - New `TrackerText` keys: `flashback` ("REPLAY"; zh "回放") and `flashbackAgo`
   ("{time} AGO"; zh "{time}前") for the tab, `flashbackDebug` ("Replay:
   {kind}, {ago} ago"; zh "回放：{kind}，{ago}前") for the `debug` badge, which
   says which replay plays, `{kind}` being the moment's own word (`goal`,
-  `corner`, `shotOnGoal` or `attack`), and `layers.flashback` for the menu.
+  `corner`, `shotOnGoal` or `attack`), followed by the run's countdown in the
+  badge's `invalidFramesValidIn` or `invalidFramesValidLater` words while the
+  run is invalid, and `layers.flashback` for the menu.
 
 ### Package
 
-- **The package is 209.8 kB packed and 421.2 kB unpacked, in 44 files**, the
+- **The package is 210.4 kB packed and 423.0 kB unpacked, in 44 files**, the
   replays included, down from 235.4 kB, 513.9 kB and 77 files.
-- **The code is minified in full**: `dist/index.js` is 130.96 kB, 44.44 kB
+- **The code is minified in full**: `dist/index.js` is 131.80 kB, 44.71 kB
   gzipped, the replays included (0.10.0's was 138.26 kB, 41.83 kB, and its code
   minified 111.69 kB, 38.05 kB). Vite used to leave its whitespace and its
   source path comments in. An app's own build minifies it anyway, so what a

@@ -34,7 +34,8 @@ export interface TrackerEvents {
   secondHalf: { from: number }
   /**
    * A replay of an earlier moment started, while the live camera is away, or the last one ended.
-   * `at` is the moment's record time. Every `start` has its `end`.
+   * `at` is the moment's record time. Every `start` has its `end` while the widget lives:
+   * `destroy()` sends none.
    */
   flashback: { phase: 'start' | 'end'; at: number }
 }

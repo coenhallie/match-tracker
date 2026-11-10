@@ -260,6 +260,9 @@ describe('ClipStore', () => {
     expect(store.clips()).toHaveLength(CLIP_CAP)
     expect(store.clips().every((c) => c.ready)).toBe(true)
     expect(peak).toBeLessThan(20_000_000)
+    // bytes() is the records' JSON length, a proxy: the heap they really take, measured at this
+    // worst case, is about 1.47 times it. Held under 13.5 MB, the real heap stays under 20 MB.
+    expect(peak).toBeLessThan(13_500_000)
   })
 
   it('thins lookback records without changing phase or trail', () => {

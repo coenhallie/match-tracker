@@ -182,7 +182,7 @@ socket.addEventListener('message', (event) => tracker.value?.push(event.data))
   </MatchTracker>
   ```
 
-- The component emits `zoom`, `layers`, `moment`, `box`, `availability` and `secondHalf`.
+- The component emits `zoom`, `layers`, `moment`, `box`, `availability`, `secondHalf` and `flashback`.
   It emits `box` and `availability` at mount too, when a tracker starts with
   values other than the last ones emitted.
 - The ref exposes `push`, `present`, `reset`, `trigger`, `availability()`,
@@ -474,12 +474,18 @@ live mode only.
 - Each clip plays once: it is gone as it starts, however it ends.
 - Live play always wins. A replay ends at once on a valid frame, unless the
   next run of invalid frames starts within 1.5 s. A frame that does not say
-  whether it is valid is taken as the last one that did, its countdown run on.
-  It also ends when a moment a human label started comes on in live play (the
-  next may start once that ends), when the layer is switched off, and on
-  `reset()`. A press on the pitch or the overlay, `trigger()`, or the widget
-  coming back after being hidden or scrolled away ends it too, and then no
-  replay starts again until the camera is back.
+  whether it is valid is taken as the last one that did, its countdown run on;
+  a run said to last over 10 s is taken as unknown once 10 s have gone with no
+  frame saying more, so no further replay starts on it. It also ends when a
+  moment a human label started comes on in live play (the next may start once
+  that ends), when the widget comes back after being hidden or scrolled away
+  (the next may start at once), when the layer is switched off, and on
+  `reset()`. A press on the pitch or the overlay or `trigger()` ends it too,
+  and then no replay starts again until the camera is back.
+- A run split by a valid gap under 1.5 s is one replay: a clip that runs out
+  in the gap holds its last frame, with the tab, until the next invalid frame,
+  when the next clip follows or the replay ends. It ends at once if the gap
+  turns out longer, and after 1.5 s if no invalid frame comes.
 - It is marked as the past: a white stroke round the pitch, and a white tab in
   the bottom corner away from where the ball was at the moment, with "REPLAY",
   how long ago the moment was ("2:47 AGO", from the frames' own times, so a
@@ -501,9 +507,10 @@ live mode only.
   as when the pipeline starts again.
 - While the stroke shows, the layers button and the badges keep inside it, and
   the zoom badge sits above a tab in the bottom right. They go back once it has
-  gone.
-- With `debug` on, the badge says which replay plays, "Replay: GOAL, 2:47 ago",
-  in the moment's own word (`goal`, `corner`, `shotOnGoal` or `attack`), over
+  gone. They glide there and back over 200 ms, and jump with reduced motion.
+- With `debug` on, the badge says which replay plays and, while the run is
+  invalid, its countdown, "Replay: GOAL, 2:47 ago, valid in over 10 s", in the
+  moment's own word (`goal`, `corner`, `shotOnGoal` or `attack`), over
   whatever else it would say.
 - It needs the pipeline's `raw_data` validity, as above. A stream without it
   never plays a replay.
@@ -561,7 +568,7 @@ The `TrackerText` keys are:
 | `moment` | `{ moment, phase: 'start' \| 'end' }` | A moment came on screen, or went. Never for the moments in a replay (see [Flashbacks](#flashbacks)). |
 | `box` | `TrackerBox` | The pitch's box moved or changed size. The box measured at mount is not sent, because no listener exists yet: read `tracker.box` for it. |
 | `availability` | `MomentAvailability` | What can be played changed: a new frame, or a reset. |
-| `flashback` | `{ phase: 'start' \| 'end', at }` | Live mode: a replay of an earlier moment started (`start`, for each clip), or the last one ended or was cut off (`end`). `at` is the moment's record time (`TrackerRecord.t`, in seconds). `start` comes for each clip, and `end` once, when the last one ends: a host that had a `start` always gets its `end`, `reset()` included. |
+| `flashback` | `{ phase: 'start' \| 'end', at }` | Live mode: a replay of an earlier moment started (`start`, for each clip), or the last one ended or was cut off (`end`). `at` is the moment's record time (`TrackerRecord.t`, in seconds). `start` comes for each clip, and `end` once, when the last one ends: a host that had a `start` always gets its `end` while the widget lives, `reset()` included (`destroy()` sends none). |
 | `secondHalf` | `{ from }` | A human half label the widget saw starts the second half at `from` (a record time, in seconds), earlier than any it saw before. Keep it for the match and give it back as `secondHalfFrom` (see [The teams change ends](#the-teams-change-ends)). Not sent for `secondHalfFrom` itself. |
 
 A listener that throws is reported (`reportError`) and does not stop the widget.
