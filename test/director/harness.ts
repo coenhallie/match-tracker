@@ -131,7 +131,7 @@ export class FakeReplay {
     this.nowMs += ms
   }
 
-  /** Play `moment` by hand, as the demo controls do. */
+  /** Play `moment` by hand, as a host's `trigger()` does. */
   trigger(moment: ReplayMoment, team: TeamId = 0): DirectorOutput | null {
     const output = this.director.trigger(moment, team, this.input(), VIEW)
     if (output) this.outputs.push(output)

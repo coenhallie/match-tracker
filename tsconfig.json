@@ -7,6 +7,7 @@
     "types": ["node"],
     "skipLibCheck": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "strict": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
@@ -16,5 +17,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true
   },
-  "include": ["src", "test", "demo", "vite.config.ts"]
+  "include": ["src", "test", "vite.config.ts"]
 }

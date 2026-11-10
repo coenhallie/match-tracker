@@ -6,6 +6,24 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+A smaller package. Nothing a viewer sees changes.
+
+### Package
+
+- **The package is 202.0 kB packed and 393.8 kB unpacked, in 43 files**, down
+  from 235.4 kB, 513.9 kB and 77 files.
+- **The code is minified in full**: `dist/index.js` is 111.69 kB, 38.05 kB
+  gzipped (from 138.26 kB, 41.83 kB). Vite used to leave its whitespace and its
+  source path comments in. An app's own build minifies it anyway, so what a
+  viewer downloads hardly changes. A new check, `npm run test:dist`, the last
+  step of the build, plays real match data through the built widget and the
+  source side by side, and fails on any difference in what they draw or build.
+- **Only the declarations the entries reach ship**: 31 files instead of 64. The
+  33 left out were internal modules' declarations, which no host could import.
+  The build checks that the declarations it keeps type-check strictly under
+  `bundler`, `node16` and `nodenext` resolution.
+- **CHANGELOG.md no longer ships in the package.** It is in the repository.
+
 ## [0.10.0] - 2026-11-09
 
 Invalid frames held still under an attack, the zoom near goal out of an attack's way, and a shadow under a high ball.

@@ -98,6 +98,8 @@ export interface Env {
   resize(host: HTMLElement, width: number, height: number): void
   /** The ops drawn on every canvas inside `host`'s shadow root, or on `canvas`. */
   ops(target: HTMLElement): Op[]
+  /** The ops drawn on every canvas inside `host`'s shadow root since the last drain, forgotten once returned. */
+  drain(host: HTMLElement): Op[]
   /** How many times the renderer drew a frame on `host`'s canvas. */
   draws(host: HTMLElement): number
   /** The visibility the document reports, and the event that says it changed. */
@@ -143,6 +145,13 @@ export function installEnv(): Env {
       const canvases = target instanceof HTMLCanvasElement ? [target] : (target.shadowRoot?.querySelectorAll('canvas') ?? [])
       for (const canvas of canvases) {
         out.push(...(contexts.get(canvas)?.ops ?? []))
+      }
+      return out
+    },
+    drain(host) {
+      const out: Op[] = []
+      for (const canvas of host.shadowRoot?.querySelectorAll('canvas') ?? []) {
+        out.push(...(contexts.get(canvas)?.ops.splice(0) ?? []))
       }
       return out
     },
