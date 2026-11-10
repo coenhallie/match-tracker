@@ -190,3 +190,109 @@ describe('replay', () => {
     expect(ballOf(lastInput().record)).toMatchObject({ x: -BALL.x, y: -BALL.y })
   })
 })
+
+describe("the host's start", () => {
+  /** Message `i`'s record time, as the widget reads it. */
+  const timeOf = (i: number) => parseRecord(labelled(i))!.t
+
+  it('turns the frames from `secondHalfFrom` on, without a label', () => {
+    const { tracker } = mount({ secondHalfFrom: timeOf(2) })
+    tracker.push(labelled(1))
+    env.settle()
+    expect(ballOf(lastInput().record)).toMatchObject(BALL)
+    tracker.push(labelled(2))
+    env.settle()
+    expect(ballOf(lastInput().record)).toMatchObject({ x: -BALL.x, y: -BALL.y })
+  })
+
+  it('keeps it through a reset, as for a reconnect', () => {
+    const { tracker } = mount({ secondHalfFrom: timeOf(0) })
+    tracker.push(labelled(0))
+    env.settle()
+    tracker.reset()
+    tracker.push(labelled(1))
+    env.settle()
+    expect(ballOf(lastInput().record)).toMatchObject({ x: -BALL.x, y: -BALL.y })
+  })
+
+  it('turns the frame on screen when setOptions gives it, and back when it takes it away', () => {
+    const { tracker } = mount({})
+    tracker.push(labelled(0))
+    env.settle()
+    tracker.setOptions({ secondHalfFrom: timeOf(0) })
+    env.settle()
+    expect(ballOf(lastInput().record)).toMatchObject({ x: -BALL.x, y: -BALL.y })
+    tracker.setOptions({ secondHalfFrom: null })
+    env.settle()
+    expect(ballOf(lastInput().record)).toMatchObject(BALL)
+  })
+
+  it('turns the frame on screen in a paused replay too', () => {
+    const host = makeHost()
+    const tracker = createMatchTracker(host, { mode: 'replay', layersStorageKey: null, ...NO_CARDS })
+    mounted.push(tracker)
+    env.resize(host, 800, 450)
+    const record = parseRecord(labelled(0))!
+    tracker.present({ time: record.t, playing: false, record, lookback: [record] })
+    env.frame()
+    tracker.setOptions({ secondHalfFrom: record.t })
+    env.frame()
+    expect(ballOf(lastInput().record)).toMatchObject({ x: -BALL.x, y: -BALL.y })
+  })
+
+  it('ignores a value that is not a finite number', () => {
+    const { tracker } = mount({ secondHalfFrom: Number.NaN })
+    tracker.push(labelled(0))
+    env.settle()
+    expect(ballOf(lastInput().record)).toMatchObject(BALL)
+  })
+})
+
+describe('the secondHalf event', () => {
+  it('says where a half label it sees starts the second half, once', () => {
+    const { tracker } = mount({})
+    const heard: number[] = []
+    tracker.on('secondHalf', ({ from }) => heard.push(from))
+    tracker.push(labelled(0))
+    tracker.push(labelled(1, HALF_TIME))
+    tracker.push(labelled(2, HALF_TIME))
+    tracker.push(labelled(3, SECOND_HALF))
+    env.settle()
+    expect(heard).toEqual([parseRecord(labelled(1))!.t])
+  })
+
+  it('says it again for an earlier label, and not for the start the host gave', () => {
+    const { tracker } = mount({ secondHalfFrom: 1 })
+    const heard: number[] = []
+    tracker.on('secondHalf', ({ from }) => heard.push(from))
+    tracker.push(labelled(5, SECOND_HALF))
+    tracker.push(labelled(3, HALF_TIME))
+    env.settle()
+    expect(heard).toEqual([parseRecord(labelled(5))!.t, parseRecord(labelled(3))!.t])
+  })
+
+  it('is heard in replay, from a label in the lookback', () => {
+    const host = makeHost()
+    const tracker = createMatchTracker(host, { mode: 'replay', layersStorageKey: null, ...NO_CARDS })
+    mounted.push(tracker)
+    env.resize(host, 800, 450)
+    const heard: number[] = []
+    tracker.on('secondHalf', ({ from }) => heard.push(from))
+    const records = [parseRecord(labelled(0, HALF_TIME))!, parseRecord(labelled(1))!]
+    tracker.present({ time: records[1]!.t, playing: false, record: records[1]!, lookback: records })
+    env.frame()
+    expect(heard).toEqual([records[0]!.t])
+  })
+
+  it('is heard again after a reset, for the same label', () => {
+    const { tracker } = mount({})
+    const heard: number[] = []
+    tracker.on('secondHalf', ({ from }) => heard.push(from))
+    tracker.push(labelled(1, HALF_TIME))
+    tracker.reset()
+    tracker.push(labelled(1, HALF_TIME))
+    env.settle()
+    expect(heard).toHaveLength(2)
+  })
+})
+

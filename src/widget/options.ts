@@ -69,6 +69,18 @@ export interface MatchTrackerOptions {
    */
   aiLabels?: boolean
   /**
+   * When the second half starts, as the host knows it: a record time
+   * (`TrackerRecord.t`, the pipeline's own timestamp, in seconds). From it on
+   * the frames are shown turned round, as from a half label the widget sees
+   * itself, and the earlier of the two is where the second half starts. Kept
+   * through `reset()`, unlike the labels seen. A host keeps what the
+   * `secondHalf` event says, for its match, and gives it back here, so a
+   * reconnect, a reload or a seek past the labels still has the teams at the
+   * right ends. Null or left out: only the labels seen. Anything but a finite
+   * number is taken for null.
+   */
+  secondHalfFrom?: number | null
+  /**
    * Developer mode: a badge over the pitch while fewer than 18 players are
    * tracked, saying how many are, and whose attack covers the loss when one
    * does. For telling a real attack from one shown over lost players.

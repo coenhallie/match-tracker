@@ -26,6 +26,12 @@ export interface TrackerEvents {
   box: TrackerBox
   /** Which moments can be played on the frame on screen changed (`MatchTracker.availability`). */
   availability: MomentAvailability
+  /**
+   * A human half label the widget saw starts the second half at `from`, a
+   * record time, earlier than any it saw before. For the host to keep, for its
+   * match, and give back as `secondHalfFrom`. Not said for `secondHalfFrom` itself.
+   */
+  secondHalf: { from: number }
 }
 
 type Listener<T> = (value: T) => void

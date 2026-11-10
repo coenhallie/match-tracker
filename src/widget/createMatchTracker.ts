@@ -381,6 +381,7 @@ class Tracker implements MatchTracker {
     this.mode = mode
     this.options = rest
     this.resolved = resolveOptions(rest)
+    this.halves.setKnown(rest.secondHalfFrom ?? null)
     this.layers = initialLayers(rest)
     this.doc = host.ownerDocument
     this.wasHidden = this.doc.visibilityState === 'hidden'
@@ -454,7 +455,7 @@ class Tracker implements MatchTracker {
     if (!record) return
     const breaks = this.history.breaks
     if (!this.history.add(record)) return
-    this.halves.see(record)
+    if (this.halves.see(record)) this.saySecondHalf()
     // The stream broke and started again (LiveHistory.add): what it shows next is a seek.
     if (this.history.breaks !== breaks) {
       this.resumed = true
@@ -521,6 +522,10 @@ class Tracker implements MatchTracker {
     const layers = this.layersAfter(next, rest)
     this.options = next
     this.resolved = resolved
+    const from = this.halves.from
+    this.halves.setKnown(next.secondHalfFrom ?? null)
+    // The frame on screen is turned, or turned back, on the next frame, as one the host presents again.
+    if (this.halves.from !== from) this.loop.request()
     this.renderer?.setTheme(theme)
     this.director.setOptions(directorOptions(this.resolved))
     this.layersMenu.setText(this.resolved.text)
@@ -557,6 +562,12 @@ class Tracker implements MatchTracker {
 
   availability(): MomentAvailability {
     return copyAvailability(this.destroyed ? NOTHING_AVAILABLE : this.available)
+  }
+
+  /** A half label seen moved the start of the second half: the host hears where, to keep for `secondHalfFrom`. */
+  private saySecondHalf(): void {
+    const from = this.halves.labelled
+    if (from !== null) this.emitter.emit('secondHalf', { from })
   }
 
   /** What the director can play now, said to the host when it changed. */
@@ -682,11 +693,13 @@ class Tracker implements MatchTracker {
     this.flag = { time: state.time, playback }
     const { lookback } = state
     // The lookback too: a seek can land past a half label that the record on screen no longer carries.
+    let moved = false
     if (lookback !== this.seenLookback) {
-      for (const r of lookback) this.halves.see(r)
+      for (const r of lookback) moved = this.halves.see(r) || moved
       this.seenLookback = lookback
     }
-    if (state.record) this.halves.see(state.record)
+    if (state.record) moved = this.halves.see(state.record) || moved
+    if (moved) this.saySecondHalf()
     const record = state.record && this.halves.shown(state.record)
     const { phase, trail } = this.derive([state.record, lookback, this.halves.from], () =>
       state.record && record ? deriveAt(this.halves.window(windowAt(lookback, state.record), state.record), record) : null,

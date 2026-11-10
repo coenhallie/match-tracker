@@ -122,6 +122,8 @@ const optionProps = {
   layersMenu: { type: Boolean, default: undefined },
   debug: { type: Boolean, default: undefined },
   aiLabels: { type: Boolean, default: undefined },
+  /** null for none, as left out. */
+  secondHalfFrom: { type: Number as PropType<number | null>, default: undefined },
   /** null keeps nothing; left out, the default key. */
   layersStorageKey: { type: String as PropType<string | null>, default: undefined },
   formatAction: { type: Function as Prop<'formatAction'>, default: undefined },
@@ -168,6 +170,7 @@ export const MatchTracker = defineComponent({
     moment: (_value: TrackerEvents['moment']) => true,
     box: (_value: TrackerEvents['box']) => true,
     availability: (_value: TrackerEvents['availability']) => true,
+    secondHalf: (_value: TrackerEvents['secondHalf']) => true,
   },
   setup(props, { emit, expose, slots }) {
     const host = ref<HTMLElement | null>(null)
@@ -211,6 +214,7 @@ export const MatchTracker = defineComponent({
       tracker.on('zoom', (value) => emit('zoom', value))
       tracker.on('layers', (value) => emit('layers', value))
       tracker.on('moment', (value) => emit('moment', value))
+      tracker.on('secondHalf', (value) => emit('secondHalf', value))
       tracker.on('box', takeBox)
       tracker.on('availability', takeAvailability)
       overlay.value = tracker.overlay

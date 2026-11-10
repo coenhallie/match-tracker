@@ -25,10 +25,12 @@ import { humanLabelNames } from './actionLabels.js'
  *
  * What is remembered is the time the second half starts, and every record from
  * that time on is turned, however the widget reaches it, by playing or by
- * seeking either way. It is remembered from the labels this widget has seen:
- * a replay seeking into the second half without having played past either
- * label, or a live widget joining or reset after both, has not seen one, and
- * shows the second half as the pipeline sends it.
+ * seeking either way. It is remembered from the labels this widget has seen,
+ * and from the host (`secondHalfFrom`), which keeps what the widget told it
+ * (the `secondHalf` event) for its match: a replay seeking into the second half
+ * without having played past either label, or a live widget joining or reset
+ * after both, knows of the second half only from the host. The earlier of the
+ * two is where it starts.
  */
 
 /** The bare label names (actionName) that end the first half or start the second. */
@@ -51,16 +53,34 @@ export function turnFrame(frame: Frame): Frame {
 }
 
 export class SecondHalf {
+  /** Where the labels seen say the second half starts. */
   private start: number | null = null
+  /** Where the host says it starts (`secondHalfFrom`), from the labels it was told of before. */
+  private known: number | null = null
   /**
    * Each record's turned copy, made once: a replay host hands the same records
    * over many display frames, and the window around them over many records.
    */
   private turned = new WeakMap<TrackerRecord, TrackerRecord>()
 
-  /** When the second half starts, in record time, or null while no label has said. */
+  /** When the second half starts, in record time: the earlier of the host's start and the labels', or null while neither says. */
   get from(): number | null {
+    if (this.start === null) return this.known
+    return this.known === null ? this.start : Math.min(this.start, this.known)
+  }
+
+  /** When the labels this has seen say the second half starts, or null while none has. */
+  get labelled(): number | null {
     return this.start
+  }
+
+  /**
+   * The start the host knows of, in record time, or null for none. It is kept
+   * through a reset, which forgets only the labels seen. Anything but a finite
+   * number is taken for none.
+   */
+  setKnown(from: number | null): void {
+    this.known = typeof from === 'number' && Number.isFinite(from) ? from : null
   }
 
   /**
@@ -69,17 +89,23 @@ export class SecondHalf {
    */
   private read = new WeakSet<TrackerRecord>()
 
-  /** Take note of `record`'s labels: a half label puts the start of the second half at its time, or earlier. */
-  see(record: TrackerRecord): void {
-    if (this.read.has(record)) return
+  /**
+   * Take note of `record`'s labels: a half label puts the start of the second
+   * half at its time, or earlier. True when that moved where the labels say it starts.
+   */
+  see(record: TrackerRecord): boolean {
+    if (this.read.has(record)) return false
     this.read.add(record)
-    if (this.start !== null && record.t >= this.start) return
-    if (humanLabelNames(record.frame).some((name) => HALF_LABELS.has(name))) this.start = record.t
+    if (this.start !== null && record.t >= this.start) return false
+    if (!humanLabelNames(record.frame).some((name) => HALF_LABELS.has(name))) return false
+    this.start = record.t
+    return true
   }
 
   /** Whether a record at `t` is in the second half. */
   private covers(t: number): boolean {
-    return this.start !== null && t >= this.start
+    const from = this.from
+    return from !== null && t >= from
   }
 
   /** `record` as it is shown: turned round in the second half, as it is before. */
@@ -96,7 +122,7 @@ export class SecondHalf {
     return this.covers(at.t) ? records.map((r) => this.turn(r)) : records
   }
 
-  /** Forget the second half, for a new match. */
+  /** Forget the labels seen, for a reconnect or a new match. The host's start stays until the host changes it. */
   reset(): void {
     this.start = null
     this.read = new WeakSet()

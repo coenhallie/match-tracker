@@ -6,6 +6,24 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### What you see
+
+- **The teams stay at the right ends through a reconnect, a reload or a seek**,
+  when the host passes the second half's start back in (`secondHalfFrom`,
+  below). Before, a widget that had not seen a half label itself, after a
+  `reset()` or a seek past both labels, showed the second half unturned.
+
+### API
+
+- A new option, `secondHalfFrom`: when the second half starts, as a record time
+  (`TrackerRecord.t`). From it on the frames are turned round, as from a half
+  label the widget sees; the earlier of the two wins. It is kept through
+  `reset()` and can be changed with `setOptions`. The Vue component takes it as
+  a prop.
+- A new event, `secondHalf` (`{ from }`): a human half label the widget saw
+  starts the second half at `from`, for the host to keep for its match and pass
+  back as `secondHalfFrom`. The Vue component emits it.
+
 ## [0.8.0] - 2026-11-09
 
 The teams change ends at half time.

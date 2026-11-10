@@ -269,6 +269,20 @@ describe('the Vue component', () => {
     expect(layers).toHaveLength(1)
   })
 
+  it('hands secondHalfFrom over, null too, and emits the secondHalf event', async () => {
+    const heard: unknown[] = []
+    const { wrapper, handle } = mountTracker({ secondHalfFrom: 2700, onSecondHalf: (v: unknown) => heard.push(v) })
+    expect(last().options.secondHalfFrom).toBe(2700)
+    const setOptions = vi.spyOn(last().tracker, 'setOptions')
+    await wrapper.setProps({ secondHalfFrom: null })
+    expect(setOptions).toHaveBeenCalledWith({ secondHalfFrom: null })
+    const parsed = JSON.parse(message(0)) as { timestamp: number; match: { state?: unknown } }
+    parsed.match.state = { actions: [{ action_type: 'End FirstHalf', action_origin: 'human' }] }
+    handle.push(JSON.stringify(parsed))
+    env.settle()
+    expect(heard).toEqual([{ from: parsed.timestamp }])
+  })
+
   it('does nothing through the ref before mount or after unmount', () => {
     const handle = ref<MatchTrackerHandle | null>(null)
     const Parent = defineComponent({

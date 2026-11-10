@@ -182,7 +182,7 @@ socket.addEventListener('message', (event) => tracker.value?.push(event.data))
   </MatchTracker>
   ```
 
-- The component emits `zoom`, `layers`, `moment`, `box` and `availability`.
+- The component emits `zoom`, `layers`, `moment`, `box`, `availability` and `secondHalf`.
   It emits `box` and `availability` at mount too, when a tracker starts with
   values other than the last ones emitted.
 - The ref exposes `push`, `present`, `reset`, `trigger`, `availability()`,
@@ -270,6 +270,7 @@ Also exported:
 | `layersStorageKey` | `string \| null` | `'match-tracker.layers'` | Where the menu's choice is kept in `localStorage`. `null` keeps nothing. A kept choice wins over `layers`. Fixed at mount, like `mode`: `setOptions` ignores it, and so does the Vue component when the prop changes. To keep the choice somewhere else, make a new tracker. |
 | `formatAction` | `(actionType: string) => string` | as it comes | The bottom-left text for each of a frame's actions, from its `action_type` (for example `'EventType.FREE_KICK'` to `'Free kick'`). |
 | `aiLabels` | `boolean` | `false` | Whether the bottom-left action text lists the pipeline's AI labels too. Off, it lists only the labels a human gave, the ones the moments play on (see [Labels](#labels)). For developers, like `layersMenu`. Can be changed with `setOptions`. |
+| `secondHalfFrom` | `number \| null` | `null` | When the second half starts, as the host knows it: a record time (`TrackerRecord.t`, the pipeline's own timestamp, in seconds), as the `secondHalf` event says it. From it on the teams are shown at the other ends, as from a half label the widget sees (see [The teams change ends](#the-teams-change-ends)). Kept through `reset()`. Anything but a finite number counts as `null`. Can be changed with `setOptions`. |
 | `debug` | `boolean` | `false` | Developer mode. A red badge, top left of the pitch, while fewer than 18 players are tracked on the frame on screen: how many are, and whose attack covers the loss when one does (see [Player loss](#player-loss)). For telling a real attack from one shown over lost players. Can be changed with `setOptions`. |
 
 The layers are `goal`, `goalZoom`, `attack`, `playerLoss`, `corner`, `throwInBanner`,
@@ -358,11 +359,16 @@ as it does in the stadium. Their height is kept.
 - The widget remembers the time of the label it saw, and turns every frame from
   then on, however it gets there: playing, or seeking back or forward. A seek
   back before it shows the first half as it was.
-- It only knows of labels it has seen. A replay seeking into the second half
-  without having played past either label (or having it within `lookback`), or
-  a live widget joined or `reset` after both, shows the second half as the
-  pipeline sends it.
-- `reset()` forgets it, as everything else.
+- On its own it only knows of labels it has seen. A replay seeking into the
+  second half without having played past either label (or having it within
+  `lookback`), or a live widget joined or `reset` after both, shows the second
+  half as the pipeline sends it.
+- So the host can tell it: the `secondHalf` event says where a label the widget
+  saw starts the second half, and the `secondHalfFrom` option gives that back.
+  A host that keeps it for its match, and passes it in, keeps the teams at the
+  right ends through a reconnect or a reload. The earlier of the two is where
+  the second half starts.
+- `reset()` forgets the labels seen, as everything else, but not `secondHalfFrom`.
 
 #### Small cards: foul, shot and header on goal
 
@@ -440,6 +446,7 @@ The `TrackerText` keys are:
 | `moment` | `{ moment, phase: 'start' \| 'end' }` | A moment came on screen, or went. |
 | `box` | `TrackerBox` | The pitch's box moved or changed size. The box measured at mount is not sent, because no listener exists yet: read `tracker.box` for it. |
 | `availability` | `MomentAvailability` | What can be played changed: a new frame, or a reset. |
+| `secondHalf` | `{ from }` | A human half label the widget saw starts the second half at `from` (a record time, in seconds), earlier than any it saw before. Keep it for the match and give it back as `secondHalfFrom` (see [The teams change ends](#the-teams-change-ends)). Not sent for `secondHalfFrom` itself. |
 
 A listener that throws is reported (`reportError`) and does not stop the widget.
 

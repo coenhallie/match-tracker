@@ -145,4 +145,51 @@ describe('SecondHalf', () => {
     const r = record(3000)
     expect(halves.shown(r)).toBe(r)
   })
+
+  it('says when what the labels say changes, and only then', () => {
+    const halves = new SecondHalf()
+    expect(halves.see(record(2000))).toBe(false)
+    expect(halves.see(record(3600, [human('Start second half')]))).toBe(true)
+    expect(halves.labelled).toBe(3600)
+    expect(halves.see(record(3610, [human('Start second half')]))).toBe(false)
+    expect(halves.see(record(2700, [human('End FirstHalf')]))).toBe(true)
+    expect(halves.labelled).toBe(2700)
+  })
+})
+
+describe("SecondHalf, with the host's start", () => {
+  it('turns the records from the start the host knows of, without a label', () => {
+    const halves = new SecondHalf()
+    halves.setKnown(2700)
+    expect(halves.from).toBe(2700)
+    expect(halves.labelled).toBeNull()
+    expect(ballOf(halves.shown(record(2699)))?.x).toBe(30)
+    expect(ballOf(halves.shown(record(2700)))?.x).toBe(-30)
+  })
+
+  it("starts from the earlier of the host's start and the labels'", () => {
+    const halves = new SecondHalf()
+    halves.setKnown(2800)
+    halves.see(record(2700, [human('End FirstHalf')]))
+    expect(halves.from).toBe(2700)
+    halves.setKnown(2600)
+    expect(halves.from).toBe(2600)
+  })
+
+  it("keeps the host's start through a reset, and drops it for null", () => {
+    const halves = new SecondHalf()
+    halves.setKnown(2800)
+    halves.see(record(2700, [human('End FirstHalf')]))
+    halves.reset()
+    expect(halves.from).toBe(2800)
+    expect(halves.labelled).toBeNull()
+    halves.setKnown(null)
+    expect(halves.from).toBeNull()
+  })
+
+  it.each([[Number.NaN], [Number.POSITIVE_INFINITY], ['2700'], [{}]])('takes %s for no start', (value) => {
+    const halves = new SecondHalf()
+    halves.setKnown(value as number)
+    expect(halves.from).toBeNull()
+  })
 })
