@@ -276,6 +276,35 @@ describe('flashbacks in live mode', () => {
     expect(drawn.at(-1)?.layers?.attack).toBeDefined()
   })
 
+  it('stores nothing while the layer is off, and drops its clips when switched off', () => {
+    const bytes = (tracker: MatchTracker) => (tracker as unknown as { flashback: { bytes(): number } }).flashback.bytes()
+    const off = mount({ layers: { flashback: false } })
+    const offLog = events(off.tracker)
+    goalThenRun(new Stream(off.tracker), 150)
+    expect(bytes(off.tracker)).toBe(0)
+    expect(offLog.some((e) => e.startsWith('flashback'))).toBe(false)
+
+    // Switched off mid-replay: the replay ends, and every clip goes with it.
+    const { tracker } = mount()
+    const log = events(tracker)
+    const stream = new Stream(tracker)
+    // Two goals 20 s apart: the later one plays, the earlier one waits in the store.
+    stream.push(800, 'valid', (i) => (i === GOAL || i === 600 ? { labels: ['goal'] } : {}))
+    expect(bytes(tracker)).toBeGreaterThan(0)
+    stream.push(25, 'long')
+    const at = stream.t(600)
+    tracker.setOptions({ layers: { flashback: false } })
+    expect(bytes(tracker)).toBe(0)
+    stream.push(2, 'long')
+    expect(log.filter((e) => e.startsWith('flashback'))).toEqual([`flashback:start@${at}`, `flashback:end@${at}`])
+    // Back on, it starts empty: live play, then another long run, plays nothing.
+    tracker.setOptions({ layers: { flashback: true } })
+    expect(bytes(tracker)).toBe(0)
+    stream.push(50, 'valid')
+    stream.push(150, 'long')
+    expect(log.filter((e) => e.startsWith('flashback'))).toHaveLength(2)
+  })
+
   it('cuts the replay when the layer goes off or the widget comes back into view', () => {
     const { tracker } = mount()
     const log = events(tracker)

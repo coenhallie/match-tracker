@@ -481,7 +481,8 @@ class Tracker implements MatchTracker {
     if (!record) return
     const breaks = this.history.breaks
     if (!this.history.add(record)) return
-    this.flashback?.see(record, this.history.window())
+    // Nothing is kept for flashbacks while their layer is off.
+    if (this.layers.flashback) this.flashback?.see(record, this.history.window())
     if (this.halves.see(record)) this.saySecondHalf()
     // The stream broke and started again (LiveHistory.add): what it shows next is a seek.
     if (this.history.breaks !== breaks) {
@@ -646,8 +647,11 @@ class Tracker implements MatchTracker {
    * says whether the choice is kept under the storage key.
    */
   private applyLayers(layers: ReplayLayers, keep: boolean): void {
-    // Drawn live just below.
-    if (this.layers.flashback && !layers.flashback) this.cutFlashback(false)
+    if (this.layers.flashback && !layers.flashback) {
+      // Drawn live just below; the `end` comes with the next frame.
+      this.cutFlashback(false)
+      this.flashback?.forget()
+    }
     this.layers = { ...layers }
     if (keep) storeLayers(this.options, this.layers)
     this.layersMenu.setLayers(this.layers)

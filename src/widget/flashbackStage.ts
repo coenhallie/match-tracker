@@ -106,6 +106,18 @@ export class FlashbackStage {
     if (moment) this.store.note(moment)
   }
 
+  /** Forget every clip and all that was spotted, as the layer goes off; a clip playing is cut first. */
+  forget(): void {
+    this.store.clear()
+    this.spotter.reset()
+    this.carried = null
+  }
+
+  /** What the clips kept take up, about (ClipStore.bytes). */
+  bytes(): number {
+    return this.store.bytes()
+  }
+
   /** One animation frame: what to paint, and what to tell the host. */
   tick(nowMs: number, live: FlashbackLive, halves: SecondHalf, renderedWidth: number): FlashbackTick {
     const frame = this.controller.step(nowMs, live)
