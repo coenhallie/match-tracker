@@ -264,16 +264,44 @@ describe('Flashback', () => {
     }
   })
 
-  it('may start the next clip on the step after cut(), as the start rule still holds', () => {
+  it('holds off after a cut until the run ends', () => {
+    const { store } = storeWith(100, 130)
+    const d = make(store)
+    d.run(200, 2, () => longRun())
+    d.fb.cut(d.nowMs)
+    // The rest of the run: someone wants the live frame, so nothing starts, though a clip is ready.
+    const rest = d.run(202, 5, () => longRun())
+    expect(rest[0]!.events).toEqual([{ phase: 'end', at: 130 }])
+    expect(rest.every((f) => f.shot === null)).toBe(true)
+    expect(d.events('start')).toEqual([{ phase: 'start', at: 130 }])
+    expect(store.next()?.at).toBe(100)
+    // The run ends, and a new one of 5 s or more starts the next clip.
+    d.step(rec(207, valid()))
+    expect(d.step(rec(207.04, invalid(FLASHBACK_MIN_RUN_S))).events).toEqual([{ phase: 'start', at: 100 }])
+  })
+
+  it('a short valid gap does not end the hold-off', () => {
     const d = make(storeWith(100, 130).store)
     d.run(200, 2, () => longRun())
     d.fb.cut(d.nowMs)
-    const next = d.step(rec(202, longRun()))
-    expect(next.events).toEqual([
-      { phase: 'end', at: 130 },
-      { phase: 'start', at: 100 },
-    ])
-    expect(next.shot?.clip.at).toBe(100)
+    d.step(rec(202, valid(0.28)))
+    d.run(202.04, 1, () => longRun())
+    d.step(rec(203.04, valid(MERGE_GAP_S - 0.01)))
+    d.run(203.08, 1, () => longRun())
+    expect(d.events('start')).toHaveLength(1)
+    // A valid record with 1.5 s or more to the next invalid one ends the run.
+    d.step(rec(204.08, valid(MERGE_GAP_S)))
+    expect(d.step(rec(204.12, longRun())).events).toEqual([{ phase: 'start', at: 100 }])
+  })
+
+  it('starts the next clip after a live label moment ends', () => {
+    const d = make(storeWith(100, 130).store)
+    d.run(200, 2, () => longRun())
+    const moment = d.run(202, 2, () => longRun(), { labelMoment: true })
+    expect(moment[0]!.events).toEqual([{ phase: 'end', at: 130 }])
+    expect(moment.every((f) => f.shot === null)).toBe(true)
+    // The moment is over and the run goes on: the next clip starts at once.
+    expect(d.step(rec(204, longRun())).events).toEqual([{ phase: 'start', at: 100 }])
   })
 
   it('rides through a valid gap under 1.5 s', () => {
@@ -400,5 +428,13 @@ describe('Flashback', () => {
     // A record with no validity after a reset says nothing: no carried state starts a clip.
     const frame = d.step(rec(202, undefined))
     expect(frame).toEqual({ shot: null, alpha: 0, agoS: null, events: [] })
+  })
+
+  it('ends the hold-off of a cut on reset', () => {
+    const d = make(storeWith(100, 130).store)
+    d.run(200, 2, () => longRun())
+    d.fb.cut(d.nowMs)
+    d.fb.reset()
+    expect(d.step(rec(202, longRun())).events).toEqual([{ phase: 'start', at: 100 }])
   })
 })

@@ -9,7 +9,9 @@
  * `nowMs`, so it goes on when the stream stalls. When it ends and the start rule still holds, the
  * next clip follows at once; otherwise live play shows again. It is cut off at once by a valid
  * live record (unless an invalid one is due within MERGE_GAP_S, as the attack cover rides such
- * gaps), a live label moment, the layer going off, or `cut()`.
+ * gaps), a live label moment, the layer going off, or `cut()`. After `cut()`, which means someone
+ * wants the live frame, nothing starts again until the run ends (a valid live record not in such
+ * a gap) or `reset()`; after a live label moment, the next clip may start as soon as it ends.
  *
  * A live record with no validity counts as the validity the last one that had it carries
  * (carriedValidity). A carried state that flipped is a guess with no horizon, so it can keep a
@@ -112,6 +114,12 @@ function runLeft(state: RecordValidity | null): number | undefined {
   return state.horizonS !== undefined ? Infinity : undefined
 }
 
+/** Whether `state` ends the invalid run: valid, and not a short gap before the next invalid one. */
+function runEnded(state: RecordValidity | null): boolean {
+  if (!state || state.invalid) return false
+  return !(state.nextInvalidInS !== null && state.nextInvalidInS < MERGE_GAP_S)
+}
+
 export class Flashback {
   private playing: Playing | null = null
   /** The last clip played, named while the tab fades out. */
@@ -123,6 +131,8 @@ export class Flashback {
   private alpha = 0
   /** Events from `cut()`, given out by the next step. */
   private pending: FlashbackEvent[] = []
+  /** Set by `cut()`: no clip starts until the live run ends. */
+  private held = false
 
   constructor(
     private readonly store: ClipStore,
@@ -148,6 +158,7 @@ export class Flashback {
       if (newest.validity) this.carried = { t: newest.t, validity: newest.validity }
     }
     const state = newest ? (newest.validity ?? carriedValidity(this.carried, newest.t)) : null
+    if (this.held && runEnded(state)) this.held = false
 
     if (this.playing) {
       if (this.cuts(live, state)) this.end(nowMs, events)
@@ -163,9 +174,14 @@ export class Flashback {
     return { shot, alpha: this.alpha, agoS, events }
   }
 
-  /** End the clip playing at once, as when someone wants the live frame. Its `end` comes with the next step. */
+  /**
+   * End the clip playing at once, as when someone wants the live frame, and start none until the
+   * live run ends. Its `end` comes with the next step. With no clip playing it does nothing.
+   */
   cut(nowMs: number): void {
-    if (this.playing) this.end(nowMs, this.pending)
+    if (!this.playing) return
+    this.end(nowMs, this.pending)
+    this.held = true
   }
 
   reset(): void {
@@ -176,20 +192,20 @@ export class Flashback {
     this.fade = { from: 0, atMs: 0, target: 0 }
     this.alpha = 0
     this.pending = []
+    this.held = false
     // `time` is kept: it only goes up.
   }
 
   private cuts(live: FlashbackLive, state: RecordValidity | null): boolean {
     if (live.labelMoment || !live.layerOn) return true
-    if (!state || state.invalid) return false
-    // A short valid gap before the next invalid run is ridden through.
-    return !(state.nextInvalidInS !== null && state.nextInvalidInS < MERGE_GAP_S)
+    return runEnded(state)
   }
 
   /** Start the next clip if the start rule holds. True when one started. */
   private start(nowMs: number, live: FlashbackLive, state: RecordValidity | null, events: FlashbackEvent[]): boolean {
     const left = runLeft(state)
-    if (!live.layerOn || live.labelMoment || left === undefined || left < FLASHBACK_MIN_RUN_S) return false
+    if (this.held || !live.layerOn || live.labelMoment) return false
+    if (left === undefined || left < FLASHBACK_MIN_RUN_S) return false
     const chained = this.playing !== null
     for (let clip = this.store.next(); clip; clip = this.store.next()) {
       // The records first: taking the clip frees them.
