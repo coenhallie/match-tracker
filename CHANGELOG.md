@@ -6,6 +6,10 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-09
+
+The host can keep the teams at the right ends through a reconnect or a reload.
+
 ### What you see
 
 - **The teams stay at the right ends through a reconnect, a reload or a seek**,
