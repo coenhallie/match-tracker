@@ -407,12 +407,27 @@ describe('Flashback', () => {
 
   it('chains on a record with no validity, by the validity carried from the last that had it', () => {
     const d = make(storeWith(100, 130).store)
-    d.run(200, 26, (_t, i) => (i === 0 ? longRun() : undefined))
+    // A 20 s run said once: when the first clip ends, 8 s of it are left by the carried countdown.
+    d.run(200, 26, (_t, i) => (i === 0 ? invalid(20) : undefined))
     expect(d.events()).toEqual([
       { phase: 'start', at: 130 },
       { phase: 'start', at: 100 },
       { phase: 'end', at: 100 },
     ])
+  })
+
+  it('chains no clip once a carried null countdown has aged past its horizon', () => {
+    const { store } = storeWith(100, 130, 160, 190)
+    const d = make(store)
+    // 1 s of a run with no valid record due within the horizon, then 80 s of records with no validity.
+    d.run(200, 1, () => longRun())
+    d.run(201, 80, () => undefined)
+    // The first clip plays out whole; by its end the promise is spent, so no other follows.
+    expect(d.events()).toEqual([
+      { phase: 'start', at: 190 },
+      { phase: 'end', at: 190 },
+    ])
+    expect(store.clips()).toHaveLength(3)
   })
 
   it('plays each clip once', () => {

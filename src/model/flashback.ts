@@ -34,7 +34,9 @@ export interface CarriedValidity {
  * What the stream says at record time `t`, from the last record that said anything.
  * Its countdowns are aged by `t - last.t`, and `horizonS` is kept. A countdown that has
  * run out flips the state. A flipped state is a guess, so it drops `horizonS`: its null
- * countdown then reads as "unknown", never as "10 s or more". Null when `last` is null.
+ * countdown then reads as "unknown", never as "10 s or more". A null countdown with a
+ * horizon only promised nothing within `horizonS`, so it drops `horizonS` too once its
+ * age reaches it. Null when `last` is null.
  */
 export function carriedValidity(last: CarriedValidity | null, t: number): RecordValidity | null {
   if (!last) return null
@@ -43,6 +45,7 @@ export function carriedValidity(last: CarriedValidity | null, t: number): Record
   const aged = (seconds: number | null): number | null => (seconds === null ? null : seconds - age)
   const nextValidInS = aged(validity.nextValidInS)
   const nextInvalidInS = aged(validity.nextInvalidInS)
+  // A countdown aged to exactly 0 has run out: the record it named is due now.
   if (validity.invalid && nextValidInS !== null && nextValidInS <= 0) {
     return { invalid: false, nextInvalidInS: null, nextValidInS: 0 }
   }
@@ -54,6 +57,8 @@ export function carriedValidity(last: CarriedValidity | null, t: number): Record
     nextInvalidInS: validity.invalid ? 0 : nextInvalidInS,
     nextValidInS: validity.invalid ? nextValidInS : 0,
   }
-  if (validity.horizonS !== undefined) carried.horizonS = validity.horizonS
+  const countdown = validity.invalid ? validity.nextValidInS : validity.nextInvalidInS
+  const spent = countdown === null && validity.horizonS !== undefined && age >= validity.horizonS
+  if (validity.horizonS !== undefined && !spent) carried.horizonS = validity.horizonS
   return carried
 }

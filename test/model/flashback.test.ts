@@ -23,6 +23,22 @@ describe('carriedValidity', () => {
     const last = { t: 100, validity: { invalid: false, nextInvalidInS: 0.5, nextValidInS: 0, horizonS: 10 } }
     expect(carriedValidity(last, 101)).toEqual({ invalid: true, nextInvalidInS: 0, nextValidInS: null })
   })
+  it('drops the horizon of a null countdown once it has aged past it', () => {
+    const horizon = 9.999999999990905
+    const last = { t: 100, validity: { invalid: true, nextInvalidInS: 0, nextValidInS: null, horizonS: horizon } }
+    expect(carriedValidity(last, 109.9)).toEqual({ invalid: true, nextInvalidInS: 0, nextValidInS: null, horizonS: horizon })
+    // The pipeline promised no valid record within its horizon, and no more: past it, nothing is known.
+    expect(carriedValidity(last, 100 + horizon)).toEqual({ invalid: true, nextInvalidInS: 0, nextValidInS: null })
+    expect(carriedValidity(last, 180)).toEqual({ invalid: true, nextInvalidInS: 0, nextValidInS: null })
+  })
+  it('counts a countdown aged to exactly 0 as run out', () => {
+    const last = { t: 100, validity: { invalid: true, nextInvalidInS: 0, nextValidInS: 1 } }
+    expect(carriedValidity(last, 101)).toEqual({ invalid: false, nextInvalidInS: null, nextValidInS: 0 })
+  })
+  it('ages a valid countdown by record time, without flipping before it runs out', () => {
+    const last = { t: 100, validity: { invalid: false, nextInvalidInS: 3, nextValidInS: 0, horizonS: 10 } }
+    expect(carriedValidity(last, 101)).toEqual({ invalid: false, nextInvalidInS: 2, nextValidInS: 0, horizonS: 10 })
+  })
   it('says nothing before anything was said', () => {
     expect(carriedValidity(null, 5)).toBeNull()
   })
