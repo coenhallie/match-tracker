@@ -292,6 +292,32 @@ describe('LiveHistory with records that say nothing about their validity', () =>
     expect(history.shown()).toBe(newest)
   })
 
+  it('stops carrying once the stream has said nothing for longer than its horizon', () => {
+    const history = new LiveHistory()
+    history.add(said(1, 7, false))
+    history.add(said(2, -40, true, null))
+    // 15 s of records that say nothing: held while the horizon (10 s) reaches, then valid.
+    let n = 3
+    for (; record(n).t - record(2).t <= 10; n++) history.add(unsaid(n, -40))
+    expect(history.shown()?.frame.balls?.[0]?.projected_coordinates?.x).toBe(7)
+    const past = unsaid(n, 12)
+    history.add(past)
+    expect(history.shown()).toBe(past)
+    expect(history.latestValid()).toBe(past)
+  })
+
+  it('shows one that starts the stream inside a run with the validity it carries', () => {
+    const history = new LiveHistory()
+    history.add(said(1, -40, true))
+    const quiet = unsaid(2, -41)
+    history.add(quiet)
+    const shown = history.shown()
+    expect(shown?.frameCount).toBe(2)
+    expect(shown?.validity?.invalid).toBe(true)
+    expect(history.shown()).toBe(shown)
+    expect(history.latestValid()).toBeNull()
+  })
+
   it('forgets what the stream said on clear and when the stream breaks', () => {
     const history = new LiveHistory()
     history.add(said(1, 7, false))

@@ -18,7 +18,9 @@ A smaller package, and invalid frames covered without a blink.
   again on the next, blinking about twice a second. Now a frame that says
   nothing is what the stream last said, its countdown run on by the frame's own
   time: inside the run it is held and covered like the frames around it, and
-  once the run was due to end it counts as valid. A stream that never sends
+  once the run was due to end it counts as valid. What the stream said is
+  carried only as far as its lookahead reached, 10 s on staging, so a stream
+  that stops sending `raw_data` never leaves the picture held. A stream that never sends
   `raw_data` is unchanged, and so is replay.
 
 ### Package

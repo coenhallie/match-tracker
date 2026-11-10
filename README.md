@@ -437,8 +437,11 @@ and the ball, but their positions are made up. The widget never shows them:
 - A frame whose message carries no `raw_data` (the default socket sends some
   copies without it) is what the stream last said, its countdown run on by the
   frame's own time: inside an invalid run it is invalid too, held and covered
-  like the others, and once that run was due to end it counts as valid. A
-  stream that never sends `raw_data` is all valid, as before.
+  like the others, and once that run was due to end it counts as valid. What
+  the stream said is carried only as far as its lookahead reached (10 s on
+  staging): a frame after that, with nothing said since, counts as valid again,
+  so the picture never stays held for good. A stream that never sends
+  `raw_data` is all valid, as before.
 
 Replay mode never does any of this, whatever its data carries.
 

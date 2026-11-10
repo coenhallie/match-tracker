@@ -40,6 +40,8 @@ export class LiveHistory {
   } | null = null
   /** How many times the stream broke (see `add`): each started the history afresh. */
   breaks = 0
+  /** What `shown()` gave for an invalid newest record with nothing valid to hold it on. */
+  private carryingFor: { record: TrackerRecord; shown: TrackerRecord } | null = null
   /** The newest record that said anything about its validity, and what it said. */
   private said: CarriedValidity | null = null
   /** What each held record stood for, said or carried: decided once, as it arrived. */
@@ -71,7 +73,7 @@ export class LiveHistory {
 
     const stated = record.validity
     if (stated && (!this.said || record.t >= this.said.t)) this.said = { t: record.t, validity: stated }
-    this.validity.set(record, stated ?? carriedValidity(this.said, record.t))
+    this.validity.set(record, stated ?? this.carried(record.t))
     let at = this.held.length
     while (at > 0 && this.held[at - 1]!.t > record.t) at--
     this.held.splice(at, 0, record)
@@ -105,7 +107,8 @@ export class LiveHistory {
   shown(): TrackerRecord | null {
     const newest = this.newest
     const lastValid = this.lastValid
-    if (!newest || this.isValid(newest) || !lastValid) return newest
+    if (!newest || this.isValid(newest)) return newest
+    if (!lastValid) return this.carrying(newest)
     const lastBall = this.lastBall
     const cached = this.shownFor
     if (cached && cached.newest === newest && cached.lastValid === lastValid && cached.lastBall === lastBall) {
@@ -137,6 +140,34 @@ export class LiveHistory {
     this.shownFor = null
     this.said = null
     this.validity = new WeakMap()
+    this.carryingFor = null
+  }
+
+  /**
+   * What a record at `t` that says nothing stands for: what the stream last said, carried
+   * forward, but only for as far as that word reached (its lookahead's horizon, or HISTORY_S
+   * without one). Past that the stream has stopped saying anything, and the record is valid,
+   * as on a stream that never said anything: a carry that never ran out would hold the
+   * picture still for good.
+   */
+  private carried(t: number): RecordValidity | null {
+    const said = this.said
+    if (!said || t - said.t > (said.validity.horizonS ?? HISTORY_S)) return null
+    return carriedValidity(said, t)
+  }
+
+  /**
+   * An invalid record shown as it is, with nothing valid yet to hold it on: with the
+   * validity it carries when it said none itself, so what is drawn over it knows. Made
+   * once per record, so it keeps its identity.
+   */
+  private carrying(record: TrackerRecord): TrackerRecord {
+    if (record.validity) return record
+    const cached = this.carryingFor
+    if (cached && cached.record === record) return cached.shown
+    const shown: TrackerRecord = { ...record, validity: this.validity.get(record)! }
+    this.carryingFor = { record, shown }
+    return shown
   }
 
   /** Whether a held record is valid, as it said or as what it carried says. */
