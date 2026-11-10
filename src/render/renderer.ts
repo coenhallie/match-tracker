@@ -207,7 +207,7 @@ export interface FrameLayers {
   smallLabelCard?: LabelCardIndicator | undefined
   /** The goal's card, over everything, fixed to the frame while the view zooms. */
   goalBanner?: GoalBanner | undefined
-  /** The flashback's stroke and tab, over the goal's card, fixed to the frame while the view zooms. */
+  /** The flashback's stroke and tab, over the goal's card and the action text, fixed to the frame while the view zooms. */
   flashback?: FlashbackIndicator | undefined
   /** Ring strengths, for a caller that fades the rings in and out. */
   rings?: RingStrengths | undefined
@@ -481,16 +481,18 @@ export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTh
       drawGoalBanner(ctx as CanvasRenderingContext2D, transform2d, layers.goalBanner, theme)
       ctx.setTransform(...matrix)
     }
-    if (layers.flashback) {
-      ctx.setTransform(sx, 0, 0, sy, 0, 0)
-      drawFlashback(ctx as CanvasRenderingContext2D, transform2d, layers.flashback, theme)
-      ctx.setTransform(...matrix)
-    }
 
     // ── Overlay HUD ────────────────────────────────────────────────────────
     const fc = frame.frame_data?.[0]?.frame_count ?? null
     const actions = frame.state?.actions ?? []
     draw2DOverlay(fc, actions)
+
+    // Over the action text: in the bottom left, it is under the flashback's tab, never white on it.
+    if (layers.flashback) {
+      ctx.setTransform(sx, 0, 0, sy, 0, 0)
+      drawFlashback(ctx as CanvasRenderingContext2D, transform2d, layers.flashback, theme)
+      ctx.setTransform(...matrix)
+    }
   }
 
   /**

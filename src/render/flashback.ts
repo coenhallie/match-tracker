@@ -12,7 +12,8 @@ import type { RenderTheme } from './theme.js'
  * All in design pixels, through `designUnit`, fixed to the frame.
  */
 const STROKE_PX = 12
-const INSET_PX = 12
+/** The tab sits on the stroke's inner edge, and is filled on under the stroke to the frame's edge. */
+const INSET_PX = STROKE_PX
 const PAD_Y_PX = 16
 const PAD_OUTER_PX = 16
 const PAD_INNER_PX = 32
@@ -57,6 +58,28 @@ export function flashbackSide(event: TrackerRecord): 'left' | 'right' {
   return 'left'
 }
 
+/**
+ * The timer laid out in tabular figures, as a canvas cannot ask the font for them: each digit
+ * centred in a cell as wide as the widest digit, the rest at its own width. So the tab and the
+ * words after the time keep still as the seconds tick. In `font`, from x 0.
+ */
+function tabularRuns(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  font: string,
+): { width: number; runs: Array<{ text: string; x: number }> } {
+  const digit = Math.max(...'0123456789'.split('').map((d) => measureWidth(ctx, d, font)))
+  const runs: Array<{ text: string; x: number }> = []
+  let x = 0
+  for (const part of text.match(/\d|\D+/g) ?? []) {
+    const w = measureWidth(ctx, part, font)
+    const isDigit = /^\d$/.test(part)
+    runs.push({ text: part, x: isDigit ? x + (digit - w) / 2 : x })
+    x += isDigit ? digit : w
+  }
+  return { width: x, runs }
+}
+
 /** `seconds` as m:ss, whole seconds, floored, put into `template` for `{time}`. */
 export function formatAgo(seconds: number, template: string): string {
   const whole = Math.max(0, Math.floor(seconds))
@@ -82,8 +105,9 @@ export function drawFlashback(
   const timer = value.agoS === null ? null : formatAgo(value.agoS, theme.text.flashbackAgo)
 
   const titleW = measureWidth(ctx, title, font(TITLE_PX))
-  const timerW = timer === null ? 0 : measureWidth(ctx, timer, font(TIMER_PX))
-  const contentW = titleW + (timer === null ? 0 : GAP_PX * u + timerW)
+  const timerLayout = timer === null ? null : tabularRuns(ctx, timer, font(TIMER_PX))
+  const timerW = timerLayout?.width ?? 0
+  const contentW = titleW + (timerLayout === null ? 0 : GAP_PX * u + timerW)
   const width = (PAD_OUTER_PX + PAD_INNER_PX) * u + contentW
   const height = TAB_HEIGHT_PX * u
   const left = value.side === 'left'
@@ -96,32 +120,41 @@ export function drawFlashback(
   ctx.save()
   ctx.globalAlpha = alpha
 
-  // The stroke sits inside the frame: inset by half its width.
-  ctx.lineWidth = STROKE_PX * u
-  ctx.strokeStyle = '#ffffff'
+  // The stroke and the tab are one white shape, filled once: the frame's edge round a hole
+  // STROKE_PX in from it, and the tab, which meets the stroke's inner edge, carried on under the
+  // stroke to the frame's edge. Two shapes meeting on a fractional pixel each leave it part
+  // covered, and the grass shows through as a hairline; one fill has no edge there, and at a
+  // fade's alpha nothing is drawn twice. Nonzero winding: the hole goes the other way round.
+  const s = STROKE_PX * u
   ctx.beginPath()
-  ctx.rect((STROKE_PX / 2) * u, (STROKE_PX / 2) * u, FRAME_W - STROKE_PX * u, FRAME_H - STROKE_PX * u)
-  ctx.stroke()
-
+  ctx.moveTo(0, 0)
+  ctx.lineTo(FRAME_W, 0)
+  ctx.lineTo(FRAME_W, FRAME_H)
+  ctx.lineTo(0, FRAME_H)
+  ctx.closePath()
+  ctx.moveTo(s, s)
+  ctx.lineTo(s, FRAME_H - s)
+  ctx.lineTo(FRAME_W - s, FRAME_H - s)
+  ctx.lineTo(FRAME_W - s, s)
+  ctx.closePath()
   // The tab, its top corner on the pitch's side rounded.
-  ctx.beginPath()
   if (left) {
-    ctx.moveTo(x0, top)
+    ctx.moveTo(0, top)
     ctx.lineTo(x1 - r, top)
     ctx.arcTo(x1, top, x1, top + r, r)
-    ctx.lineTo(x1, bottom)
-    ctx.lineTo(x0, bottom)
+    ctx.lineTo(x1, FRAME_H)
+    ctx.lineTo(0, FRAME_H)
   } else {
     ctx.moveTo(x0 + r, top)
-    ctx.lineTo(x1, top)
-    ctx.lineTo(x1, bottom)
-    ctx.lineTo(x0, bottom)
+    ctx.lineTo(FRAME_W, top)
+    ctx.lineTo(FRAME_W, FRAME_H)
+    ctx.lineTo(x0, FRAME_H)
     ctx.lineTo(x0, top + r)
     ctx.arcTo(x0, top, x0 + r, top, r)
   }
   ctx.closePath()
   ctx.fillStyle = '#ffffff'
-  ctx.fill()
+  ctx.fill('nonzero')
 
   // The progress line along the tab's bottom, shrinking towards its outer edge.
   const share = Math.min(1, Math.max(0, value.leftShare))
@@ -147,10 +180,11 @@ export function drawFlashback(
   ctx.fillText(title, textX, baseline)
   ctx.shadowColor = 'transparent'
 
-  if (timer !== null) {
+  if (timerLayout !== null) {
     ctx.globalAlpha = alpha * TIMER_ALPHA
     ctx.font = font(TIMER_PX)
-    ctx.fillText(timer, textX + titleW + GAP_PX * u, baseline)
+    const timerX = textX + titleW + GAP_PX * u
+    for (const run of timerLayout.runs) ctx.fillText(run.text, timerX + run.x, baseline)
   }
   ctx.restore()
 }
