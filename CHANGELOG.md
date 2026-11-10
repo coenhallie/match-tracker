@@ -6,6 +6,10 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-09
+
+The teams change ends at half time.
+
 ### What you see
 
 - **The teams change ends for the second half.** From the first human half time
