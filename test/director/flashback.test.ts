@@ -408,6 +408,147 @@ describe('Flashback', () => {
     expect(quiet.step(rec(206.72, longRun())).events).toEqual([{ phase: 'start', at: 100 }])
   })
 
+  /**
+   * Steps the controller in animation frames of 16 ms from `startMs` to `untilMs`, giving it the
+   * newest of `arrivals` that has come by each frame, as a socket's records come. The events, with
+   * the frame they came on.
+   */
+  function deliver(
+    fb: Flashback,
+    arrivals: ReadonlyArray<{ atMs: number; record: TrackerRecord }>,
+    startMs: number,
+    untilMs: number,
+  ): Array<{ nowMs: number; newest: TrackerRecord | null; frame: FlashbackFrame }> {
+    const out: Array<{ nowMs: number; newest: TrackerRecord | null; frame: FlashbackFrame }> = []
+    let next = 0
+    let newest: TrackerRecord | null = null
+    for (let nowMs = startMs; nowMs <= untilMs; nowMs += 16) {
+      while (next < arrivals.length && arrivals[next]!.atMs <= nowMs) newest = arrivals[next++]!.record
+      out.push({ nowMs, newest, frame: fb.step(nowMs, { newest, labelMoment: false, layerOn: true }) })
+    }
+    return out
+  }
+
+  /** Records at 10 Hz from `from`, each `validity(t)`, for `seconds`. */
+  const tenHz = (from: number, seconds: number, validity: (t: number) => RecordValidity | undefined): TrackerRecord[] =>
+    Array.from({ length: Math.round(seconds * 10) }, (_, k) => {
+      const t = from + k / 10
+      return rec(t, validity(t))
+    })
+
+  it('holds through a split run when the live records come slightly late', () => {
+    const fb = new Flashback(storeWith(100, 130).store, () => reduced)
+    // A 6 s run with its exact countdown, a 0.3 s valid gap, then a long run, at 10 Hz.
+    const records = [
+      ...tenHz(200, 6, (t) => invalid(206 - t)),
+      ...tenHz(206, 0.3, (t) => valid(206.3 - t)),
+      ...tenHz(206.3, 3, () => longRun()),
+    ]
+    // Each comes 0.5% slower than record time: the clip, fitted to the run on the wall clock, runs
+    // out while the newest record is still the run's last invalid one.
+    const arrivals = records.map((record) => ({ atMs: 1000 + (record.t - 200) * 1000 * 1.005, record }))
+    const frames = deliver(fb, arrivals, 1000, arrivals.at(-1)!.atMs + 200)
+    const events = frames.flatMap((f) => f.frame.events)
+    expect(events).toEqual([
+      { phase: 'start', at: 130 },
+      { phase: 'start', at: 100 },
+    ])
+    // The clip did run out on the run's last invalid record, before the gap came.
+    const held = frames.find((f) => f.frame.shot?.clip.at === 130 && f.frame.shot.leftShare === 0)
+    expect(held?.newest?.validity?.invalid).toBe(true)
+    // The second clip follows on the long run's first record.
+    const chained = frames.find((f) => f.frame.events.length > 0 && f.frame.events[0]!.at === 100)!
+    expect(chained.newest!.t).toBeCloseTo(206.3, 9)
+    expect(frames.every((f) => f.frame.shot !== null)).toBe(true)
+  })
+
+  it('holds a clip that runs out as its run ends, bounded by the run left plus MERGE_GAP_S', () => {
+    const d = make(storeWith(100, 130).store)
+    // A 6 s run whose records stop 0.4 s before its end: the last says a valid record is due in 0.4 s.
+    d.run(200, 5.64, (t) => invalid(206 - t))
+    const last = d.frames.at(-1)!
+    expect(last.shot?.clip.at).toBe(130)
+    // The stream stalls on that record.
+    const stalled = rec(205.6, invalid(0.4))
+    const frames = Array.from({ length: Math.ceil(((0.4 + MERGE_GAP_S) * 1000) / STEP_MS) + 20 }, () => d.step(stalled))
+    const holdFrom = frames.findIndex((f) => f.shot !== null && f.shot.leftShare === 0)
+    const end = frames.findIndex((f) => f.events.some((e) => e.phase === 'end'))
+    expect(holdFrom).toBeGreaterThanOrEqual(0)
+    expect(end).toBeGreaterThan(holdFrom)
+    expect(frames.slice(holdFrom, end).every((f) => f.shot !== null && f.alpha === 1)).toBe(true)
+    // The line may reach 0 a step before the clip runs out, on its last record.
+    expect((end - holdFrom) * STEP_MS).toBeGreaterThanOrEqual((0.4 + MERGE_GAP_S) * 1000)
+    expect((end - holdFrom) * STEP_MS).toBeLessThanOrEqual((0.4 + MERGE_GAP_S) * 1000 + 2 * STEP_MS)
+    expect(d.events()).toEqual([
+      { phase: 'start', at: 130 },
+      { phase: 'end', at: 130 },
+    ])
+  })
+
+  it('a clip held as its run ends waits for a record that says, then ends or chains by it', () => {
+    /** A 6 s run, its clip run out on the run's last record (countdown 0.04), held a few frames. */
+    const ranOut = (...ats: number[]): Driver => {
+      const d = make(storeWith(...ats).store)
+      exactRun(d, 200, 6)
+      const tail = rec(205.96, invalid(0.04))
+      for (let k = 0; k < 4; k++) d.step(tail)
+      expect(d.frames.at(-1)!.shot?.leftShare).toBe(0)
+      expect(d.events()).toEqual([{ phase: 'start', at: ats.at(-1)! }])
+      return d
+    }
+
+    // A record with no validity past the countdown, a guess that the run ended, decides nothing; the
+    // long run then chains.
+    const guess = ranOut(100, 130)
+    guess.step(rec(206, undefined))
+    expect(guess.fb.active).toBe(true)
+    expect(guess.step(rec(206.04, longRun())).events).toEqual([{ phase: 'start', at: 100 }])
+    expect(guess.events('end')).toEqual([])
+
+    // The run's late tail records decide nothing either.
+    const tail = ranOut(100, 130)
+    tail.step(rec(205.98, invalid(0.02)))
+    expect(tail.fb.active).toBe(true)
+    expect(tail.events('end')).toEqual([])
+
+    // A valid record not in a short gap ends it at once.
+    const back = ranOut(100, 130)
+    expect(back.step(rec(206, valid())).events).toEqual([{ phase: 'end', at: 130 }])
+
+    // A short gap, then a run under 5 s: it ends on that run's first record.
+    const short = ranOut(100, 130)
+    shortGap(short, 206, 0.2)
+    expect(short.fb.active).toBe(true)
+    expect(short.step(rec(206.2, invalid(3))).events).toEqual([{ phase: 'end', at: 130 }])
+    expect(short.events()).toEqual([
+      { phase: 'start', at: 130 },
+      { phase: 'end', at: 130 },
+    ])
+
+    // A run whose countdown goes back up, with no gap, under 5 s: the run is no longer ending, so it ends.
+    const revised = ranOut(100, 130)
+    expect(revised.step(rec(205.98, invalid(3))).events).toEqual([{ phase: 'end', at: 130 }])
+  })
+
+  it('holds a clip that runs out on a record with no validity just past its run', () => {
+    const d = make(storeWith(100, 130).store)
+    exactRun(d, 200, 6)
+    // A frame late: the run's last record is still the newest as the clip reaches its end...
+    const tail = 200 + 5.96
+    d.step(rec(tail, invalid(206 - tail)))
+    // ...and the gap's first says nothing: carried on, the run's countdown has run out, a guess
+    // that it ended. The clip runs out on it, and holds.
+    const guess = d.step(rec(206, undefined))
+    expect(guess.events).toEqual([])
+    expect(guess.shot?.leftShare).toBe(0)
+    shortGap(d, 206.04, 0.28)
+    expect(d.step(rec(206.32, longRun())).events).toEqual([{ phase: 'start', at: 100 }])
+    expect(d.events()).toEqual([
+      { phase: 'start', at: 130 },
+      { phase: 'start', at: 100 },
+    ])
+  })
+
   it('rides through records with no validity', () => {
     const d = make(storeWith(100).store)
     const frames = d.run(200, 6, (_t, i) => (i % 7 === 3 ? undefined : longRun()))

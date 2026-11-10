@@ -8,14 +8,15 @@
  * next, and fitted to the time the run has left (fitClip). It plays on its own clock, from
  * `nowMs`, so it goes on when the stream stalls. When it ends and the start rule still holds, the
  * next clip follows at once; otherwise live play shows again. A clip that runs out in a valid gap
- * under MERGE_GAP_S holds its last frame instead, until the next invalid record says whether the
- * next clip follows, for MERGE_GAP_S at most (`holds`): a split run is one replay. It is cut off
- * at once by a valid live record (unless an invalid one is due within MERGE_GAP_S, as the attack
- * cover rides such gaps), a live label moment, the layer going off, or `cut()`. After a cut that
- * holds off, which means someone wants the live frame (a press, `trigger()`), nothing starts
- * again until the run ends (a valid live record not in such a gap) or `reset()`. After any other
- * cut (a seek, a stream break, the layer going off) or a live label moment, the next clip may
- * start as soon as the start rule holds.
+ * under MERGE_GAP_S, or as its run is about to end (live records come a little late, and the clip
+ * is fitted in record time but played on the wall clock), holds its last frame instead, until a
+ * record that says its validity decides whether the next clip follows (`holds`): a split run is
+ * one replay. It is cut off at once by a valid live record (unless an invalid one is due within
+ * MERGE_GAP_S, as the attack cover rides such gaps), a live label moment, the layer going off, or
+ * `cut()`. After a cut that holds off, which means someone wants the live frame (a press,
+ * `trigger()`), nothing starts again until the run ends (a valid live record not in such a gap)
+ * or `reset()`. After any other cut (a seek, a stream break, the layer going off) or a live label
+ * moment, the next clip may start as soon as the start rule holds.
  *
  * A live record with no validity counts as the validity the last one that had it carries
  * (carriedValidity). A carried state that flipped is a guess with no horizon, so it can keep a
@@ -109,8 +110,16 @@ interface Playing {
   startMs: number
   /** `time` at the clip's start. */
   base: number
-  /** When the clip ran out in a short valid gap and began to hold its last frame, or null. */
-  holdMs: number | null
+  /** The hold of a clip that has run out, or null while it plays. */
+  hold: Hold | null
+}
+
+/** A clip that has run out holding its last frame (`Flashback.holds`). */
+interface Hold {
+  /** When it ends if no record has decided by then. */
+  untilMs: number
+  /** Whether a short valid gap has been seen: the invalid record after it decides. */
+  gap: boolean
 }
 
 /** The time a run has left by `state`, or undefined when it may not start or chain a clip. */
@@ -129,6 +138,11 @@ function runEnded(state: RecordValidity | null): boolean {
 /** Whether `state` is a short valid gap: valid, with the next invalid record due within MERGE_GAP_S. */
 function inShortGap(state: RecordValidity | null): boolean {
   return state !== null && !state.invalid && !runEnded(state)
+}
+
+/** Whether `state` is invalid with its run about to end: a valid record due within MERGE_GAP_S. */
+function runEnding(state: RecordValidity | null): boolean {
+  return state !== null && state.invalid && state.nextValidInS !== null && state.nextValidInS < MERGE_GAP_S
 }
 
 export class Flashback {
@@ -180,12 +194,9 @@ export class Flashback {
     if (this.held && runEnded(state)) this.held = false
 
     if (this.playing) {
-      if (this.cuts(live, state)) this.end(nowMs, events)
-      else if (
-        this.clock(nowMs) > this.playing.to + EPS &&
-        !this.start(nowMs, live, state, events) &&
-        !this.holds(nowMs, newest, state)
-      ) {
+      const ranOut = this.clock(nowMs) > this.playing.to + EPS
+      if (this.cuts(live, state, ranOut)) this.end(nowMs, events)
+      else if (ranOut && !this.start(nowMs, live, state, events) && !this.holds(nowMs, state)) {
         this.end(nowMs, events)
       }
     } else this.start(nowMs, live, state, events)
@@ -223,23 +234,47 @@ export class Flashback {
   }
 
   /**
-   * Whether a clip that has run out holds its last frame, the tab up, rather than end: it ran out
-   * in a short valid gap, where the next run is due within MERGE_GAP_S, so the next record that
-   * says it is invalid decides (`start` chains or the replay ends) and live play is not shown for
-   * a fraction of a second between the two. A record with no validity decides nothing. It holds
-   * MERGE_GAP_S at most on its own clock, so a stalled stream does not keep the frame up.
+   * Whether a clip that has run out holds its last frame, the tab up, rather than end, so that
+   * live play is not shown for a fraction of a second between two runs a short gap splits. It
+   * holds when it ran out in a short valid gap, or while the newest record that said its validity
+   * is invalid with its run about to end: the clip is fitted to the run in record time but plays on
+   * the wall clock, so with live records a little late it runs out just before the gap.
+   *
+   * Only a record that says its validity decides. The run's own last records, still invalid and
+   * about to end, decide nothing until a valid one has been seen. A valid record in a short gap
+   * keeps it holding, and one outside such a gap ends it (`cuts`). An invalid record after the gap,
+   * or one whose run is no longer about to end, decides: `start` has already chained on it if the
+   * start rule holds, so here the replay ends.
+   *
+   * It holds on its own clock, so a stalled stream does not keep the frame up: from when the clip
+   * ran out, for the run's countdown left then (under MERGE_GAP_S, and 0 in a gap) plus
+   * MERGE_GAP_S.
    */
-  private holds(nowMs: number, newest: TrackerRecord | null, state: RecordValidity | null): boolean {
+  private holds(nowMs: number, state: RecordValidity | null): boolean {
     const playing = this.playing!
-    if (playing.holdMs === null) {
-      if (!inShortGap(state)) return false
-      playing.holdMs = nowMs
-    } else if (newest?.validity?.invalid) return false
-    return nowMs - playing.holdMs < MERGE_GAP_S * 1000
+    const stated = this.carried?.validity ?? null
+    if (!playing.hold) {
+      if (inShortGap(state)) playing.hold = { untilMs: nowMs + MERGE_GAP_S * 1000, gap: true }
+      else if (runEnding(stated)) {
+        // Carried on, the countdown may have run out: a guess that the run ended, with none left.
+        const leftS = state?.invalid ? Math.min(Math.max(0, state.nextValidInS ?? 0), MERGE_GAP_S) : 0
+        playing.hold = { untilMs: nowMs + (leftS + MERGE_GAP_S) * 1000, gap: false }
+      } else return false
+    }
+    const { hold } = playing
+    if (stated?.invalid) {
+      if (hold.gap || !runEnding(stated)) return false
+    } else if (stated) hold.gap = true
+    return nowMs < hold.untilMs
   }
 
-  private cuts(live: FlashbackLive, state: RecordValidity | null): boolean {
+  /**
+   * Whether the clip playing is cut off now. A clip that is holding, or has just run out and may
+   * hold (`holds`), is ended only by a record that says it is valid, never by a carried guess.
+   */
+  private cuts(live: FlashbackLive, state: RecordValidity | null, ranOut: boolean): boolean {
     if (live.labelMoment || !live.layerOn) return true
+    if (ranOut) return runEnded(this.carried?.validity ?? null)
     return runEnded(state)
   }
 
@@ -282,7 +317,7 @@ export class Flashback {
       shown: first,
       startMs: nowMs,
       base: this.time + SEEK_STEP_S,
-      holdMs: null,
+      hold: null,
     }
   }
 
