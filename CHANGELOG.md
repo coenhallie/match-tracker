@@ -6,7 +6,20 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-A smaller package. Nothing a viewer sees changes.
+A smaller package, and invalid frames covered without a blink.
+
+### What you see
+
+- **In live mode, a message without `raw_data` inside a run of invalid frames
+  no longer breaks the run.** The default socket sends some copies of a message
+  without it, about one in seven. Such a frame was taken for a valid one: its
+  made-up positions became the last valid frame, which every invalid frame after
+  it was then held on, and the attack over invalid frames ended on it and started
+  again on the next, blinking about twice a second. Now a frame that says
+  nothing is what the stream last said, its countdown run on by the frame's own
+  time: inside the run it is held and covered like the frames around it, and
+  once the run was due to end it counts as valid. A stream that never sends
+  `raw_data` is unchanged, and so is replay.
 
 ### Package
 

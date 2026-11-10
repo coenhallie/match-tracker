@@ -1,8 +1,7 @@
 import { HISTORY_S, windowAt } from '../analysis/derive.js'
 import { hasBall, heldRecord } from '../model/heldRecord.js'
-import type { TrackerRecord } from '../model/types.js'
-
-const isValid = (record: TrackerRecord) => record.validity?.invalid !== true
+import type { RecordValidity, TrackerRecord } from '../model/types.js'
+import { carriedValidity, type CarriedValidity } from '../model/validity.js'
 
 /**
  * The records a live stream has delivered lately, enough for the phase and trail at the newest
@@ -17,8 +16,11 @@ const isValid = (record: TrackerRecord) => record.validity?.invalid !== true
  * at the last valid record, and `shown()` puts the last valid record's positions under it
  * (heldRecord), with the last ball a valid record had, if it was seen within HISTORY_S of
  * the last valid record: the tracking often loses the ball just as the broadcast cuts away.
- * Records that say nothing about their validity, as replay data does not, are all valid, and
- * for them nothing changes.
+ * A record that says nothing about its validity is what the stream last said, carried forward
+ * and aged by record time (carriedValidity): on the default socket some copies come without
+ * `raw_data` in the middle of an invalid run, and their positions are as made up as the
+ * others'. While the stream has said nothing at all, as replay data and older streams do not,
+ * every record is valid, and for them nothing changes.
  */
 export class LiveHistory {
   /** Held records, oldest first. Records with one t are in arrival order. */
@@ -38,6 +40,10 @@ export class LiveHistory {
   } | null = null
   /** How many times the stream broke (see `add`): each started the history afresh. */
   breaks = 0
+  /** The newest record that said anything about its validity, and what it said. */
+  private said: CarriedValidity | null = null
+  /** What each held record stood for, said or carried: decided once, as it arrived. */
+  private validity = new WeakMap<TrackerRecord, RecordValidity | null>()
 
   /**
    * Take a record in. Returns false, and holds nothing new, for a frameCount already held and
@@ -63,13 +69,16 @@ export class LiveHistory {
     }
     if (this.frames.has(record.frameCount)) return false
 
+    const stated = record.validity
+    if (stated && (!this.said || record.t >= this.said.t)) this.said = { t: record.t, validity: stated }
+    this.validity.set(record, stated ?? carriedValidity(this.said, record.t))
     let at = this.held.length
     while (at > 0 && this.held[at - 1]!.t > record.t) at--
     this.held.splice(at, 0, record)
     this.frames.add(record.frameCount)
 
-    if (isValid(record) && (!this.lastValid || record.t >= this.lastValid.t)) this.lastValid = record
-    if (isValid(record) && hasBall(record.frame) && (!this.lastBall || record.t >= this.lastBall.t)) {
+    if (this.isValid(record) && (!this.lastValid || record.t >= this.lastValid.t)) this.lastValid = record
+    if (this.isValid(record) && hasBall(record.frame) && (!this.lastBall || record.t >= this.lastBall.t)) {
       this.lastBall = record
     }
     if (!this.newest || record.t >= this.newest.t) {
@@ -96,7 +105,7 @@ export class LiveHistory {
   shown(): TrackerRecord | null {
     const newest = this.newest
     const lastValid = this.lastValid
-    if (!newest || isValid(newest) || !lastValid) return newest
+    if (!newest || this.isValid(newest) || !lastValid) return newest
     const lastBall = this.lastBall
     const cached = this.shownFor
     if (cached && cached.newest === newest && cached.lastValid === lastValid && cached.lastBall === lastBall) {
@@ -104,7 +113,7 @@ export class LiveHistory {
     }
     const ballFrom =
       !hasBall(lastValid.frame) && lastBall && lastBall.t >= lastValid.t - HISTORY_S ? lastBall : lastValid
-    const shown = heldRecord(newest, lastValid, ballFrom.frame.balls)
+    const shown = heldRecord(newest, lastValid, ballFrom.frame.balls, this.validity.get(newest) ?? undefined)
     this.shownFor = { newest, lastValid, lastBall, shown }
     return shown
   }
@@ -115,6 +124,7 @@ export class LiveHistory {
    */
   window(): TrackerRecord[] {
     if (!this.lastValid) return []
+    const isValid = (record: TrackerRecord) => this.isValid(record)
     return windowAt(this.held.every(isValid) ? this.held : this.held.filter(isValid), this.lastValid)
   }
 
@@ -125,6 +135,13 @@ export class LiveHistory {
     this.lastValid = null
     this.lastBall = null
     this.shownFor = null
+    this.said = null
+    this.validity = new WeakMap()
+  }
+
+  /** Whether a held record is valid, as it said or as what it carried says. */
+  private isValid(record: TrackerRecord): boolean {
+    return this.validity.get(record)?.invalid !== true
   }
 
   /** Drop the records older than `from`, which sit at the front. */

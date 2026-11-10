@@ -434,6 +434,11 @@ and the ball, but their positions are made up. The widget never shows them:
   is invalid it counts down to the next valid one from the pipeline's lookahead,
   "valid in 3.2 s", or "valid in over 10 s" when none is due within it. A
   regular attack never shows it.
+- A frame whose message carries no `raw_data` (the default socket sends some
+  copies without it) is what the stream last said, its countdown run on by the
+  frame's own time: inside an invalid run it is invalid too, held and covered
+  like the others, and once that run was due to end it counts as valid. A
+  stream that never sends `raw_data` is all valid, as before.
 
 Replay mode never does any of this, whatever its data carries.
 

@@ -245,6 +245,69 @@ describe('LiveHistory with invalid records', () => {
   })
 })
 
+describe('LiveHistory with records that say nothing about their validity', () => {
+  const at = (x: number) => ({ teams: [], balls: [{ projected_coordinates: { x, y: 0 } }] }) as unknown as Frame
+  const said = (frameCount: number, x: number, invalid: boolean, nextValidInS: number | null = 20): TrackerRecord => ({
+    ...record(frameCount),
+    frame: at(x),
+    validity: invalid
+      ? { invalid: true, nextInvalidInS: 0, nextValidInS, horizonS: 10 }
+      : { invalid: false, nextInvalidInS: null, nextValidInS: 0, horizonS: 10 },
+  })
+  const unsaid = (frameCount: number, x: number): TrackerRecord => ({ ...record(frameCount), frame: at(x) })
+
+  it('takes one inside an invalid run as invalid: never the last valid record, never shown as it is', () => {
+    const history = new LiveHistory()
+    const last = said(1, 7, false)
+    history.add(last)
+    history.add(said(2, -40, true))
+    history.add(unsaid(3, -41))
+    expect(history.latestValid()).toBe(last)
+    const shown = history.shown()
+    expect(shown?.frameCount).toBe(3)
+    expect(shown?.frame.balls).toBe(last.frame.balls)
+    // The held record carries what the stream last said, aged by one record.
+    expect(shown?.validity?.invalid).toBe(true)
+    expect(shown?.validity?.nextValidInS).toBeCloseTo(20 - DT, 9)
+    history.add(said(4, -42, true))
+    expect(history.window().map((r) => r.frameCount)).toEqual([1])
+  })
+
+  it('takes one as valid once the invalid countdown it carries has run out', () => {
+    const history = new LiveHistory()
+    history.add(said(1, 7, false))
+    history.add(said(2, -40, true, 2 * DT))
+    const after = unsaid(5, 9)
+    history.add(after)
+    expect(history.latestValid()).toBe(after)
+    expect(history.shown()).toBe(after)
+  })
+
+  it('takes every record as valid while the stream has said nothing', () => {
+    const history = new LiveHistory()
+    const newest = unsaid(2, 5)
+    history.add(unsaid(1, 4))
+    history.add(newest)
+    expect(history.latestValid()).toBe(newest)
+    expect(history.shown()).toBe(newest)
+  })
+
+  it('forgets what the stream said on clear and when the stream breaks', () => {
+    const history = new LiveHistory()
+    history.add(said(1, 7, false))
+    history.add(said(2, -40, true))
+    history.clear()
+    const fresh = unsaid(3, 5)
+    history.add(fresh)
+    expect(history.latestValid()).toBe(fresh)
+    history.add(said(5000, -40, true))
+    const restarted = unsaid(1, 6)
+    history.add(restarted)
+    expect(history.breaks).toBe(1)
+    expect(history.latestValid()).toBe(restarted)
+  })
+})
+
 describe('LiveHistory holding the last ball seen', () => {
   const at = (x: number | null) =>
     ({ teams: [], balls: x === null ? [{ projected_coordinates: { x: null, y: null } }] : [{ projected_coordinates: { x, y: 0 } }] }) as unknown as Frame

@@ -1,4 +1,4 @@
-import type { Ball, Frame, TrackerRecord } from './types.js'
+import type { Ball, Frame, RecordValidity, TrackerRecord } from './types.js'
 
 /** Whether `frame` has a ball with a position, as the renderer draws one. */
 export function hasBall(frame: Frame): boolean {
@@ -18,8 +18,17 @@ export function hasBall(frame: Frame): boolean {
  * The ball is `balls`, by default the last valid record's. The tracking often
  * loses the ball in the last valid records, as the broadcast cuts away, so a
  * caller can give the last one a valid record had.
+ *
+ * The validity is `validity`, by default the record's own. A record that said
+ * nothing stands for what the stream last said (carriedValidity), which the
+ * caller gives here.
  */
-export function heldRecord(record: TrackerRecord, lastValid: TrackerRecord, balls?: Ball[]): TrackerRecord {
+export function heldRecord(
+  record: TrackerRecord,
+  lastValid: TrackerRecord,
+  balls?: Ball[],
+  validity: RecordValidity | undefined = record.validity,
+): TrackerRecord {
   const held: TrackerRecord = {
     t: record.t,
     frameCount: record.frameCount,
@@ -30,6 +39,6 @@ export function heldRecord(record: TrackerRecord, lastValid: TrackerRecord, ball
       frame_data: record.frame.frame_data,
     },
   }
-  if (record.validity) held.validity = record.validity
+  if (validity) held.validity = validity
   return held
 }
