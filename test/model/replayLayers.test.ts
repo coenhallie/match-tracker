@@ -28,6 +28,18 @@ describe('replay layers', () => {
     }
   })
 
+  it('has flashback on by default, after playerLoss', () => {
+    expect(DEFAULT_REPLAY_LAYERS.flashback).toBe(true)
+    const keys = REPLAY_LAYERS.map((l) => l.key)
+    expect(keys.indexOf('flashback')).toBe(keys.indexOf('playerLoss') + 1)
+    expect(REPLAY_LAYERS.find((l) => l.key === 'flashback')?.liveOnly).toBe(true)
+  })
+
+  it('reads a stored flashback choice', () => {
+    const storage = memoryStorage({ 'perspecto.replayLayers': JSON.stringify({ flashback: false }) })
+    expect(readReplayLayers(storage)).toEqual({ ...DEFAULT_REPLAY_LAYERS, flashback: false })
+  })
+
   it('shows everything by default', () => {
     expect(Object.values(DEFAULT_REPLAY_LAYERS).every(Boolean)).toBe(true)
   })

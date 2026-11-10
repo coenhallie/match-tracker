@@ -91,8 +91,21 @@ describe('the layers menu', () => {
     expect(button(host).hasAttribute('aria-controls')).toBe(false)
   })
 
-  it('lists every layer in order, all shown by default, with its name and hint', () => {
-    const { host } = mount()
+  it('lists flashback in live mode only', () => {
+    const live = mount()
+    open(live.host)
+    expect(options(live.host).map((o) => o.dataset.layer)).toEqual(REPLAY_LAYERS.map((l) => l.key))
+    expect(options(live.host).map((o) => o.dataset.layer)).toContain('flashback')
+    const replay = mount({ mode: 'replay' })
+    open(replay.host)
+    expect(options(replay.host).map((o) => o.dataset.layer)).toEqual(
+      REPLAY_LAYERS.filter((l) => !l.liveOnly).map((l) => l.key),
+    )
+    expect(options(replay.host).map((o) => o.dataset.layer)).not.toContain('flashback')
+  })
+
+  it('lists every live layer in order, all shown by default, with its name and hint', () => {
+    const { host } = mount({ mode: 'live' })
     open(host)
     const listed = options(host)
     expect(listed.map((o) => o.dataset.layer)).toEqual(REPLAY_LAYERS.map((l) => l.key))

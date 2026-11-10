@@ -83,6 +83,7 @@ export class LayersMenu {
   constructor(
     private readonly shadow: ShadowRoot,
     onToggle: (key: ReplayLayerKey) => void,
+    mode: 'live' | 'replay',
   ) {
     this.el = element('div', 'mt-layers')
 
@@ -96,7 +97,8 @@ export class LayersMenu {
     this.menu = element('div', 'mt-layers-menu')
     this.menu.id = MENU_ID
     this.menu.setAttribute('role', 'group')
-    for (const { key } of REPLAY_LAYERS) {
+    for (const { key, liveOnly } of REPLAY_LAYERS) {
+      if (liveOnly && mode === 'replay') continue
       const button = element('button', 'mt-layer-option')
       button.type = 'button'
       button.dataset.layer = key

@@ -113,7 +113,7 @@ describe('the built-in text', () => {
     expect(formatText(en.zoomLevel, { zoom: '2.5' })).toBe('2.5x')
     // The corner is the widget's own: the reference has none. So is the throw-in's hint, as the widget's
     // throw-in fades in where the reference's slides in from the ball's half. And so is the zoom near goal.
-    const { corner, throwInBanner, playerLoss, goalZoom, ballShadow, varCheck, goalDisallowed, halfTime, secondHalf, fullTime, foul, shotOnGoal, headerOnGoal, ...referenceLayers } = en.layers
+    const { corner, throwInBanner, playerLoss, flashback, goalZoom, ballShadow, varCheck, goalDisallowed, halfTime, secondHalf, fullTime, foul, shotOnGoal, headerOnGoal, ...referenceLayers } = en.layers
     expect(en.corner).toBe('CORNER')
     expect(corner).toEqual({
       label: 'Corner',
@@ -157,6 +157,11 @@ describe('the built-in text', () => {
     expect(playerLoss).toEqual({
       label: 'Attack over lost players or invalid frames',
       hint: 'An attack while fewer than 18 players are tracked, or while the live camera is away',
+    })
+    // So is the flashback layer.
+    expect(flashback).toEqual({
+      label: 'Replays while the camera is away',
+      hint: 'An earlier goal, corner, shot or attack near goal, each played once, while the live camera is away for 5 s or more',
     })
     // So is the shadow under a high ball.
     expect(ballShadow).toEqual({ label: 'High ball shadow', hint: 'A shadow on the pitch under a high ball, further off the higher it is' })

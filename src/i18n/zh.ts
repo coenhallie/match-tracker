@@ -52,6 +52,10 @@ export const zh: TrackerText = {
     goalZoom: { label: '球门附近放大', hint: '球接近球门时以及进球时，视角平缓放大' },
     attack: { label: '进攻', hint: '根据控球推算：阴影和球队名称' },
     playerLoss: { label: '球员丢失或无效帧时显示进攻', hint: '跟踪到的球员少于 18 人，或直播画面无效时显示进攻动画' },
+    flashback: {
+      label: '镜头离开时回放',
+      hint: '镜头离开 5 秒或更久时，回放之前的进球、角球、射门或禁区附近的进攻，每个只播放一次',
+    },
     corner: { label: '角球', hint: '出现角球标签时显示横幅并点亮角球区，比赛暂停期间一直显示' },
     throwInBanner: { label: '界外球', hint: '出现界外球标签时，在底边线上方显示横幅' },
     varCheck: { label: 'VAR 检查', hint: '出现 VAR 检查标签时，在球场中央显示横幅' },

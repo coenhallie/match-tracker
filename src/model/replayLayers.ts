@@ -13,6 +13,7 @@ export type ReplayLayerKey =
   | 'goalZoom'
   | 'attack'
   | 'playerLoss'
+  | 'flashback'
   | 'corner'
   | 'throwInBanner'
   | LabelCardKey
@@ -33,14 +34,16 @@ export type ReplayLayers = Record<ReplayLayerKey, boolean>
 export type ReplayMoment = 'goal' | 'attack' | 'corner' | 'throwIn' | LabelCardKey
 
 /**
- * In the order the menu lists them. Each layer's name and hint are text, in
+ * In the order the menu lists them (`liveOnly` ones in live mode only). Each layer's name and hint are text, in
  * every locale (TrackerText.layers, src/i18n).
  */
-export const REPLAY_LAYERS: ReadonlyArray<{ key: ReplayLayerKey }> = [
+export const REPLAY_LAYERS: ReadonlyArray<{ key: ReplayLayerKey; liveOnly?: true }> = [
   { key: 'goal' },
   { key: 'goalZoom' },
   { key: 'attack' },
   { key: 'playerLoss' },
+  // Live mode only: replay mode has the whole match to hand and plays no flashbacks.
+  { key: 'flashback', liveOnly: true },
   { key: 'corner' },
   // Not "throwIn": that was the removed throw-in zoom's key, and a browser
   // that switched it off would hide this without anyone choosing to.
@@ -59,6 +62,7 @@ export const DEFAULT_REPLAY_LAYERS: ReplayLayers = {
   goalZoom: true,
   attack: true,
   playerLoss: true,
+  flashback: true,
   corner: true,
   throwInBanner: true,
   ...labelCardRecord(() => true),

@@ -396,7 +396,7 @@ class Tracker implements MatchTracker {
     this.overlay = lightOverlay(this.doc)
     host.append(this.overlay)
     this.hud = dom.hud
-    this.layersMenu = new LayersMenu(this.shadow, this.onLayerToggle)
+    this.layersMenu = new LayersMenu(this.shadow, this.onLayerToggle, mode)
     this.zoomBadge = new ZoomBadge(this.hud)
     this.lossBadge = new LossBadge(this.hud)
     this.hud.append(this.phaseRow.box)

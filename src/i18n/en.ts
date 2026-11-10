@@ -64,6 +64,10 @@ export const en: TrackerText = {
       label: 'Attack over lost players or invalid frames',
       hint: 'An attack while fewer than 18 players are tracked, or while the live camera is away',
     },
+    flashback: {
+      label: 'Replays while the camera is away',
+      hint: 'An earlier goal, corner, shot or attack near goal, each played once, while the live camera is away for 5 s or more',
+    },
     corner: { label: 'Corner', hint: 'A banner and the corner lit up on a corner label, held while play is stopped' },
     throwInBanner: { label: 'Throw-in', hint: 'A banner along the bottom touchline on a throw-in label' },
     varCheck: { label: 'VAR check', hint: 'A banner across the middle of the pitch on a VAR check label' },
