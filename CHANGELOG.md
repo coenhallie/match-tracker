@@ -6,6 +6,10 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-09
+
+Invalid frames held still under an attack, the zoom near goal out of an attack's way, and a shadow under a high ball.
+
 ### What you see
 
 - **In live mode, frames the pipeline marks invalid are covered with an attack.**
