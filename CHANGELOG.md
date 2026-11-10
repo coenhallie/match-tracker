@@ -45,7 +45,9 @@ Replays of earlier moments while the live camera is away, invalid frames covered
   moment was ("2:47 AGO") and a line that shortens as the clip plays. They fade
   in and out (not with reduced motion). The clip is drawn as live play is, its
   own goal, cards and zoom near goal included, from the viewer's own zoom, and
-  the attacking/defending row shows its phase.
+  the attacking/defending row shows its phase. While the stroke shows, the
+  layers button and the badges keep inside it, and the zoom badge sits above a
+  tab in the bottom right.
 - **It is a new layer, `flashback`** ("Replays while the camera is away"), on
   by default, listed in the layers menu in live mode only. Off, nothing is kept
   for replays and long stretches are covered by the attack, as in 0.10.0.
@@ -65,22 +67,24 @@ Replays of earlier moments while the live camera is away, invalid frames covered
   clip and `end` once the last one ends or is cut off, `reset()` included; `at`
   is the moment's record time. A replay's own moments send no `moment` event.
 - New `TrackerText` keys: `flashback` ("REPLAY"; zh "回放") and `flashbackAgo`
-  ("{time} AGO"; zh "{time}前") for the tab, `flashbackDebug` (with `{kind}`
-  and `{ago}`) for the `debug` badge, which says which replay plays, and
-  `layers.flashback` for the menu.
+  ("{time} AGO"; zh "{time}前") for the tab, `flashbackDebug` ("Replay:
+  {kind}, {ago} ago"; zh "回放：{kind}，{ago}前") for the `debug` badge, which
+  says which replay plays, `{kind}` being the moment's own word (`goal`,
+  `corner`, `shotOnGoal` or `attack`), and `layers.flashback` for the menu.
 
 ### Package
 
-- **The package is 202.0 kB packed and 393.8 kB unpacked, in 43 files**, down
-  from 235.4 kB, 513.9 kB and 77 files.
-- **The code is minified in full**: `dist/index.js` is 111.69 kB, 38.05 kB
-  gzipped (from 138.26 kB, 41.83 kB). Vite used to leave its whitespace and its
+- **The package is 209.8 kB packed and 421.2 kB unpacked, in 44 files**, the
+  replays included, down from 235.4 kB, 513.9 kB and 77 files.
+- **The code is minified in full**: `dist/index.js` is 130.96 kB, 44.44 kB
+  gzipped, the replays included (0.10.0's was 138.26 kB, 41.83 kB, and its code
+  minified 111.69 kB, 38.05 kB). Vite used to leave its whitespace and its
   source path comments in. An app's own build minifies it anyway, so what a
   viewer downloads hardly changes. A new check, `npm run test:dist`, the last
   step of the build, plays real match data through the built widget and the
   source side by side, and fails on any difference in what they draw or build.
-- **Only the declarations the entries reach ship**: 31 files instead of 64. The
-  33 left out were internal modules' declarations, which no host could import.
+- **Only the declarations the entries reach ship**: 32 files instead of 70. The
+  38 left out are internal modules' declarations, which no host could import.
   The build checks that the declarations it keeps type-check strictly under
   `bundler`, `node16` and `nodenext` resolution.
 - **CHANGELOG.md no longer ships in the package.** It is in the repository.

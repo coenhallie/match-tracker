@@ -499,8 +499,12 @@ live mode only.
   reconnect loses them. So does switching the layer off, and while it is off
   nothing is kept, and so does a jump back of over 10 s in the frames' times,
   as when the pipeline starts again.
-- With `debug` on, the badge says which replay plays, "Replay of a goal from
-  2:47 ago", over whatever else it would say.
+- While the stroke shows, the layers button and the badges keep inside it, and
+  the zoom badge sits above a tab in the bottom right. They go back once it has
+  gone.
+- With `debug` on, the badge says which replay plays, "Replay: GOAL, 2:47 ago",
+  in the moment's own word (`goal`, `corner`, `shotOnGoal` or `attack`), over
+  whatever else it would say.
 - It needs the pipeline's `raw_data` validity, as above. A stream without it
   never plays a replay.
 
