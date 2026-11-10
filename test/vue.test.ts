@@ -283,6 +283,34 @@ describe('the Vue component', () => {
     expect(heard).toEqual([{ from: parsed.timestamp }])
   })
 
+  it('emits the flashback event', () => {
+    const heard: unknown[] = []
+    const { handle } = mountTracker({ onFlashback: (v: unknown) => heard.push(v) })
+    const push = (i: number, invalid: boolean, labels?: string[]) => {
+      const parsed = JSON.parse(message(i, { withBall: true, t: 2700 + i * 0.04 })) as {
+        match: { state?: unknown }
+        raw_data?: unknown
+      }
+      if (labels) parsed.match.state = { actions: labels.map((action_type) => ({ action_type, action_origin: 'human' })) }
+      parsed.raw_data = {
+        source_frame: { frame_state: invalid ? 'invalid' : 'valid' },
+        agentic: {
+          lookahead: { horizon_s: 9.999999999990905, next_invalid_in_s: invalid ? 0 : null, next_valid_in_s: invalid ? null : 0 },
+        },
+      }
+      handle.push(JSON.stringify(parsed))
+      env.frame(40)
+    }
+    // A human goal, then a long run of invalid frames: the goal is replayed, and live play takes over.
+    for (let i = 0; i < 500; i++) push(i, false, i === 100 ? ['goal'] : undefined)
+    for (let i = 500; i < 525; i++) push(i, true)
+    push(525, false)
+    expect(heard).toEqual([
+      { phase: 'start', at: 2704 },
+      { phase: 'end', at: 2704 },
+    ])
+  })
+
   it('does nothing through the ref before mount or after unmount', () => {
     const handle = ref<MatchTrackerHandle | null>(null)
     const Parent = defineComponent({

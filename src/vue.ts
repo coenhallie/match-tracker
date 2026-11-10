@@ -23,10 +23,11 @@
  *   renders an inline object again (`:layers="{ ballTrail: true }"`) has
  *   changed nothing, and setOptions is not called. The tracker is given a
  *   copy of each, never the parent's reactive object.
- * - The tracker's `zoom`, `layers`, `moment`, `box` and `availability`
- *   events are emitted as they are. `box` and `availability` are also
- *   emitted when a new tracker starts with values other than the last ones
- *   emitted, so a parent hears of the box the tracker measured at mount.
+ * - The tracker's `zoom`, `layers`, `moment`, `secondHalf`, `flashback`, `box`
+ *   and `availability` events are emitted as they are. `box` and
+ *   `availability` are also emitted when a new tracker starts with values
+ *   other than the last ones emitted, so a parent hears of the box the
+ *   tracker measured at mount.
  * - `push`, `present`, `reset`, `trigger`, `availability`, `overlay` and
  *   `box` are exposed on the component's ref (see MatchTrackerHandle).
  *   `box` and `availability()` are reactive: a template or computed that
@@ -171,6 +172,7 @@ export const MatchTracker = defineComponent({
     box: (_value: TrackerEvents['box']) => true,
     availability: (_value: TrackerEvents['availability']) => true,
     secondHalf: (_value: TrackerEvents['secondHalf']) => true,
+    flashback: (_value: TrackerEvents['flashback']) => true,
   },
   setup(props, { emit, expose, slots }) {
     const host = ref<HTMLElement | null>(null)
@@ -215,6 +217,7 @@ export const MatchTracker = defineComponent({
       tracker.on('layers', (value) => emit('layers', value))
       tracker.on('moment', (value) => emit('moment', value))
       tracker.on('secondHalf', (value) => emit('secondHalf', value))
+      tracker.on('flashback', (value) => emit('flashback', value))
       tracker.on('box', takeBox)
       tracker.on('availability', takeAvailability)
       overlay.value = tracker.overlay
