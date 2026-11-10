@@ -32,7 +32,7 @@ export const en: TrackerText = {
   attack: 'Attack',
   flashback: 'REPLAY',
   flashbackAgo: '{time} AGO',
-  flashbackDebug: 'Replay of a {kind} from {ago} ago',
+  flashbackDebug: 'Replay: {kind}, {ago} ago',
   attacking: 'Attacking',
   defending: 'Defending',
   versus: 'vs',

@@ -24,7 +24,7 @@ export const zh: TrackerText = {
   attack: '进攻',
   flashback: '回放',
   flashbackAgo: '{time}前',
-  flashbackDebug: '{ago}前的{kind}回放',
+  flashbackDebug: '回放：{kind}，{ago}前',
   attacking: '进攻中',
   defending: '防守中',
   versus: '对',

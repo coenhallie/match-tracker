@@ -23,6 +23,40 @@ export interface PhaseLook {
 
 const TEAMS: readonly TeamId[] = [0, 1]
 
+/** The badge's word for what a replay is of: the moment's own word on the canvas. */
+const KIND_WORD = {
+  goal: 'goal',
+  corner: 'corner',
+  shot: 'shotOnGoal',
+  attack: 'attack',
+} as const satisfies Record<FlashbackKind, keyof TrackerText>
+
+/** How far the flashback reaches in from the canvas's edges, in CSS px, while it shows. */
+export interface FlashbackClear {
+  /** The stroke's width, all round. */
+  stroke: number
+  /** How far the tab reaches up from the bottom, its inset included. */
+  tab: number
+  side: 'left' | 'right'
+}
+
+/**
+ * Keep the HUD's controls off the flashback while it shows (styles.ts): the layers button and
+ * the badges inside the stroke, and the zoom badge, bottom right, above a right-hand tab. With
+ * null they go back to where they were.
+ */
+export function clearOfFlashback(hud: HTMLElement, clear: FlashbackClear | null): void {
+  hud.classList.toggle('mt-flashback', clear !== null)
+  hud.classList.toggle('mt-flashback-right', clear?.side === 'right')
+  if (clear) {
+    hud.style.setProperty('--mt-flashback-stroke', `${clear.stroke}px`)
+    hud.style.setProperty('--mt-flashback-tab', `${clear.tab}px`)
+  } else {
+    hud.style.removeProperty('--mt-flashback-stroke')
+    hud.style.removeProperty('--mt-flashback-tab')
+  }
+}
+
 function element<K extends keyof HTMLElementTagNameMap>(tag: K, className: string): HTMLElementTagNameMap[K] {
   const el = document.createElement(tag)
   el.className = className
@@ -189,7 +223,8 @@ export class LossBadge {
     flashback: { kind: FlashbackKind; agoS: number } | null = null,
   ): void {
     if (on && flashback) {
-      const label = formatText(text.flashbackDebug, { kind: flashback.kind, ago: formatAgo(flashback.agoS, '{time}') })
+      const kind = text[KIND_WORD[flashback.kind]]
+      const label = formatText(text.flashbackDebug, { kind, ago: formatAgo(flashback.agoS, '{time}') })
       this.show(label, 'none', 'flashback')
       return
     }

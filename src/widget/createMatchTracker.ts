@@ -77,14 +77,16 @@ import { parseRecord } from '../model/parseRecord.js'
 import type { ReplayLayerKey, ReplayLayers, ReplayMoment } from '../model/replayLayers.js'
 import type { TrackerRecord } from '../model/types.js'
 import { createRenderer } from '../render/renderer.js'
-import type { FlashbackIndicator } from '../render/flashback.js'
+import { flashbackTabExtent, type FlashbackIndicator } from '../render/flashback.js'
+import { FRAME_W } from '../render/constants.js'
+import { build2DTransform } from '../render/pitchGeometry.js'
 import type { RenderTheme } from '../render/theme.js'
 import type { FrameBox } from '../render/viewTransform.js'
 import { MATCH_TRACKER_VERSION } from '../version.js'
 import { Emitter, MomentWatch, labelMomentShowing, type TrackerBox, type TrackerEvents } from './events.js'
 import { FlashbackStage } from './flashbackStage.js'
 import { measureBox, pixelRatio, place, sameBox, sizeBitmap } from './layout.js'
-import { LossBadge, PhaseRow, ZoomBadge } from './hud.js'
+import { clearOfFlashback, LossBadge, PhaseRow, ZoomBadge, type FlashbackClear } from './hud.js'
 import { LayersMenu } from './layersMenu.js'
 import { FrameLoop } from './loop.js'
 import {
@@ -348,6 +350,8 @@ class Tracker implements MatchTracker {
   private indicator: FlashbackIndicator | null = null
   /** The last paint drawn, and with what indicator: drawn again when only the indicator moves. */
   private drawn: { paint: DirectorPaint; indicator: FlashbackIndicator | null } | null = null
+  /** What the HUD's controls keep clear of: the flashback as last drawn, in CSS px, or null. */
+  private hudClear: FlashbackClear | null = null
   /** The last paint of live play drawn: what a reset leaves on screen in place of a replay. */
   private liveDrawn: DirectorPaint | null = null
   private readonly emitter = new Emitter<TrackerEvents>()
@@ -516,6 +520,7 @@ class Tracker implements MatchTracker {
     this.clipShown = false
     this.indicator = null
     this.drawn = null
+    this.clearHud(null)
     this.history.clear()
     this.halves.reset()
     this.historyVersion++
@@ -889,6 +894,24 @@ class Tracker implements MatchTracker {
     this.renderer.renderFrame(paint.frame, indicator ? { ...paint.layers, flashback: indicator } : paint.layers)
     this.stale = false
     this.drawn = { paint, indicator }
+    let clear: FlashbackClear | null = null
+    if (indicator && indicator.alpha > 0) {
+      // Frame units in CSS px: the canvas is drawn at its box.
+      const scale = this.frameBox.width / FRAME_W
+      const extent = flashbackTabExtent(build2DTransform(paint.frame.pitch_dimensions))
+      clear = { stroke: extent.stroke * scale, tab: extent.tab * scale, side: indicator.side }
+    }
+    this.clearHud(clear)
+  }
+
+  /** Keep the HUD's controls off the flashback's stroke and tab as drawn, and put them back once they go. */
+  private clearHud(next: FlashbackClear | null): void {
+    const last = this.hudClear
+    if (last === next || (last && next && last.stroke === next.stroke && last.tab === next.tab && last.side === next.side)) {
+      return
+    }
+    this.hudClear = next
+    clearOfFlashback(this.hud, next)
   }
 
   /** Draw again what is on screen, through the director, as the reference's pushView paints. */

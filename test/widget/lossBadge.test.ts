@@ -174,8 +174,12 @@ describe('the player loss badge', () => {
     // A human goal 16 s before a long run: the run replays it.
     for (let i = 0; i < 500; i++) at(i, 'valid', i === 100 ? ['goal'] : undefined)
     for (let i = 500; i < 525; i++) at(i, 'long')
-    expect(badge(host)?.textContent).toBe('Replay of a goal from 0:16 ago')
+    expect(badge(host)?.textContent).toBe('Replay: GOAL, 0:16 ago')
     expect(badge(host)?.dataset.cause).toBe('flashback')
+    // In the badge's own language, by the moment's word on the canvas.
+    tracker.setOptions({ locale: 'zh' })
+    expect(badge(host)?.textContent).toBe('回放：进球，0:16前')
+    tracker.setOptions({ locale: 'en' })
     at(525, 'valid')
     expect(badge(host)?.dataset.cause).not.toBe('flashback')
     env.settle()

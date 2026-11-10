@@ -15,6 +15,7 @@ import type { FrameLayers } from '../../src/render/renderer'
 import { FakeIntersectionObserver, installEnv, makeHost, type Env } from './env'
 import { control } from './recording'
 import { message } from './messages'
+import { STYLES } from '../../src/widget/styles'
 
 vi.mock('../../src/director/director', async (importOriginal) => {
   const real = await importOriginal<typeof import('../../src/director/director')>()
@@ -269,6 +270,66 @@ describe('flashbacks in live mode', () => {
     expect(alphas.every((a, k) => k === 0 || a < alphas[k - 1]!)).toBe(true)
     expect(alphas.at(-1)).toBe(0)
     expect(control.drawn.at(-1)!.layers).not.toHaveProperty('flashback')
+  })
+
+  it('lifts the zoom badge above a right-hand tab and clear of the stroke', () => {
+    const { host, tracker } = mount()
+    const hud = host.shadowRoot!.querySelector<HTMLElement>('.mt-hud')!
+    expect(hud.classList.contains('mt-flashback')).toBe(false)
+    const stream = new Stream(tracker)
+    // The ball in the left half at the goal: the tab goes bottom right.
+    goalThenRun(stream, 25, () => ({ ballX: -20 }))
+    expect(control.drawn.at(-1)!.layers?.flashback?.side).toBe('right')
+    expect(hud.classList.contains('mt-flashback')).toBe(true)
+    expect(hud.classList.contains('mt-flashback-right')).toBe(true)
+    // At 1280 CSS px a frame unit is a CSS px: the design's 12 px stroke and its 12 + 112 px tab.
+    const u = (105 * Math.min((1280 - 80) / 105, (720 - 80) / 68)) / 1356
+    expect(parseFloat(hud.style.getPropertyValue('--mt-flashback-stroke'))).toBeCloseTo(12 * u, 6)
+    expect(parseFloat(hud.style.getPropertyValue('--mt-flashback-tab'))).toBeCloseTo(124 * u, 6)
+    const css = STYLES.replace(/\s+/g, ' ')
+    expect(css).toContain('.mt-hud.mt-flashback-right .mt-zoom { bottom: calc(8px + var(--mt-flashback-tab, 0px)); }')
+    expect(css).toContain(
+      '.mt-hud.mt-flashback .mt-layers { top: calc(8px + var(--mt-flashback-stroke, 0px)); right: calc(8px + var(--mt-flashback-stroke, 0px)); }',
+    )
+    expect(css).toContain(
+      '.mt-hud.mt-flashback .mt-zoom { bottom: calc(8px + var(--mt-flashback-stroke, 0px)); right: calc(8px + var(--mt-flashback-stroke, 0px)); }',
+    )
+  })
+
+  it('keeps the zoom badge low beside a left-hand tab', () => {
+    const { host, tracker } = mount()
+    const hud = host.shadowRoot!.querySelector<HTMLElement>('.mt-hud')!
+    const stream = new Stream(tracker)
+    goalThenRun(stream, 25, () => ({ ballX: 20 }))
+    expect(control.drawn.at(-1)!.layers?.flashback?.side).toBe('left')
+    expect(hud.classList.contains('mt-flashback')).toBe(true)
+    expect(hud.classList.contains('mt-flashback-right')).toBe(false)
+  })
+
+  it('puts the HUD controls back when the replay ends', () => {
+    const { host, tracker } = mount()
+    const hud = host.shadowRoot!.querySelector<HTMLElement>('.mt-hud')!
+    const stream = new Stream(tracker)
+    goalThenRun(stream, 25, () => ({ ballX: -20 }))
+    stream.push(1, 'valid')
+    // Kept while the stroke fades out over live play...
+    expect(hud.classList.contains('mt-flashback-right')).toBe(true)
+    env.settle()
+    // ...and back where they were once it has gone.
+    expect(control.drawn.at(-1)!.layers).not.toHaveProperty('flashback')
+    expect(hud.classList.contains('mt-flashback')).toBe(false)
+    expect(hud.classList.contains('mt-flashback-right')).toBe(false)
+    expect(hud.style.getPropertyValue('--mt-flashback-stroke')).toBe('')
+    expect(hud.style.getPropertyValue('--mt-flashback-tab')).toBe('')
+
+    // And at once on a reset.
+    const again = mount()
+    const hud2 = again.host.shadowRoot!.querySelector<HTMLElement>('.mt-hud')!
+    goalThenRun(new Stream(again.tracker), 25, () => ({ ballX: -20 }))
+    expect(hud2.classList.contains('mt-flashback')).toBe(true)
+    again.tracker.reset()
+    expect(hud2.classList.contains('mt-flashback')).toBe(false)
+    expect(hud2.style.getPropertyValue('--mt-flashback-tab')).toBe('')
   })
 
   it('a reset mid-replay leaves the last live frame, without the tab', () => {

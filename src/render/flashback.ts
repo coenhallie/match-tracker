@@ -45,6 +45,16 @@ export interface FlashbackIndicator {
 }
 
 /**
+ * How much of the frame the flashback takes from its edges, in frame units through `t`: the
+ * stroke's width all round, and how far the tab, with its inset, reaches up from the bottom. For
+ * the widget's own controls, which keep clear of them while they show.
+ */
+export function flashbackTabExtent(t: Transform2D): { stroke: number; tab: number } {
+  const u = designUnit(t)
+  return { stroke: STROKE_PX * u, tab: (INSET_PX + TAB_HEIGHT_PX) * u }
+}
+
+/**
  * Which bottom corner the tab sits in: away from the action, so a ball in the
  * right half (x > 0) puts it left. The first ball with a usable x decides; none,
  * or x of 0, gives left. The caller passes the record as shown, with the halves
