@@ -80,6 +80,8 @@ export default defineConfig({
   test: {
     environment: 'happy-dom',
     restoreMocks: true,
+    // Lets go of what a test's DOM kept, between tests (see the file).
+    setupFiles: ['test/helpers/setup.ts'],
     projects: [
       // `npm test`: everything but test/dist, against the source.
       { extends: true, test: { name: 'src', include: ['test/**/*.test.ts'], exclude: ['test/dist/**'] } },

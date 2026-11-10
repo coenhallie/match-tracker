@@ -453,6 +453,18 @@ describe('flashbacks in live mode', () => {
     expect(log.filter((e) => e.startsWith('flashback'))).toHaveLength(2)
   })
 
+  it('drops every clip on destroy', () => {
+    const bytes = (tracker: MatchTracker) => (tracker as unknown as { flashback: { bytes(): number } }).flashback.bytes()
+    const { tracker } = mount()
+    const stream = new Stream(tracker)
+    stream.push(800, 'valid', (i) => (i === GOAL || i === 600 ? { labels: ['goal'] } : {}))
+    stream.push(25, 'long')
+    expect(bytes(tracker)).toBeGreaterThan(0)
+    tracker.destroy()
+    // A host that keeps its reference to a destroyed widget keeps no replays with it.
+    expect(bytes(tracker)).toBe(0)
+  })
+
   it('cuts the replay when the layer goes off or the widget comes back into view', () => {
     const { tracker } = mount()
     const log = events(tracker)
@@ -614,36 +626,28 @@ describe('flashbacks in live mode', () => {
     expect(log).toEqual([`flashback:start@${stream.t(LATER)}`, `flashback:start@${stream.t(GOAL)}`])
   })
 
-  it('rides a split run whose records come late and jittered, on every seed', () => {
-    /** A seeded uniform draw in [0, 1): mulberry32. */
-    const uniform = (seed: number) => () => {
-      seed = (seed + 0x6d2b79f5) | 0
-      let x = Math.imul(seed ^ (seed >>> 15), 1 | seed)
-      x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x
-      return ((x ^ (x >>> 14)) >>> 0) / 4294967296
-    }
-    /** A seeded normal draw of deviation `sigma`: Box-Muller. */
-    const normal = (seed: number, sigma: number) => {
-      const draw = uniform(seed)
-      return () => sigma * Math.sqrt(-2 * Math.log(1 - draw())) * Math.cos(2 * Math.PI * draw())
-    }
-    const failed: Array<{ seed: number; log: string[] }> = []
-    for (let seed = 1; seed <= 20; seed++) {
-      // What was drawn is not read: kept, the recordings of 20 widgets would fill the heap.
-      control.reset()
-      const { host, tracker } = mount()
-      let frames = 0
-      const frame = (ms: number) => {
-        env.frame(ms)
-        if (++frames % 25 === 0) env.drain(host)
-      }
+  /** A seeded uniform draw in [0, 1): mulberry32. */
+  const uniform = (seed: number) => () => {
+    seed = (seed + 0x6d2b79f5) | 0
+    let x = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+    x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x
+    return ((x ^ (x >>> 14)) >>> 0) / 4294967296
+  }
+  /** A seeded normal draw of deviation `sigma`: Box-Muller. */
+  const normal = (seed: number, sigma: number) => {
+    const draw = uniform(seed)
+    return () => sigma * Math.sqrt(-2 * Math.log(1 - draw())) * Math.cos(2 * Math.PI * draw())
+  }
+
+  // One widget a seed, each its own test: a test keeps every widget it made until it ends.
+  it.each(Array.from({ length: 20 }, (_, k) => k + 1))(
+    'rides a split run whose records come late and jittered, seed %i',
+    (seed) => {
+      const { tracker } = mount()
       // Records 100 ms apart, as the default socket sends them; two goals 20 s apart, both kept.
       const stream = new Stream(tracker, 0.1)
       const LATER = 240
-      for (; stream.i < 320; stream.i++) {
-        tracker.push(msg(stream.i, stream.t(), 'valid', stream.i === 40 || stream.i === LATER ? { labels: ['goal'] } : {}))
-        frame(100)
-      }
+      stream.push(320, 'valid', (i) => (i === 40 || i === LATER ? { labels: ['goal'] } : {}))
       const log = events(tracker)
       // A 6 s run with its exact countdown, a 0.3 s valid gap, then a long run.
       const states: State[] = [
@@ -665,18 +669,12 @@ describe('flashbacks in live mode', () => {
           const { i, state } = arrivals[next++]!
           tracker.push(msg(i, stream.t(i), state))
         }
-        frame(16)
+        env.frame(16)
       }
-      const at = (i: number) => stream.t(i)
-      if (log.join() !== [`flashback:start@${at(LATER)}`, `flashback:start@${at(40)}`].join()) failed.push({ seed, log })
-      mounted.splice(mounted.indexOf(tracker), 1)
-      tracker.destroy()
-      host.remove()
-    }
-    // No end before the long run, and no live moment in the gap, on any seed.
-    expect(failed).toEqual([])
-    // 20 widgets, each fed 40 s of records.
-  }, 30_000)
+      // No end before the long run, and no live moment in the gap: the second clip follows the first.
+      expect(log).toEqual([`flashback:start@${stream.t(LATER)}`, `flashback:start@${stream.t(40)}`])
+    },
+  )
 
   it('plays through the staging fixture without flicker', () => {
     const { tracker } = mount()
