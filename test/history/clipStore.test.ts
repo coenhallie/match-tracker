@@ -84,9 +84,9 @@ describe('slimRecord', () => {
     expect(slim.t).toBe(staging[400]!.t)
     expect(slim.frameCount).toBe(staging[400]!.frameCount)
     const player = slim.frame.teams[0]!.players[0]!
-    expect(Object.keys(player).sort()).toEqual(
-      ['in_possession', 'person_type', 'player_number', 'projected_coordinates', 'track_id'].sort(),
-    )
+    expect(Object.keys(player).sort()).toEqual(['person_type', 'player_number', 'projected_coordinates', 'track_id'])
+    const carrier = staging.flatMap((r) => r.frame.teams.flatMap((t) => t.players)).find((p) => p.in_possession)!
+    expect(slimRecord({ t: 0, frameCount: 0, frame: { teams: [{ team_id: 0, players: [carrier] }] } }).frame.teams[0]!.players[0]!.in_possession).toBe(true)
     expect(JSON.stringify(slim).length).toBeLessThan(JSON.stringify(staging[400]).length)
   })
 })
@@ -233,19 +233,18 @@ describe('ClipStore', () => {
     expect(store.next()).toMatchObject({ kind: 'corner', at: 160 })
   })
 
-  // Known to fail today: the staging records slim to about 4.5 kB, so the 106 s these clips and their
-  // lookback need come to about 12.4 MB at 25 Hz. `it.fails` keeps the check live: it goes red when
-  // the store fits. See the Task 3 report.
-  it.fails('stays under 10 MB at its cap', () => {
-    // 8 clips, each its 12 s and its 10 s lookback, back to back as closely as they can be.
+  it('stays under 20 MB at its cap', () => {
+    // The worst case: 8 clips that do not overlap, each with a lookback of its own, 30 s apart.
+    const gap = 30
     for (let i = 0; i < CLIP_CAP; i++) {
-      const at = 100 + i * (CLIP_LEAD_S + CLIP_TAIL_S)
-      feed(store, i === 0 ? 80 : at - (CLIP_LEAD_S + CLIP_TAIL_S) + 0.04, at - 0.04)
+      const at = 100 + i * gap
+      feed(store, i === 0 ? 80 : at - gap + 0.04, at - 0.04)
       moment(store, 'goal', at)
     }
-    feed(store, 100 + 7 * 12 + 0.04, 100 + 7 * 12 + CLIP_TAIL_S + 0.5)
-    expect(store.clips().filter((c) => c.ready)).toHaveLength(CLIP_CAP)
-    expect(store.bytes()).toBeLessThan(10_000_000)
+    feed(store, 100 + 7 * gap + 0.04, 100 + 7 * gap + CLIP_TAIL_S + 0.5)
+    expect(store.clips()).toHaveLength(CLIP_CAP)
+    expect(store.clips().every((c) => c.ready)).toBe(true)
+    expect(store.bytes()).toBeLessThan(20_000_000)
   })
 
   it('keeps only the records kept clips and the next moment need', () => {

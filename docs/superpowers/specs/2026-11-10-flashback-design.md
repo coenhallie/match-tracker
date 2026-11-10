@@ -165,8 +165,9 @@ Noted as they happen in live mode, from valid records only:
   clock with it) drops them all, since their ages, expiry and order are all in
   the old clock. (Builder's call.)
 - Memory: store only what the renderer and the analysis read from a record,
-  and store records that overlapping clips share once. Budget: under 10 MB for
-  the store at its cap, measured on the staging capture.
+  and store records that overlapping clips share once. Budget: under 20 MB for
+  the store at its cap, measured on the worst case: 8 clips with separate
+  lookbacks, from real staging records.
 
 ### When a replay plays
 

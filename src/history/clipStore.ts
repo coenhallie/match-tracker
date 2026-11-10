@@ -41,7 +41,8 @@ function slimPlayer(player: Player): Player {
   if (player.person_type !== undefined) out.person_type = player.person_type
   if (player.projected_coordinates !== undefined) out.projected_coordinates = player.projected_coordinates
   if (player.player_number !== undefined) out.player_number = player.player_number
-  if (player.in_possession !== undefined) out.in_possession = player.in_possession
+  // Every reader takes it as true or not, so the common false is left out.
+  if (player.in_possession) out.in_possession = true
   return out
 }
 
