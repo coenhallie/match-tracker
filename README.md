@@ -4,8 +4,9 @@ A live 2D match tracker for football streams. It draws players, ball and the
 match's moments (goals, attacks, corners, throw-ins, fouls, shots and headers on goal, VAR checks, disallowed goals, half time, second half, full time) on a pitch, from the
 tracking pipeline's frames, inside any element you give it. It is the 2D
 replay from video-annotation, taken out of Vue: the same picture, timing and
-behaviour for the same data, with zoom and pan, the attacking/defending row and
-the layers menu. The corner is the widget's own, as video-annotation has none,
+behaviour for the same data, with the attacking/defending row and the layers
+menu. Unlike video-annotation's, the view has no zoom or pan of its own: only
+the animations (a goal's camera, the zoom near goal) move it. The corner is the widget's own, as video-annotation has none,
 and so are the VAR check, the goal disallowed, the half time, the second half, the full time, the foul, the shot and header on goal and the attack shown over a player loss. video-annotation's free kick
 isn't shown.
 
@@ -119,15 +120,12 @@ message into the `TrackerRecord` that `present` takes.
   tracker.overlay.append(layer)
   ```
 
-  A layer that takes the pointer stops every moment on a press. Pan and zoom
-  work through anything that leaves pointer events off.
+  A layer that takes the pointer stops every moment on a press.
 
   Your own controls in the overlay, such as a transport bar or a frame badge,
   can opt out: mark them `data-match-tracker-keep`. A press on such an element,
   or on anything inside one, leaves the moments running, so pressing Play does
-  not end a goal. Zoomed in, it does not start a pan either, so the click
-  reaches your button, and a double-click on it does not reset the zoom. A
-  ctrl or ⌘ + wheel or a pinch over it still zooms the pitch, never the page.
+  not end a goal.
 
   ```ts
   transport.setAttribute('data-match-tracker-keep', '')
@@ -240,7 +238,7 @@ destroyed on can have a new one.
 | `setOptions(options)` | Change any option but `mode` and `layersStorageKey`, which are fixed at mount. The HUD and the canvas follow at once, without a remount. Options that throw change nothing. |
 | `on(event, listener)` | Listen to an event. Returns a function that unsubscribes. |
 | `availability()` | Which moments `trigger` can play on the frame on screen: `{ goal, attack: { 0, 1 }, corner, throwIn, varCheck, goalDisallowed, halfTime, secondHalf, fullTime, foul, shotOnGoal, headerOnGoal }`, each a boolean (`MomentAvailability`). All false before the first frame and after a reset. A goal needs a ball, and an attack needs the direction that team attacks in, which needs the keepers. A fresh copy on every call. |
-| `overlay` | An element over the pitch, in the canvas's own box, for a host's drawing layer and anything it anchors to the pitch. It is a `div` child of the host, with `slot="overlay"`, so the page's CSS reaches it and its content. Its inline style fills the box and turns pointer events off. Pointer events pass through it unless you turn them on for your own elements. A press on it, or on anything in it, stops every moment, except inside an element in it marked `data-match-tracker-keep` (your transport, a frame badge), where a press starts no pan and a double-click leaves the zoom. |
+| `overlay` | An element over the pitch, in the canvas's own box, for a host's drawing layer and anything it anchors to the pitch. It is a `div` child of the host, with `slot="overlay"`, so the page's CSS reaches it and its content. Its inline style fills the box and turns pointer events off. Pointer events pass through it unless you turn them on for your own elements. A press on it, or on anything in it, stops every moment, except inside an element in it marked `data-match-tracker-keep` (your transport, a frame badge). |
 | `box` | `{ left, top, width, height }`, the canvas's box in CSS px from the host's top-left corner, below the attacking/defending row (`TrackerBox`, frozen). Null until the widget has been laid out with a size, and after `destroy()`. |
 | `version` | The package version this tracker runs. |
 | `destroy()` | Stop everything, empty the shadow root and take the overlay out of the host, with whatever you mounted in it. Every method is a no-op after. |
@@ -510,9 +508,8 @@ live mode only.
   reconnect loses them. So does switching the layer off, and while it is off
   nothing is kept, and so does a jump back of over 10 s in the frames' times,
   as when the pipeline starts again.
-- While the stroke shows, the layers button and the badges keep inside it, and
-  the zoom badge sits above a tab in the bottom right. They go back once it has
-  gone. They glide there and back over 200 ms, and jump with reduced motion.
+- While the stroke shows, the layers button and the `debug` badge keep inside
+  it. They go back once it has gone. They glide there and back over 200 ms, and jump with reduced motion.
 - With `debug` on, the badge says which replay plays and, while the run is
   invalid, its countdown, "Replay: GOAL, 2:47 ago, valid in over 10 s", in the
   moment's own word (`goal`, `corner`, `shotOnGoal` or `attack`), over
@@ -550,9 +547,6 @@ little more the nearer it gets (the `goalZoom` layer, on by default):
   and the attack's label are laid out on it, and back in once it has gone. A shot or a header on goal is what it is there for, so for those it stays
   in. Zoomed in, those cards stay whole, on the frame where the whole pitch has
   them, as the goal's card does.
-- Zooming or panning yourself takes the view: it stays where you put it.
-  Back at the whole pitch (a double-click, or zooming all the way out), the
-  zoom near goal has it again.
 - With reduced motion it does nothing.
 
 The `TrackerText` keys are:
@@ -560,7 +554,6 @@ The `TrackerText` keys are:
 - the row: `attacking`, `defending`, `versus`, `phaseTooltip`, `red` and `blue` (the default team names);
 - ARIA templates: `phaseAttackingAria` and `phaseDefendingAria` (with `{team}`), and `phaseAria` (with `{home}` and `{away}`);
 - the menu: `layersButton`, `layersTooltip`, `layersMenuLabel`, and `layers` (`{ label, hint }` per layer);
-- the zoom: `zoomLevel` (with `{zoom}`) and `zoomReset`;
 - for screen readers: `pitchLabel`, the pitch's name ("Match tracker");
 - the `debug` badge: `playerLoss` (with `{players}`), `playerLossCover` (with `{players}` and `{team}`), `invalidFrames`, `invalidFramesCover` (with `{team}`), and `invalidFramesValidIn` and `invalidFramesValidLater` (with `{label}` and `{seconds}`), and `invalidFramesShort` (with `{seconds}`), and `flashbackDebug` (with `{kind}` and `{ago}`).
 
@@ -568,7 +561,7 @@ The `TrackerText` keys are:
 
 | Event | Value | When |
 |---|---|---|
-| `zoom` | `{ zoom }` | The view's zoom changed: by the viewer, by a goal's camera, or by the zoom near goal, which sends one for each step as it eases. |
+| `zoom` | `{ zoom }` | The view's zoom changed: by a goal's camera, or by the zoom near goal, which sends one for each step as it eases. |
 | `layers` | `ReplayLayers` | The layers in force changed, from the menu or from `setOptions`. |
 | `moment` | `{ moment, phase: 'start' \| 'end' }` | A moment came on screen, or went. Never for the moments in a replay (see [Flashbacks](#flashbacks)). |
 | `box` | `TrackerBox` | The pitch's box moved or changed size. The box measured at mount is not sent, because no listener exists yet: read `tracker.box` for it. |
@@ -629,7 +622,7 @@ scripts and styles, several times on one page.
     pointer events) holds against the page's rules for divs. Its content
     inherits text properties (font, colour, line height) from the widget, not
     from the page, but every page rule that targets it applies. It stacks
-    under the widget's row, layers menu and zoom badge.
+    under the widget's row and layers menu.
   - Any other child of the host is not shown, as before.
   - The page gets only the `FontFace` registrations, made once however many
     widgets there are.
@@ -658,18 +651,15 @@ scripts and styles, several times on one page.
   sequence's ball, and the ball held during an attack.
 - **Light on the host page.**
   - The pitch is drawn only when something changes: a new record, a running
-    moment or fade, a resize, or zoom and pan. Otherwise no animation frame
+    moment or fade, or a resize. Otherwise no animation frame
     loop runs.
   - Drawing stops while the widget is scrolled out of view or the tab is
     hidden, and catches up when it is back.
   - The pitch's markings are drawn once and cached.
   - Live history is capped at the lookback window, so memory stays flat over a match.
 - **Input.**
-  - A plain wheel scrolls the page. Ctrl or ⌘ + wheel (also what a trackpad pinch sends) zooms about the cursor, from 1x to 6x.
-  - On touch, two fingers pinch-zoom, and one finger pans once zoomed in. At 1x, a vertical drag scrolls the page.
-  - A mouse drag pans when zoomed in, and a double-click resets the view, except on the host's
-    own controls marked `data-match-tracker-keep`, which the press and the double-click are left to.
-  - Zooming or panning takes the view from the zoom near goal until it is back at the whole pitch.
+  - The pitch takes no zoom or pan by hand: a wheel, a pinch, a drag or a double-click on it
+    is the page's, as on any picture in it.
   - Escape closes the layers menu only while focus is inside the widget, and the page
     does not get that Escape too.
   - A press anywhere outside the layers menu, on the pitch or on the page, closes it.

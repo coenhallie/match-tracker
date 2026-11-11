@@ -272,27 +272,22 @@ describe('flashbacks in live mode', () => {
     expect(control.drawn.at(-1)!.layers).not.toHaveProperty('flashback')
   })
 
-  it('lifts the zoom badge above a right-hand tab and clear of the stroke', () => {
+  it('keeps the layers button and the debug badge inside the stroke', () => {
     const { host, tracker } = mount()
     const hud = host.shadowRoot!.querySelector<HTMLElement>('.mt-hud')!
     expect(hud.classList.contains('mt-flashback')).toBe(false)
     const stream = new Stream(tracker)
-    // The ball in the left half at the goal: the tab goes bottom right.
-    goalThenRun(stream, 25, () => ({ ballX: -20 }))
-    expect(control.drawn.at(-1)!.layers?.flashback?.side).toBe('right')
+    goalThenRun(stream, 25)
     expect(hud.classList.contains('mt-flashback')).toBe(true)
-    expect(hud.classList.contains('mt-flashback-right')).toBe(true)
-    // At 1280 CSS px a frame unit is a CSS px: the design's 12 px stroke and its 12 + 112 px tab.
+    // At 1280 CSS px a frame unit is a CSS px: the design's 12 px stroke.
     const u = (105 * Math.min((1280 - 80) / 105, (720 - 80) / 68)) / 1356
     expect(parseFloat(hud.style.getPropertyValue('--mt-flashback-stroke'))).toBeCloseTo(12 * u, 6)
-    expect(parseFloat(hud.style.getPropertyValue('--mt-flashback-tab'))).toBeCloseTo(124 * u, 6)
     const css = STYLES.replace(/\s+/g, ' ')
-    expect(css).toContain('.mt-hud.mt-flashback-right .mt-zoom { bottom: calc(8px + var(--mt-flashback-tab, 0px)); }')
     expect(css).toContain(
       '.mt-hud.mt-flashback .mt-layers { top: calc(8px + var(--mt-flashback-stroke, 0px)); right: calc(8px + var(--mt-flashback-stroke, 0px)); }',
     )
     expect(css).toContain(
-      '.mt-hud.mt-flashback .mt-zoom { bottom: calc(8px + var(--mt-flashback-stroke, 0px)); right: calc(8px + var(--mt-flashback-stroke, 0px)); }',
+      '.mt-hud.mt-flashback .mt-loss { top: calc(8px + var(--mt-flashback-stroke, 0px)); left: calc(8px + var(--mt-flashback-stroke, 0px)); }',
     )
   })
 
@@ -300,46 +295,34 @@ describe('flashbacks in live mode', () => {
     const css = STYLES.replace(/\s+/g, ' ')
     // On the controls' own rule, not the flashback's, so they glide both ways: the style after a change decides.
     expect(css).toContain(
-      '.mt-layers, .mt-zoom, .mt-loss { transition-property: top, right, bottom, left; transition-timing-function: ease-out; transition-duration: 200ms; }',
+      '.mt-layers, .mt-loss { transition-property: top, right, bottom, left; transition-timing-function: ease-out; transition-duration: 200ms; }',
     )
     const reduced = /@media \(prefers-reduced-motion: reduce\) \{ ([^}]*)\{ transition-property: none; \}/.exec(css)?.[1] ?? ''
-    for (const control of ['.mt-layers,', '.mt-zoom,', '.mt-loss ']) expect(reduced).toContain(control)
-  })
-
-  it('keeps the zoom badge low beside a left-hand tab', () => {
-    const { host, tracker } = mount()
-    const hud = host.shadowRoot!.querySelector<HTMLElement>('.mt-hud')!
-    const stream = new Stream(tracker)
-    goalThenRun(stream, 25, () => ({ ballX: 20 }))
-    expect(control.drawn.at(-1)!.layers?.flashback?.side).toBe('left')
-    expect(hud.classList.contains('mt-flashback')).toBe(true)
-    expect(hud.classList.contains('mt-flashback-right')).toBe(false)
+    for (const control of ['.mt-layers,', '.mt-loss ']) expect(reduced).toContain(control)
   })
 
   it('puts the HUD controls back when the replay ends', () => {
     const { host, tracker } = mount()
     const hud = host.shadowRoot!.querySelector<HTMLElement>('.mt-hud')!
     const stream = new Stream(tracker)
-    goalThenRun(stream, 25, () => ({ ballX: -20 }))
+    goalThenRun(stream, 25)
     stream.push(1, 'valid')
     // Kept while the stroke fades out over live play...
-    expect(hud.classList.contains('mt-flashback-right')).toBe(true)
+    expect(hud.classList.contains('mt-flashback')).toBe(true)
     env.settle()
     // ...and back where they were once it has gone.
     expect(control.drawn.at(-1)!.layers).not.toHaveProperty('flashback')
     expect(hud.classList.contains('mt-flashback')).toBe(false)
-    expect(hud.classList.contains('mt-flashback-right')).toBe(false)
     expect(hud.style.getPropertyValue('--mt-flashback-stroke')).toBe('')
-    expect(hud.style.getPropertyValue('--mt-flashback-tab')).toBe('')
 
     // And at once on a reset.
     const again = mount()
     const hud2 = again.host.shadowRoot!.querySelector<HTMLElement>('.mt-hud')!
-    goalThenRun(new Stream(again.tracker), 25, () => ({ ballX: -20 }))
+    goalThenRun(new Stream(again.tracker), 25)
     expect(hud2.classList.contains('mt-flashback')).toBe(true)
     again.tracker.reset()
     expect(hud2.classList.contains('mt-flashback')).toBe(false)
-    expect(hud2.style.getPropertyValue('--mt-flashback-tab')).toBe('')
+    expect(hud2.style.getPropertyValue('--mt-flashback-stroke')).toBe('')
   })
 
   it('a reset mid-replay leaves the last live frame, without the tab', () => {
@@ -356,7 +339,7 @@ describe('flashbacks in live mode', () => {
   })
 
   it('each clip starts from the viewer view, not the last clip camera', () => {
-    const { host, tracker } = mount()
+    const { tracker } = mount()
     const stream = new Stream(tracker)
     // Two goals 20 s apart. The later one, with the ball in the box, plays first and its zoom near
     // goal moves its camera; the earlier one, with the ball at the centre spot, follows it.
@@ -377,7 +360,6 @@ describe('flashbacks in live mode', () => {
         expect(last.playback).toBe(false)
         expect(zoomedInFirst).toBe(true)
         expect(control.directors[1]!.view.zoom).toBe(1)
-        expect(host.shadowRoot!.querySelector('.mt-zoom')).toBeNull()
         return
       }
     }
@@ -611,24 +593,16 @@ describe('flashbacks in live mode', () => {
     expect(log.filter((e) => e.startsWith('flashback'))).toEqual([`flashback:start@${stream.t(goal)}`])
   })
 
-  it('carries the viewer zoom across, not the clip camera', () => {
-    const { host, tracker } = mount()
-    const zooms: number[] = []
-    tracker.on('zoom', ({ zoom }) => zooms.push(zoom))
+  it('goes back to live play at its own view, not the clip camera, when a press cuts the replay', () => {
+    const { tracker } = mount()
     const stream = new Stream(tracker)
     // The clip's ball is in the box, so its own zoom near goal moves its camera; live play's is at the centre spot.
     goalThenRun(stream, 50, (i) => ({ ballX: i < 300 ? 45 : 0 }))
-    const clip = control.directors[1]!
-    expect(clip.view.zoom).toBeGreaterThan(1)
+    expect(control.directors[1]!.view.zoom).toBeGreaterThan(1)
     expect(control.directors[0]!.view.zoom).toBe(1)
-    const setUserView = (tracker as unknown as { setUserView(view: { zoom: number; panX: number; panY: number }): void })
-      .setUserView
-    setUserView({ zoom: 2, panX: 0, panY: 0 })
     press(tracker)
-    expect(control.directors[0]!.view).toMatchObject({ zoom: 2, panX: 0, panY: 0 })
-    expect(zooms.at(-1)).toBe(2)
-    expect(host.shadowRoot!.querySelector('.mt-zoom')?.textContent).toContain('2.0')
-    expect(control.views.at(-1)).toMatchObject({ zoom: 2, panX: 0, panY: 0 })
+    expect(control.directors[0]!.view).toMatchObject({ zoom: 1, panX: 0, panY: 0 })
+    expect(control.views.at(-1)).toMatchObject({ zoom: 1, panX: 0, panY: 0 })
   })
 
   it('shows a first half clip on the first half ends', () => {

@@ -163,11 +163,6 @@ export class FlashbackStage {
     this.director?.setOptions(options)
   }
 
-  /** The viewer takes the view over from a clip's camera. */
-  releaseCamera(): void {
-    this.director?.releaseCamera()
-  }
-
   /**
    * End the clip playing at once. With `holdOff`, for someone who wants the live frame, no other
    * starts until the live run ends (Flashback.cut). Its `end` comes with the next tick.

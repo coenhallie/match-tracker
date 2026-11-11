@@ -37,8 +37,6 @@ export const zh: TrackerText = {
   layersButton: '图层',
   layersTooltip: '显示或隐藏叠加在数据上的内容',
   layersMenuLabel: '图层',
-  zoomLevel: '{zoom}x',
-  zoomReset: '双击恢复原始大小',
   pitchLabel: '比赛追踪',
   playerLoss: '球员丢失：仅跟踪到 {players} 人',
   playerLossCover: '球员丢失：仅跟踪到 {players} 人，以{team}的进攻覆盖',

@@ -53,10 +53,6 @@ export interface TrackerText extends Record<LabelCardKey | LabelCardTextKey, str
   layersTooltip: string
   /** The layers menu's ARIA label. */
   layersMenuLabel: string
-  /** The zoom badge's text, with `{zoom}` for the zoom to one decimal. */
-  zoomLevel: string
-  /** The tooltip on the pitch while it is zoomed in: how to go back to the whole of it. */
-  zoomReset: string
   /** What a screen reader calls the pitch: the canvas's ARIA label. */
   pitchLabel: string
   /**

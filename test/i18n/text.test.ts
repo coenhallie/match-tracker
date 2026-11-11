@@ -110,7 +110,6 @@ describe('the built-in text', () => {
       home: formatText(en.phaseAttackingAria, { team: 'Red' }),
       away: formatText(en.phaseDefendingAria, { team: 'Blue' }),
     })).toBe('Red attacking, Blue defending')
-    expect(formatText(en.zoomLevel, { zoom: '2.5' })).toBe('2.5x')
     // The corner is the widget's own: the reference has none. So is the throw-in's hint, as the widget's
     // throw-in fades in where the reference's slides in from the ball's half. And so is the zoom near goal.
     const { corner, throwInBanner, playerLoss, flashback, goalZoom, ballShadow, varCheck, goalDisallowed, halfTime, secondHalf, fullTime, foul, shotOnGoal, headerOnGoal, ...referenceLayers } = en.layers
@@ -211,7 +210,6 @@ describe('the built-in text', () => {
       expect(text.phaseDefendingAria).toContain('{team}')
       expect(text.phaseAria).toContain('{home}')
       expect(text.phaseAria).toContain('{away}')
-      expect(text.zoomLevel).toContain('{zoom}')
     }
   })
 })

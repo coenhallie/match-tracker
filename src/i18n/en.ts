@@ -6,9 +6,8 @@ import type { TrackerText } from './text.js'
  * (PipelineOutputSurface.vue's template, PHASE_TEAMS and STATE_TEXT) and the
  * layers menu's (replayLayers.ts). The phase row's ARIA templates give the
  * reference's `phaseDescription` ("Red attacking, Blue defending"), which
- * lowercases the state words into it. zoomReset and pitchLabel are the
- * widget's own: the reference has no tooltip for the zoom, and no label on
- * its canvas. The corner's words, on its card and in the layers menu, are the
+ * lowercases the state words into it. pitchLabel is the widget's own: the
+ * reference has no label on its canvas. The corner's words, on its card and in the layers menu, are the
  * widget's own too: the reference has no corner. So is the throw-in layer's
  * hint, as the widget's throw-in fades in where the reference's slides, and
  * so are the player loss's layer and debug badge. So are the label cards'
@@ -46,8 +45,6 @@ export const en: TrackerText = {
   layersButton: 'Layers',
   layersTooltip: 'Show or hide what is drawn over the data',
   layersMenuLabel: 'Layers',
-  zoomLevel: '{zoom}x',
-  zoomReset: 'Double-click to reset the zoom',
   pitchLabel: 'Match tracker',
   playerLoss: 'Player loss: {players} tracked',
   playerLossCover: "Player loss: {players} tracked, covered by {team}'s attack",
