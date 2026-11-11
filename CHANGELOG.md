@@ -6,6 +6,18 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### What you see
+
+- **A penalty scored plays the goal.** The ball rolls into the net, the camera
+  frames the goal and, in live mode, the moment is kept for a replay, as for a
+  `Goal` label, when a human labels a frame `Penalty scored` (the labelling
+  tool's button), however it is written (`PENALTY_SCORED`,
+  `EventType.PENALTY_SCORED`, `PenaltyScored`), or `Penalty goal`, `Penalty
+  kick scored`, `Penalty kick goal` or `Scored penalty`. Before, only `Goal`
+  played it. A penalty given
+  (`Penalty`), missed or saved still plays nothing, and a penalty scored
+  followed by a `Goal` label is one goal.
+
 ## [0.12.0] - 2026-11-10
 
 No zoom or pan by hand, replays that agree with the picture when `raw_data`

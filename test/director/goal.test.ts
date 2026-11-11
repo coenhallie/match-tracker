@@ -52,6 +52,33 @@ describe('goal sequence', () => {
     expect(lastOverlay(replay)).toBeDefined()
   })
 
+  it('plays when playback runs into a penalty scored label', () => {
+    const replay = playing()
+    tick(replay, goalFrame(['Penalty scored']))
+    replay.animate(1200)
+    expect(lastOverlay(replay)).toBeDefined()
+  })
+
+  // The label usually stays on for many frames, and an analyst may give both: still one goal.
+  it('plays once for a penalty scored followed by a goal label', () => {
+    const replay = playing()
+    tick(replay, goalFrame(['Penalty scored']))
+    replay.animate(1200)
+    expect(lastOverlay(replay)).toBeDefined()
+    replay.animate(GOAL_SEQUENCE_MS)
+    tick(replay, goalFrame(['Penalty scored', 'Goal']))
+    tick(replay, goalFrame(['Goal']))
+    replay.animate(1200)
+    expect(lastOverlay(replay)).toBeUndefined()
+  })
+
+  it('does not play on a penalty given', () => {
+    const replay = playing()
+    tick(replay, goalFrame(['Penalty']))
+    replay.animate(1200)
+    expect(lastOverlay(replay)).toBeUndefined()
+  })
+
   it('ends by itself and goes back to the tracked ball', () => {
     const replay = playing()
     tick(replay, goalFrame(['GOAL']))

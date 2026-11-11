@@ -52,6 +52,12 @@ describe('FlashbackSpotter', () => {
     expect(LABEL_REARM_S).toBe(15)
   })
 
+  // A penalty scored is a goal (isGoalFrame), so live mode keeps it for a replay too.
+  it('spots a penalty scored as a goal', () => {
+    const spotted = run([record(1, undefined, ['Penalty scored']), record(1.04, undefined, ['Penalty scored', 'Goal'])])
+    expect(spotted.map(({ kind, at }) => ({ kind, at }))).toEqual([{ kind: 'goal', at: 1 }])
+  })
+
   it('ignores AI labels, and labels with no origin', () => {
     const records = [
       record(1, undefined, ['goal'], 'ai'),

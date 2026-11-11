@@ -42,6 +42,31 @@ describe('isGoalFrame', () => {
   it('is false for a frame without actions', () => {
     expect(isGoalFrame(frame({}))).toBe(false)
   })
+
+  // The labelling tool's "Penalty scored" button sends "Penalty scored": a goal, from the spot.
+  it('recognises a penalty scored, however it is written', () => {
+    const labels = [
+      'Penalty scored',
+      'Penalty Scored',
+      'PENALTY_SCORED',
+      'penalty-scored',
+      'EventType.PENALTY_SCORED',
+      'PenaltyScored',
+      'Penalty goal',
+      'EventType.PENALTY_GOAL',
+      'Penalty kick scored',
+      'Penalty kick goal',
+      'Scored penalty',
+    ]
+    // Listed by name, so a failure says which.
+    expect(labels.filter((label) => !isGoalFrame(frame({ actions: [label] })))).toEqual([])
+  })
+
+  // A penalty given is not yet a goal, and one missed or saved never is.
+  it('does not mistake a penalty given, missed or saved for a goal', () => {
+    const labels = ['Penalty', 'EventType.PENALTY', 'Penalty kick', 'Penalty missed', 'Missed', 'Penalty saved']
+    expect(labels.filter((label) => isGoalFrame(frame({ actions: [label] })))).toEqual([])
+  })
 })
 
 describe('planGoal', () => {

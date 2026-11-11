@@ -7,7 +7,7 @@ replay from video-annotation, taken out of Vue: the same picture, timing and
 behaviour for the same data, with the attacking/defending row and the layers
 menu. Unlike video-annotation's, the view has no zoom or pan of its own: only
 the animations (a goal's camera, the zoom near goal) move it. The corner is the widget's own, as video-annotation has none,
-and so are the VAR check, the goal disallowed, the half time, the second half, the full time, the foul, the shot and header on goal and the attack shown over a player loss. video-annotation's free kick
+and so are the VAR check, the goal disallowed, the half time, the second half, the full time, the foul, the shot and header on goal, the goal on a penalty scored and the attack shown over a player loss. video-annotation's free kick
 isn't shown.
 
 - **Framework-free.** One function, `createMatchTracker`, and plain DOM. A thin
@@ -288,6 +288,10 @@ A label matches however it is written: case is ignored, spaces, underscores
 and hyphens count the same, and a dotted prefix is dropped. `VAR check`,
 `var check`, `VAR_CHECK` and `EventType.VAR_CHECK` are all the VAR check's label.
 A label is matched whole, so no goal plays on a `Goal disallowed`.
+A penalty scored is a goal: the goal plays on `Penalty scored` (as the
+labelling tool sends it, or `PENALTY_SCORED`, `PenaltyScored`), `Penalty goal`,
+`Penalty kick scored`, `Penalty kick goal` and `Scored penalty` as on `Goal`.
+`Penalty` alone is a penalty given and plays nothing.
 
 #### VAR check, goal disallowed and second half
 

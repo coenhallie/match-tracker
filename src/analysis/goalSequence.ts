@@ -75,12 +75,29 @@ const easeOutQuad = (u: number) => 1 - (1 - u) * (1 - u)
 const easeOutCubic = (u: number) => 1 - (1 - u) ** 3
 
 /**
- * Whether the pipeline labelled this frame a goal, however the export writes it
- * ("GOAL", "EventType.GOAL"; see actionName). Matched whole, so a goal kick
- * (a restart, and common) never counts.
+ * The names a goal's label goes by, bare (actionName). A penalty scored is a
+ * goal: the labelling tool's "Penalty scored" button sends "Penalty scored",
+ * and other exports write it "PENALTY_SCORED", "PenaltyScored" or "Penalty
+ * goal". "Penalty" alone is a penalty given, not yet a goal, so it is not here.
+ */
+const GOAL_LABELS = [
+  'goal',
+  'penalty scored',
+  'penaltyscored',
+  'penalty goal',
+  'penaltygoal',
+  'penalty kick scored',
+  'penalty kick goal',
+  'scored penalty',
+]
+
+/**
+ * Whether the pipeline labelled this frame a goal, a penalty scored among them,
+ * however the export writes it ("GOAL", "EventType.GOAL", "Penalty scored"; see
+ * actionName). Matched whole, so a goal kick (a restart, and common) never counts.
  */
 export function isGoalFrame(frame: Frame): boolean {
-  return frameHasAction(frame, 'goal')
+  return GOAL_LABELS.some((name) => frameHasAction(frame, name))
 }
 
 /**
