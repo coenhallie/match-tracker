@@ -168,8 +168,15 @@ function turnsOf(run: Sample[], open: boolean) {
     // Placed exactly TURN_ARM_METRES along, between the points either side,
     // so how far apart the frames fall does not decide which point is tighter.
     const at = (d: number): Sample => {
+      // The first step that reaches `d`: `along` only grows, so a binary search finds the one
+      // a walk from the start would, without walking the run once a point.
       let k = 0
-      while (along[k + 1]! < d) k++
+      let hi = run.length - 2
+      while (k < hi) {
+        const mid = (k + hi) >> 1
+        if (along[mid + 1]! < d) k = mid + 1
+        else hi = mid
+      }
       const from = run[k]!
       const to = run[k + 1]!
       const f = (d - along[k]!) / (along[k + 1]! - along[k]! || 1)

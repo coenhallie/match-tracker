@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMatchTracker, type MatchTracker, type MatchTrackerOptions } from '../../src/index'
 import { LiveHistory } from '../../src/history/liveHistory'
 import { PERSON_COLORS } from '../../src/render/constants'
-import { FakeIntersectionObserver, installEnv, makeHost, type Env } from './env'
+import { FakeIntersectionObserver, FakeMediaQuery, installEnv, makeHost, type Env } from './env'
 import { GOAL_SEQUENCE_MS } from '../../src/analysis/goalSequence'
 import { control } from './recording'
 import { FIXTURE_MESSAGES, message } from './messages'
@@ -456,6 +456,15 @@ describe('live input', () => {
     expect(options.reducedMotion()).toBe(false)
     env.reducedMotion = true
     expect(options.reducedMotion()).toBe(true)
+  })
+
+  it('makes one media query for reduced motion, however often it is asked', () => {
+    const asks = () => FakeMediaQuery.all.filter((q) => q.media.includes('prefers-reduced-motion')).length
+    const before = asks()
+    mount()
+    const options = control.options.at(-1)!
+    for (let k = 0; k < 5; k++) options.reducedMotion()
+    expect(asks() - before).toBe(1)
   })
 
   it('starts with the layers kept under the storage key, over the host\'s, over the defaults', () => {

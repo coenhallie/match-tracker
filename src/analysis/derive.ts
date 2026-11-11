@@ -32,12 +32,20 @@ export function windowAt(records: readonly TrackerRecord[], at: TrackerRecord): 
   return [...byFrame.values()].sort((a, b) => a.t - b.t)
 }
 
+/** Where `at` is in `window`: by frame number, as a window can hold its own copy of the record. */
+const indexIn = (window: readonly TrackerRecord[], at: TrackerRecord): number =>
+  window.findIndex((r) => r.frameCount === at.frameCount)
+
 /** The phase and the ball trail at `at`, from a window of records that holds it, in time order. */
 export function deriveAt(
   window: readonly TrackerRecord[],
   at: TrackerRecord,
 ): { phase: TeamPhase; trail: BallTrail | null } {
-  // By frame number: a window can hold its own copy of the record.
-  const index = window.findIndex((r) => r.frameCount === at.frameCount)
+  const index = indexIn(window, at)
   return { phase: teamPhaseAt(window, index), trail: ballTrailAt(window, index) }
+}
+
+/** The phase at `at` as deriveAt gives it, without the trail, for a caller with no use for one. */
+export function phaseAt(window: readonly TrackerRecord[], at: TrackerRecord): TeamPhase {
+  return teamPhaseAt(window, indexIn(window, at))
 }

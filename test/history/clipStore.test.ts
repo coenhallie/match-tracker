@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { gunzipSync } from 'node:zlib'
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { HISTORY_S, deriveAt, windowAt } from '../../src/analysis/derive'
 import {
   CLIP_CAP,
@@ -151,6 +151,21 @@ describe('ClipStore', () => {
     // The countdown runs out at 14, and the state then carried is valid.
     feed(store, 13, 14.96)
     expect(store.bytes()).toBeGreaterThan(before)
+  })
+
+  it('measures nothing as records come in: only bytes() does, once a record', () => {
+    const stringify = vi.spyOn(JSON, 'stringify')
+    try {
+      feed(store, 10, 14)
+      expect(stringify).not.toHaveBeenCalled()
+      const size = store.bytes()
+      expect(size).toBeGreaterThan(0)
+      const measured = stringify.mock.calls.length
+      expect(store.bytes()).toBe(size)
+      expect(stringify.mock.calls.length).toBe(measured)
+    } finally {
+      stringify.mockRestore()
+    }
   })
 
   it('keeps the more important of two moments in one window', () => {

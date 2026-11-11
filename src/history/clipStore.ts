@@ -62,7 +62,8 @@ function slimAction(action: FrameAction): FrameAction {
 
 interface Kept {
   record: TrackerRecord
-  size: number
+  /** Its length as JSON, once bytes() has measured it. */
+  size?: number
   /** Cut down to what the phase and the trail read: it is only some clip's lookback. */
   thin: boolean
 }
@@ -100,7 +101,6 @@ function thinRecord(record: TrackerRecord): TrackerRecord {
  */
 export class ClipStore {
   private kept: Kept[] = []
-  private size = 0
   private invalidTimes: number[] = []
   private newest: number | null = null
   private compactedAt = -Infinity
@@ -117,11 +117,9 @@ export class ClipStore {
       insertSorted(this.invalidTimes, record.t)
     } else {
       const slim = slimRecord(record)
-      const size = JSON.stringify(slim).length
       let at = this.kept.length
       while (at > 0 && this.kept[at - 1]!.record.t > record.t) at--
-      this.kept.splice(at, 0, { record: slim, size, thin: false })
-      this.size += size
+      this.kept.splice(at, 0, { record: slim, thin: false })
     }
     if (this.newest === null || record.t > this.newest) this.newest = record.t
     this.close()
@@ -203,14 +201,18 @@ export class ClipStore {
     return this.clipList
   }
 
-  /** The size of the kept records, as JSON. */
+  /**
+   * The size of the kept records, as JSON: a proxy for the memory they take, for the tests.
+   * Each is measured once, when first asked for, so nothing is spent on it otherwise.
+   */
   bytes(): number {
-    return this.size
+    let total = 0
+    for (const k of this.kept) total += k.size ??= JSON.stringify(k.record).length
+    return total
   }
 
   clear(): void {
     this.kept = []
-    this.size = 0
     this.invalidTimes = []
     this.newest = null
     this.compactedAt = -Infinity
@@ -270,20 +272,15 @@ export class ClipStore {
       if (t >= keepFrom || within(shown, t)) {
         next.push(k)
       } else if (within(lookback, t)) {
-        if (!k.thin) {
-          const thin = thinRecord(k.record)
-          const size = JSON.stringify(thin).length
-          this.size += size - k.size
-          next.push({ record: thin, size, thin: true })
-        } else next.push(k)
-      } else this.size -= k.size
+        next.push(k.thin ? k : { record: thinRecord(k.record), thin: true })
+      }
     }
     this.kept = next
   }
 
   private dropFront(before: number): void {
     let n = 0
-    while (n < this.kept.length && this.kept[n]!.record.t < before) this.size -= this.kept[n++]!.size
+    while (n < this.kept.length && this.kept[n]!.record.t < before) n++
     if (n > 0) this.kept.splice(0, n)
   }
 }

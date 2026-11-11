@@ -1,3 +1,5 @@
+import { fontGeneration } from '../assets/fonts.js'
+
 /**
  * The smallest a piece of canvas text is drawn, as a share of its size: below
  * this it stops reading as a title, so text still too long overflows instead,
@@ -15,12 +17,35 @@ export const ELLIPSIS = '…'
  */
 export const FIT_TOLERANCE = 1e-6
 
-/** How wide `text` is in `font`. The context's font is left as it was. */
+/** The most widths kept for a context: a timer shows a new text every second, for as long as it runs. */
+const MAX_WIDTHS = 256
+
+/** Each context's widths, by font and text, as measured while `generation` faces had loaded. */
+const measured = new WeakMap<CanvasRenderingContext2D, { generation: number; widths: Map<string, number> }>()
+
+/**
+ * How wide `text` is in `font`. The context's font is left as it was.
+ *
+ * The cards and the replay's timer measure the same few texts on every animation frame, so each
+ * width is kept, for its context, until a bundled face loads (fontGeneration), which can change
+ * them all: text measured in a fallback font before is measured again in the face.
+ */
 export function measureWidth(ctx: CanvasRenderingContext2D, text: string, font: string): number {
+  const generation = fontGeneration()
+  let memo = measured.get(ctx)
+  if (!memo || memo.generation !== generation) {
+    memo = { generation, widths: new Map() }
+    measured.set(ctx, memo)
+  }
+  const key = `${font}\0${text}`
+  const known = memo.widths.get(key)
+  if (known !== undefined) return known
   const before = ctx.font
   ctx.font = font
   const width = ctx.measureText(text).width
   ctx.font = before
+  if (memo.widths.size >= MAX_WIDTHS) memo.widths.clear()
+  memo.widths.set(key, width)
   return width
 }
 

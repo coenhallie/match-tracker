@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { ELLIPSIS, MIN_FIT, fitFontPx, fitText, wrapText } from '../../src/render/fitText'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { ELLIPSIS, MIN_FIT, fitFontPx, fitText, measureWidth, wrapText } from '../../src/render/fitText'
 import { createRenderer, type FrameLayers } from '../../src/render/renderer'
 import { DEFAULT_THEME, type RenderTheme } from '../../src/render/theme'
 import { designUnit } from '../../src/render/pitchGeometry'
@@ -10,6 +10,61 @@ import { build2DTransform, worldToPx } from '../../src/model/pitch'
 // The recording context measures every character as 0.6 of the font size.
 const ctx = () => recordingCtx().ctx as unknown as CanvasRenderingContext2D
 const font = (px: number) => `600 ${px}px Test`
+
+/** How many faces have loaded, as the fonts module says: moved on by a test. */
+const faces = vi.hoisted(() => ({ loaded: 0 }))
+vi.mock('../../src/assets/fonts', () => ({ ensureFonts: () => Promise.resolve(), fontGeneration: () => faces.loaded }))
+
+describe('measureWidth', () => {
+  /** A context that counts how often it measures. */
+  function counting() {
+    const c = ctx()
+    const measure = vi.spyOn(c, 'measureText')
+    return { c, measure }
+  }
+
+  it('measures a text in a font once, and gives the same width after', () => {
+    const { c, measure } = counting()
+    const width = measureWidth(c, 'Goal', font(20))
+    expect(measureWidth(c, 'Goal', font(20))).toBe(width)
+    expect(measure).toHaveBeenCalledTimes(1)
+    measureWidth(c, 'Goal', font(30))
+    measureWidth(c, 'Corner', font(20))
+    expect(measure).toHaveBeenCalledTimes(3)
+  })
+
+  it('leaves the context as it found it, measured or not', () => {
+    const { c } = counting()
+    c.font = 'bold 9px sans-serif'
+    measureWidth(c, 'Goal', font(20))
+    measureWidth(c, 'Goal', font(20))
+    expect(c.font).toBe('bold 9px sans-serif')
+  })
+
+  it('measures again once a face has loaded, which can change every width', () => {
+    const { c, measure } = counting()
+    measureWidth(c, 'Goal', font(20))
+    faces.loaded++
+    measureWidth(c, 'Goal', font(20))
+    expect(measure).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps each context to its own widths', () => {
+    const one = counting()
+    const two = counting()
+    measureWidth(one.c, 'Goal', font(20))
+    measureWidth(two.c, 'Goal', font(20))
+    expect(two.measure).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps no more than a few hundred widths, as a timer shows a new text every second', () => {
+    const { c, measure } = counting()
+    for (let k = 0; k < 2000; k++) measureWidth(c, `${k} s ago`, font(20))
+    measure.mockClear()
+    measureWidth(c, '0 s ago', font(20))
+    expect(measure).toHaveBeenCalledTimes(1)
+  })
+})
 
 describe('fitFontPx', () => {
   it('keeps the size of text that fits', () => {

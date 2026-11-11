@@ -148,6 +148,23 @@ describe('LiveHistory', () => {
     expect(history.window()).toEqual(windowAt(arrived, history.latest()!))
   })
 
+  it('makes the window once a record taken: the same array until the next is taken or it is cleared', () => {
+    const history = new LiveHistory()
+    history.add(record(0))
+    history.add(record(1))
+    const first = history.window()
+    expect(history.window()).toBe(first)
+    // A copy already held changes nothing.
+    history.add(record(1))
+    expect(history.window()).toBe(first)
+    history.add(record(2))
+    const second = history.window()
+    expect(second).not.toBe(first)
+    expect(second).toEqual(windowAt([record(0), record(1), record(2)], history.latest()!))
+    history.clear()
+    expect(history.window()).toEqual([])
+  })
+
   it('is emptied by clear()', () => {
     const history = new LiveHistory()
     history.add(record(1))

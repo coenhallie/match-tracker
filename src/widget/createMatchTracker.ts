@@ -69,7 +69,6 @@ import {
   type DirectorPaint,
   type DirectorView,
   type MomentAvailability,
-  type PlayerLossState,
 } from '../director/director.js'
 import { nextPlayback } from '../director/playback.js'
 import { LiveHistory } from '../history/liveHistory.js'
@@ -92,6 +91,7 @@ import {
   directorOptions,
   initialLayers,
   layersMenuOn,
+  prefersReducedMotion,
   resolveOptions,
   storeLayers,
   themeFor,
@@ -103,6 +103,7 @@ import {
 import { STYLES } from './styles.js'
 import { ZoomPan } from './zoomPan.js'
 import { build2DTransform, FRAME_W } from '../model/pitch.js'
+import type { TrackerText } from '../i18n/text.js'
 
 /** What a replay host hands over on each tick of its clock. */
 export interface ReplayState {
@@ -334,9 +335,11 @@ class Tracker implements MatchTracker {
   private readonly layersMenu: LayersMenu
   private readonly zoomBadge: ZoomBadge
   private readonly lossBadge: LossBadge
-  /** The player loss on the frame on screen, as the director last said, for the debug badge. */
-  private loss: PlayerLossState | null = null
   private readonly zoomPan: ZoomPan
+  /** Whether the user prefers reduced motion, for both directors. */
+  private readonly reducedMotion = prefersReducedMotion()
+  /** The zoom and the words renderZoom last showed it in, or null before it has. */
+  private zoomShown: { zoom: number; text: TrackerText } | null = null
   /** The phase of the last update, which the HUD's row shows. */
   private phase: TeamPhase | null = null
   private readonly renderer: Renderer | null
@@ -426,7 +429,6 @@ class Tracker implements MatchTracker {
     this.layersMenu.setShown(this.hud, layersMenuOn(this.options))
     this.layersMenu.setText(this.resolved.text)
     this.layersMenu.setLayers(this.layers)
-    this.renderHud()
 
     this.renderer = rendererFor(this.canvas, themeFor(this.resolved, this.icons))
     // Frame size is a sane bitmap until the box arrives, as in the reference.
@@ -434,11 +436,13 @@ class Tracker implements MatchTracker {
     // Only a live stream has invalid records; replay stays the reference's whatever its data carries.
     this.director = new Director({
       layers: this.layers,
-      ...directorOptions(this.resolved),
+      ...directorOptions(this.resolved, this.reducedMotion),
       coverInvalidFrames: mode === 'live',
     })
     this.flashback =
-      mode === 'live' ? new FlashbackStage(() => ({ layers: this.layers, ...directorOptions(this.resolved) })) : null
+      mode === 'live' ? new FlashbackStage(() => ({ layers: this.layers, ...directorOptions(this.resolved, this.reducedMotion) })) : null
+    // After the directors: the debug badge asks live play's what it shows.
+    this.renderHud()
     this.loop = new FrameLoop(this.tick, () => this.director.animating || (this.flashback?.animating ?? false))
 
     this.overlay.addEventListener('pointerdown', this.onOverlayPointerDown, { capture: true })
@@ -536,7 +540,6 @@ class Tracker implements MatchTracker {
     this.rejoining = false
     // No phase until the next record: the row of the match before goes, and so does its player loss.
     this.phase = null
-    this.loss = null
     this.renderHud()
     this.updateAvailability()
     // The director stops its moments without a paint.
@@ -577,8 +580,8 @@ class Tracker implements MatchTracker {
     // The frame on screen is turned, or turned back, on the next frame, as one the host presents again.
     if (this.halves.from !== from) this.loop.request()
     this.renderer?.setTheme(theme)
-    this.director.setOptions(directorOptions(this.resolved))
-    this.flashback?.setOptions(directorOptions(this.resolved))
+    this.director.setOptions(directorOptions(this.resolved, this.reducedMotion))
+    this.flashback?.setOptions(directorOptions(this.resolved, this.reducedMotion))
     this.layersMenu.setText(this.resolved.text)
     this.layersMenu.setShown(this.hud, layersMenuOn(this.options))
     this.renderHud()
@@ -678,13 +681,19 @@ class Tracker implements MatchTracker {
     this.applyLayers({ ...this.layers, [key]: !this.layers[key] }, true)
   }
 
-  /** The HUD as the phase, the layers, the view and the options are now, and the pitch's name. */
-  /** The debug badge, in developer mode, while too few players are tracked on the frame on screen. */
+  /**
+   * The debug badge, in developer mode, while too few players are tracked on the frame on screen,
+   * or a replay plays: live play's director's loss, whatever is on screen. Nothing is worked out
+   * for it without developer mode.
+   */
   private renderLoss(): void {
     const { text, teamName } = this.resolved
-    this.lossBadge.update(this.loss, this.options.debug === true, text, teamName, this.flashback?.debug() ?? null)
+    const on = this.options.debug === true
+    const loss = on ? this.director.loss() : null
+    this.lossBadge.update(loss, on, text, teamName, on ? (this.flashback?.debug() ?? null) : null)
   }
 
+  /** The HUD as the phase, the layers, the view and the options are now, and the pitch's name. */
   private renderHud(): void {
     this.phaseRow.update(this.phase, this.layers.phaseLabels, this.resolved)
     this.renderZoom()
@@ -700,8 +709,13 @@ class Tracker implements MatchTracker {
    * widget's, to pan and pinch.
    */
   private renderZoom(): void {
-    const zoomed = this.view.zoom > 1
-    this.zoomBadge.update(this.view.zoom, this.resolved.text)
+    const { zoom } = this.view
+    const { text } = this.resolved
+    // Asked on every animation frame: only a new zoom or new words change anything.
+    if (this.zoomShown?.zoom === zoom && this.zoomShown.text === text) return
+    this.zoomShown = { zoom, text }
+    const zoomed = zoom > 1
+    this.zoomBadge.update(zoom, text)
     this.viewport.classList.toggle('mt-zoomed', zoomed)
     this.viewport.style.touchAction = zoomed ? 'none' : 'pan-y'
     this.viewport.title = zoomed ? this.resolved.text.zoomReset : ''
@@ -857,13 +871,11 @@ class Tracker implements MatchTracker {
     if (this.destroyed) return
     if (this.clipShown) {
       // Live play is not on screen: its camera stays its director's own, and its paints are neither drawn nor watched.
-      this.loss = out.loss
       this.renderLoss()
       if (out.animating) this.loop.request()
       return
     }
     if (out.camera) this.adoptCamera(out.camera)
-    this.loss = out.loss
     this.renderLoss()
     for (const paint of out.paints) {
       for (const change of this.moments.next(paint.layers)) this.emitter.emit('moment', change)

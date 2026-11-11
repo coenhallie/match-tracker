@@ -84,6 +84,14 @@ describe('ensureFonts', () => {
     expect(added).toHaveLength(5)
   })
 
+  it('counts each face as it loads, and none that fails, so text is measured again in it', async () => {
+    failing.add('MatchTracker Inter italic 900')
+    const { ensureFonts, fontGeneration } = await import('../../src/assets/fonts')
+    expect(fontGeneration()).toBe(0)
+    await ensureFonts()
+    expect(fontGeneration()).toBe(4)
+  })
+
   it('resolves at once where the page has no FontFace API', async () => {
     vi.stubGlobal('FontFace', undefined)
     const { ensureFonts } = await import('../../src/assets/fonts')

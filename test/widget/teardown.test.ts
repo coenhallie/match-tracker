@@ -28,7 +28,7 @@ const gates = vi.hoisted(() => {
 })
 const { fonts, icons } = gates
 
-vi.mock('../../src/assets/fonts', () => ({ ensureFonts: () => gates.fonts.promise }))
+vi.mock('../../src/assets/fonts', () => ({ ensureFonts: () => gates.fonts.promise, fontGeneration: () => 0 }))
 vi.mock('../../src/assets/icons', () => ({ loadIcons: () => gates.icons.promise }))
 
 let env: Env
