@@ -3,9 +3,9 @@ import { UPRIGHT, rolled } from '../../src/analysis/football'
 import { BallRoll, MAX_ROLL_STEP_METRES, shownBall } from '../../src/director/ballRoll'
 import type { Frame } from '../../src/model/types'
 import { BALL_RADIUS } from '../../src/render/constants'
-import { build2DTransform, worldToPx } from '../../src/render/pitchGeometry'
 import type { GoalOverlay } from '../../src/render/renderer'
 import { FakeReplay } from './harness'
+import { build2DTransform, worldToPx } from '../../src/model/pitch'
 
 // Ported from the reference's describe('ball roll') (pipelineOutputSurface.test.ts:1819-1902), case for
 // case, reading the director's last painted ballSpin. Every case in that group is ported.

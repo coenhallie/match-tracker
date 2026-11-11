@@ -5,16 +5,12 @@
 // 2D half. The 3D model URLs, camera-follow distances, animation thresholds and
 // cylinder-fallback dimensions are deliberately not carried across: this
 // repository renders 2D only and has none of the GLB/HDR assets they name.
+// FRAME_W, FRAME_H and PITCH_MARGIN are in src/model/pitch.ts, as the frame's
+// coordinate system.
 // ---------------------------------------------------------------------------
 
 import { AWAY_FILL, HOME_FILL } from '../palette.js'
 
-/** Internal canvas width in pixels. */
-export const FRAME_W = 1280
-/** Internal canvas height in pixels. */
-export const FRAME_H = 720
-/** Margin (px) between canvas edge and pitch outline. */
-export const PITCH_MARGIN = 40
 /** Colour used for pitch markings. */
 export const LINE_COLOR = '#ffffff'
 /** Radius (px) of a player circle on the 2D canvas. */

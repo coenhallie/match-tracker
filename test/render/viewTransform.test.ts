@@ -1,13 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import {
-  computeViewMatrix,
-  applyViewMatrix,
-  IDENTITY_VIEW,
-  fitFrameBox,
-  viewFromCamera,
-  cameraFromView,
-} from '../../src/render/viewTransform'
-import { FRAME_W, FRAME_H } from '../../src/render/constants'
+import { computeViewMatrix, applyViewMatrix, IDENTITY_VIEW, fitFrameBox, viewFromCamera, cameraFromView } from '../../src/render/viewTransform'
+import { FRAME_H, FRAME_W } from '../../src/model/pitch'
 
 const CX = FRAME_W / 2
 const CY = FRAME_H / 2

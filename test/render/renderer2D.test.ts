@@ -9,19 +9,12 @@ import {
   type AttackIndicator,
 } from '../../src/render/attackIndicator'
 import type { Frame } from '../../src/model/types'
-import {
-  PERSON_COLORS,
-  DIMMED_PLAYER_ALPHA,
-  NEARBY_OUTLINE,
-  PLAYER_RADIUS,
-  BALL_RADIUS,
-  CARRIER_GROWTH,
-} from '../../src/render/constants'
-import { build2DTransform, designUnit, worldToPx, PITCH_LINE_ALPHA } from '../../src/render/pitchGeometry'
-import { NET_DEPTH_METRES } from '../../src/analysis/goalSequence'
+import { PERSON_COLORS, DIMMED_PLAYER_ALPHA, NEARBY_OUTLINE, PLAYER_RADIUS, BALL_RADIUS, CARRIER_GROWTH } from '../../src/render/constants'
+import { designUnit, PITCH_LINE_ALPHA } from '../../src/render/pitchGeometry'
 import { trailOpacity } from '../../src/analysis/ballTrail'
 import { UPRIGHT, footballPatches, rolled } from '../../src/analysis/football'
 import { fakeCanvas, stubOffscreenCanvas, type Op } from '../helpers/recordingCtx'
+import { build2DTransform, NET_DEPTH_METRES, worldToPx } from '../../src/model/pitch'
 
 const PITCH = { length: 105, width: 68 }
 
@@ -1288,5 +1281,36 @@ describe('the player who has just received the ball', () => {
   it('draws nothing over the ball otherwise', () => {
     expect(circleOver(render())).toBeUndefined()
     expect(circleOver(render(new Map()))).toBeUndefined()
+  })
+})
+
+describe('a frame on another pitch', () => {
+  /** A frame on a `length` by `width` pitch, with one player at (x, y). */
+  const onPitch = (length: number, width: number, x: number, y: number): Frame =>
+    ({
+      pitch_dimensions: { length, width },
+      teams: [{ team_id: 0, players: [{ track_id: 7, person_type: 'PersonType.PLAYER', projected_coordinates: { x, y } }] }],
+      balls: [],
+    }) as unknown as Frame
+
+  it('draws its players to its own pitch, not the first frame drawn', () => {
+    const { canvas, ops } = fakeCanvas()
+    const renderer = createRenderer(canvas)
+    renderer.renderFrame(onPitch(105, 68, 0, 0))
+    ops.length = 0
+    renderer.renderFrame(onPitch(120, 80, 40, 20))
+    const [px, py] = worldToPx(40, 20, build2DTransform({ length: 120, width: 80 }))
+    expect(ops.some((o) => isPlayerCircle(o, px, py))).toBe(true)
+  })
+
+  it('draws its markings again, to its own pitch', () => {
+    const { canvas } = fakeCanvas()
+    const renderer = createRenderer(canvas)
+    renderer.renderFrame(onPitch(105, 68, 0, 0))
+    const drawnFor105 = offscreen.ops.length
+    renderer.renderFrame(onPitch(105, 68, 1, 1))
+    expect(offscreen.ops.length).toBe(drawnFor105)
+    renderer.renderFrame(onPitch(120, 80, 0, 0))
+    expect(offscreen.ops.length).toBeGreaterThan(drawnFor105)
   })
 })

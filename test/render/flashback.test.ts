@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { drawFlashback, flashbackSide, formatAgo, type FlashbackIndicator } from '../../src/render/flashback'
-import { build2DTransform, designUnit } from '../../src/render/pitchGeometry'
-import { FRAME_H, FRAME_W } from '../../src/render/constants'
+import { designUnit } from '../../src/render/pitchGeometry'
 import { DEFAULT_THEME } from '../../src/render/theme'
 import { createRenderer } from '../../src/render/renderer'
 import type { Frame, TrackerRecord } from '../../src/model/types'
 import { fakeCanvas, recordingCtx, stubOffscreenCanvas, type Op } from '../helpers/recordingCtx'
+import { build2DTransform, FRAME_H, FRAME_W } from '../../src/model/pitch'
 
 const PITCH = { length: 105, width: 68 }
 const T = build2DTransform(PITCH)

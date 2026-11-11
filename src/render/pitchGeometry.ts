@@ -24,6 +24,10 @@
 //    drawn (designUnit). Its layout is within a few percent of scale but not
 //    exactly to it, so every marking is still placed from the frame's
 //    dimensions, which are what the players are positioned against.
+//  - resolvePitchDimensions(), build2DTransform(), worldToPx() and the design's
+//    pitch length live in src/model/pitch.ts, unchanged, with FRAME_W, FRAME_H
+//    and PITCH_MARGIN from constants.ts: the analysis places things on the
+//    pitch too, and may not import from render.
 
 // ---------------------------------------------------------------------------
 // Pitch geometry utilities for the 2D canvas renderer.
@@ -31,93 +35,16 @@
 // original index.html (lines 475-550).
 // ---------------------------------------------------------------------------
 
+import {
+  DESIGN_PITCH_LENGTH_PX,
+  FRAME_H,
+  FRAME_W,
+  resolvePitchDimensions,
+  worldToPx,
+} from '../model/pitch.js'
 import type { PitchDimensions, Transform2D } from '../model/types.js'
 import { PITCH_GRASS_MIDDLE } from '../palette.js'
-import { FRAME_W, FRAME_H, PITCH_MARGIN, LINE_COLOR } from './constants.js'
-
-// ── Default pitch metric values (FIFA standard) ────────────────────────────
-const DEFAULT_LENGTH = 105
-const DEFAULT_WIDTH = 68
-const DEFAULT_PAL = 16.5
-const DEFAULT_PAW = 40.32
-const DEFAULT_GAL = 5.5
-const DEFAULT_GAW = 18.32
-const DEFAULT_GW = 7.32
-const DEFAULT_CCR = 9.15
-const DEFAULT_PMD = 11.0
-
-/** A pitch dimension, and whether it came from the frame or from this file. */
-export interface ResolvedDimension {
-  /** Metres. The standard value when `assumed` is true. */
-  value: number
-  /** True when the frame did not state this dimension. */
-  assumed: boolean
-}
-
-/** Every dimension the 2D pitch is drawn from. */
-export type ResolvedPitch = Record<
-  | 'length'
-  | 'width'
-  | 'penalty_area_length'
-  | 'penalty_area_width'
-  | 'goal_area_length'
-  | 'goal_area_width'
-  | 'goal_width'
-  | 'center_circle_radius'
-  | 'penalty_mark_distance',
-  ResolvedDimension
->
-
-/**
- * Resolve every pitch dimension the 2D renderer needs, recording which ones the
- * frame actually stated.
- *
- * A standard value still has to be produced for the ones it omits, because a
- * marking cannot be positioned without one. What changes is that the caller can
- * now tell the two apart and draw them differently.
- */
-export function resolvePitchDimensions(pd: Partial<PitchDimensions> | undefined): ResolvedPitch {
-  const take = (v: number | undefined, standard: number): ResolvedDimension =>
-    typeof v === 'number' && !isNaN(v) ? { value: v, assumed: false } : { value: standard, assumed: true }
-
-  return {
-    length: take(pd?.length, DEFAULT_LENGTH),
-    width: take(pd?.width, DEFAULT_WIDTH),
-    penalty_area_length: take(pd?.penalty_area_length, DEFAULT_PAL),
-    penalty_area_width: take(pd?.penalty_area_width, DEFAULT_PAW),
-    goal_area_length: take(pd?.goal_area_length, DEFAULT_GAL),
-    goal_area_width: take(pd?.goal_area_width, DEFAULT_GAW),
-    goal_width: take(pd?.goal_width, DEFAULT_GW),
-    center_circle_radius: take(pd?.center_circle_radius, DEFAULT_CCR),
-    penalty_mark_distance: take(pd?.penalty_mark_distance, DEFAULT_PMD),
-  }
-}
-
-/**
- * Build a 2D transform that maps world coordinates (in metres, centred on
- * the pitch origin) to pixel coordinates on a FRAME_W x FRAME_H canvas.
- *
- * The transform uniformly scales the pitch so it fits within the canvas
- * minus the configured margin, then centres it.
- */
-export function build2DTransform(pd: Partial<PitchDimensions> | undefined): Transform2D {
-  const pl = pd?.length ?? DEFAULT_LENGTH
-  const pw = pd?.width ?? DEFAULT_WIDTH
-  const sx = (FRAME_W - 2 * PITCH_MARGIN) / pl
-  const sy = (FRAME_H - 2 * PITCH_MARGIN) / pw
-  const sc = Math.min(sx, sy)
-  const ox = (FRAME_W - pl * sc) / 2
-  const oy = (FRAME_H - pw * sc) / 2
-  return { ox, oy, sc, pl, pw }
-}
-
-/**
- * Convert a world-space position (x, y) — where (0, 0) is the pitch centre
- * — to canvas pixel coordinates using the given transform.
- */
-export function worldToPx(x: number, y: number, t: Transform2D): [number, number] {
-  return [t.ox + (x + t.pl / 2) * t.sc, t.oy + (y + t.pw / 2) * t.sc]
-}
+import { LINE_COLOR } from './constants.js'
 
 // ── Figma pitch style ──────────────────────────────────────────────────────
 
@@ -149,12 +76,6 @@ const GRASS_LIGHT_STOPS: Array<[number, string]> = [
   [1, '#000000'],
 ]
 
-/**
- * The pitch's length in the design, between the centres of the two goal
- * lines, in design pixels. The outer box spans 1360, with its 4px border
- * inside that.
- */
-export const DESIGN_PITCH_LENGTH_PX = 1356
 /** Sizes on the design, in design pixels. */
 export const DESIGN_LINE_PX = 4
 const DESIGN_SPOT_RADIUS_PX = 4

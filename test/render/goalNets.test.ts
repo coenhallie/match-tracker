@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { drawGoalNets } from '../../src/render/goalNets'
-import { NET_DEPTH_METRES } from '../../src/analysis/goalSequence'
-import { build2DTransform, designUnit, worldToPx, PITCH_LINE_ALPHA } from '../../src/render/pitchGeometry'
+import { designUnit, PITCH_LINE_ALPHA } from '../../src/render/pitchGeometry'
 import { recordingCtx } from '../helpers/recordingCtx'
+import { build2DTransform, NET_DEPTH_METRES, worldToPx } from '../../src/model/pitch'
 
 const PITCH = { length: 105, width: 68, goal_width: 7.32 }
 const T = build2DTransform(PITCH)

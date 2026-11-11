@@ -15,12 +15,13 @@ import {
 import { nextPlayback } from '../../src/director/playback'
 import type { ReplayLayers, ReplayMoment } from '../../src/model/replayLayers'
 import type { TrackerRecord } from '../../src/model/types'
-import { FRAME_H, FRAME_W, PERSON_COLORS } from '../../src/render/constants'
+import { PERSON_COLORS } from '../../src/render/constants'
 import { createRenderer, type FrameLayers } from '../../src/render/renderer'
 import { DEFAULT_THEME } from '../../src/render/theme'
 import { withinRounding } from '../helpers/close'
 import { normalizeCalls } from '../helpers/normalize'
 import { recordingCtx, stubOffscreenCanvas } from '../helpers/recordingCtx'
+import { FRAME_H, FRAME_W } from '../../src/model/pitch'
 
 /**
  * The golden recordings of video-annotation's 2D replay (its branch

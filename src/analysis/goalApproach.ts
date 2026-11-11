@@ -1,8 +1,6 @@
 import type { PitchDimensions } from '../model/types.js'
-import { FRAME_H, FRAME_W } from '../render/constants.js'
-import { resolvePitchDimensions } from '../render/pitchGeometry.js'
-import type { Camera } from '../render/viewTransform.js'
-import { framePitchBox, NET_DEPTH_METRES } from './goalSequence.js'
+import { framePitchBox } from './goalSequence.js'
+import { type Camera, FRAME_H, FRAME_W, NET_DEPTH_METRES, resolvePitchDimensions } from '../model/pitch.js'
 
 /**
  * The zoom near goal: as the ball nears a goal, the view closes in on it and

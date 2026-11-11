@@ -79,21 +79,10 @@
 //   const { renderFrame, invalidateCache } = createRenderer(canvas)
 // ---------------------------------------------------------------------------
 
-import type { Player, Ball, Frame, FrameAction, Transform2D } from '../model/types.js'
+import type { Player, Ball, Frame, FrameAction, PitchDimensions, Transform2D } from '../model/types.js'
 import { isHumanLabel } from '../analysis/actionLabels.js'
-import {
-  FRAME_W,
-  FRAME_H,
-  PLAYER_RADIUS,
-  CARRIER_GROWTH,
-  BALL_RADIUS,
-  BALL_SHADOW_FULL_HEIGHT_M,
-  DIMMED_PLAYER_ALPHA,
-  FOCUS_METRES,
-  NEARBY_OUTLINE,
-  NEARBY_METRES,
-} from './constants.js'
-import { build2DTransform, worldToPx, buildPitchCache, fillGrass, PITCH_LINE_ALPHA } from './pitchGeometry.js'
+import { PLAYER_RADIUS, CARRIER_GROWTH, BALL_RADIUS, BALL_SHADOW_FULL_HEIGHT_M, DIMMED_PLAYER_ALPHA, FOCUS_METRES, NEARBY_OUTLINE, NEARBY_METRES } from './constants.js'
+import { buildPitchCache, fillGrass, PITCH_LINE_ALPHA } from './pitchGeometry.js'
 import { drawGoalNets, type NetBulge } from './goalNets.js'
 import {
   ballRingAlpha,
@@ -115,6 +104,7 @@ import { drawGoalBanner, type GoalBanner } from './goalBanner.js'
 import { footballPatches, UPRIGHT, type Spin } from '../analysis/football.js'
 import { computeViewMatrix, IDENTITY_VIEW, type PipelineView, type ViewMatrix } from './viewTransform.js'
 import { DEFAULT_THEME, type RenderTheme } from './theme.js'
+import { build2DTransform, FRAME_H, FRAME_W, worldToPx } from '../model/pitch.js'
 
 /**
  * What the goal sequence draws over a frame: its own ball, where that ball just
@@ -264,6 +254,22 @@ const TRAIL_ALPHA_STEPS = 40
  *  - `setView(view)` - the zoom and pan for every later frame.
  *  - `setTheme(theme)` - the theme for every later frame.
  */
+/** What a frame states of its pitch, as a key: every dimension the transform and the markings read. */
+function pitchDimensionsKey(pd: Partial<PitchDimensions> | undefined): string {
+  if (!pd) return ''
+  return [
+    pd.length,
+    pd.width,
+    pd.penalty_area_length,
+    pd.penalty_area_width,
+    pd.goal_area_length,
+    pd.goal_area_width,
+    pd.goal_width,
+    pd.center_circle_radius,
+    pd.penalty_mark_distance,
+  ].join(',')
+}
+
 export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTheme = DEFAULT_THEME) {
   const ctx = canvas.getContext('2d')!
 
@@ -279,9 +285,13 @@ export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTh
   // Internal (non-reactive) caches — rebuilt lazily on first render or after
   // invalidateCache().
   let transform2d: Transform2D | null = null
+  // The pitch the transform is for: the last dimensions object seen, and what
+  // it states. A frame on another pitch (another match) makes both again.
+  let pitchSeen: Partial<PitchDimensions> | undefined
+  let pitchDims = ''
   let pitchCache: OffscreenCanvas | null = null
-  // The bitmap size and matrix the cache was drawn for. A pan, a zoom or a
-  // resize changes it, and only then is the pitch drawn again.
+  // The bitmap size, matrix and pitch the cache was drawn for. A pan, a zoom,
+  // a resize or another pitch changes it, and only then is the pitch drawn again.
   let pitchKey = ''
 
   // ── Public API ─────────────────────────────────────────────────────────────
@@ -298,7 +308,15 @@ export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTh
 
     const pd = frame.pitch_dimensions
 
-    if (!transform2d) transform2d = build2DTransform(pd)
+    // Each record brings its own dimensions object: what it states is compared only when it is new.
+    if (!transform2d || pd !== pitchSeen) {
+      pitchSeen = pd
+      const dims = pitchDimensionsKey(pd)
+      if (!transform2d || dims !== pitchDims) {
+        transform2d = build2DTransform(pd)
+        pitchDims = dims
+      }
+    }
 
     // Everything is drawn in frame units (1280x720). The bitmap is sized to
     // the display, so scale frame units into it, then apply the view.
@@ -313,7 +331,7 @@ export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTh
       sy * view.f,
     ]
 
-    const key = `${canvas.width}x${canvas.height}:${matrix.join(',')}`
+    const key = `${canvas.width}x${canvas.height}:${matrix.join(',')}:${pitchDims}`
     if (!pitchCache || key !== pitchKey) {
       // The markings alone: the grass is drawn per frame, under them. Into the
       // cache drawn before when the bitmap is the same size.

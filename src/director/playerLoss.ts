@@ -60,10 +60,10 @@ import { trackedPlayers, PLAYER_LOSS_BELOW } from '../analysis/playerLoss.js'
 import type { TeamId } from '../analysis/teamPhase.js'
 import type { Frame, RecordValidity, TrackerRecord } from '../model/types.js'
 import { ATTACK_IN_MS, ATTACK_OUT_MS, ATTACK_PULSE_MS, type AttackIndicator } from '../render/attackIndicator.js'
-import { resolvePitchDimensions } from '../render/pitchGeometry.js'
 import type { AttackTarget } from './attack.js'
 import { shownBall } from './ballRoll.js'
 import type { Moment, MomentContext, MomentStep } from './moment.js'
+import { resolvePitchDimensions } from '../model/pitch.js'
 
 /** How long, in seconds of playback, a loss lasts before it is covered. */
 export const LOSS_START_S = 0.3

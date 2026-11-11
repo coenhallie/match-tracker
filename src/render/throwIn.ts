@@ -1,10 +1,10 @@
 import type { Frame, PitchDimensions, Transform2D } from '../model/types.js'
 import { frameHasAction } from '../analysis/actionLabels.js'
-import { designUnit, resolvePitchDimensions, worldToPx } from './pitchGeometry.js'
+import { designUnit } from './pitchGeometry.js'
 import { drawEventBand, drawEventTitle, INTER_ASCENT, type TitleLayout } from './eventBanner.js'
-import { FRAME_W } from './constants.js'
 import { drawSmallCard } from './smallCard.js'
 import { DEFAULT_THEME, type RenderTheme } from './theme.js'
+import { FRAME_W, resolvePitchDimensions, worldToPx } from '../model/pitch.js'
 
 /**
  * The throw-in: "THROW IN" on a small band along the bottom touchline, the

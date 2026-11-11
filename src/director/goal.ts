@@ -17,22 +17,14 @@
  * near goal keeps the view, and follows the goal's ball into the net. The
  * reference's camera lunges in over 400 ms, and back out at the end.
  */
-import {
-  GOAL_SEQUENCE_MS,
-  goalCamera,
-  goalCameraWeight,
-  goalStateAt,
-  isGoalFrame,
-  planGoal,
-  type GoalPlan,
-  type GoalState,
-} from '../analysis/goalSequence.js'
+import { GOAL_SEQUENCE_MS, goalCamera, goalCameraWeight, goalStateAt, isGoalFrame, planGoal, type GoalPlan, type GoalState } from '../analysis/goalSequence.js'
 import type { Frame } from '../model/types.js'
 import { goalBannerIntensity, goalBannerSlide, type GoalBanner } from '../render/goalBanner.js'
 import type { GoalOverlay } from '../render/renderer.js'
-import { cameraFromView, type Camera } from '../render/viewTransform.js'
+import { cameraFromView } from '../render/viewTransform.js'
 import { blendCamera } from './camera.js'
 import type { Moment, MomentContext, MomentStep } from './moment.js'
+import type { Camera } from '../model/pitch.js'
 
 interface Running {
   plan: GoalPlan

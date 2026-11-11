@@ -5,8 +5,8 @@ import type { TeamPhase } from '../analysis/teamPhase.js'
 import { KIND_RANK, type FlashbackKind, type SpottedMoment } from '../model/flashback.js'
 import type { TrackerRecord } from '../model/types.js'
 import { isCornerFrame } from '../render/corner.js'
-import { resolvePitchDimensions } from '../render/pitchGeometry.js'
 import { shownBall } from './ballRoll.js'
+import { resolvePitchDimensions } from '../model/pitch.js'
 
 /** A label kind is spotted again only after this long, in record time, without it. */
 export const LABEL_REARM_S = 15

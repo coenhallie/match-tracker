@@ -1,14 +1,14 @@
 import type { Frame, Transform2D } from '../model/types.js'
 import { labelCard, labelCardTextKey, type IconCardKey, type LabelCardKey } from '../model/labelCards.js'
 import { frameHasAction } from '../analysis/actionLabels.js'
-import { FRAME_W } from './constants.js'
 import { drawEventTitle, interBaselinePx, type CardBox, type TitleLayout } from './eventBanner.js'
 import { measureWidth, wrapText } from './fitText.js'
-import { designUnit, worldToPx } from './pitchGeometry.js'
+import { designUnit } from './pitchGeometry.js'
 import { drawSmallCard } from './smallCard.js'
 import type { PitchDimensions } from '../model/types.js'
 import { DEFAULT_THEME, type RenderTheme } from './theme.js'
 import { THROW_IN_IN_MS, THROW_IN_REARM_S, THROW_IN_SHOW_MS } from './throwIn.js'
+import { FRAME_W, worldToPx } from '../model/pitch.js'
 
 /**
  * A label card (labelCards.ts in model), as the match-summary design shows it

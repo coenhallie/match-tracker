@@ -1,6 +1,5 @@
+import { build2DTransform, FRAME_H, FRAME_W, NET_DEPTH_METRES, resolvePitchDimensions, worldToPx } from '../model/pitch.js'
 import type { Frame, PitchDimensions } from '../model/types.js'
-import { build2DTransform, resolvePitchDimensions, worldToPx, DESIGN_PITCH_LENGTH_PX } from '../render/pitchGeometry.js'
-import { FRAME_W, FRAME_H } from '../render/constants.js'
 import { frameHasAction } from './actionLabels.js'
 
 /**
@@ -12,13 +11,6 @@ import { frameHasAction } from './actionLabels.js'
  * it can be tested without a canvas or a clock. Positions are pitch metres,
  * centred on the pitch, the same space as the frame's own coordinates.
  */
-
-/**
- * Depth of the net behind the goal line. The export does not state one, so it
- * is the Figma pitch's: the middle of the goal's back line sits 37 design
- * pixels behind the middle of the goal line, on a standard 105 m pitch.
- */
-export const NET_DEPTH_METRES = (37 / DESIGN_PITCH_LENGTH_PX) * 105
 
 /** Length of the whole sequence, from the shot until the ball has settled. */
 export const GOAL_SEQUENCE_MS = 3200

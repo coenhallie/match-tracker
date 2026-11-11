@@ -1,7 +1,8 @@
 import type { Transform2D } from '../model/types.js'
-import { designUnit, worldToPx } from './pitchGeometry.js'
+import { designUnit } from './pitchGeometry.js'
 import { fitFontPx, measureWidth } from './fitText.js'
 import { DEFAULT_THEME } from './theme.js'
+import { worldToPx } from '../model/pitch.js'
 
 /**
  * What the match-summary design's event banners share (Figma "Game Animation

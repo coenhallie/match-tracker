@@ -17,6 +17,12 @@ follow [Semantic Versioning](https://semver.org/).
   Now both go by one rule. Those frames are kept and their moments are
   replayed later, and a replay under way ends with live play, within 1.5 s of
   the lookahead running out, as a replay ends on a frame that says nothing.
+- **A frame on another pitch is drawn to it.** The pitch's size was taken from
+  the first frame drawn and kept for good, so a widget shown a match on a
+  pitch of another size (after a reset, or on a stream that changes match)
+  placed its players and markings on the first pitch, while the goals and the
+  attack's shade followed the new one. Every match so far is on a 105 by 68 m
+  pitch, so nothing has looked wrong yet.
 
 ## [0.11.0] - 2026-11-10
 
