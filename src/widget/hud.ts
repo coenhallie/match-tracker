@@ -1,8 +1,9 @@
 /**
- * The HUD's attacking/defending row and zoom badge, ported from
- * PipelineOutputSurface.vue (6f14d1f): the row's template (`:1503-1550`)
- * with `phaseLabels` and `phaseDescription` (`:627-666`), and the zoom badge
- * (`:1756-1761`). Styles are in styles.ts.
+ * The HUD's attacking/defending row, ported from PipelineOutputSurface.vue
+ * (6f14d1f): the row's template (`:1503-1550`) with `phaseLabels` and
+ * `phaseDescription` (`:627-666`), and the debug badge, the widget's own. The
+ * reference's zoom badge (`:1756-1761`) is not shown: the viewer has no zoom
+ * of their own. Styles are in styles.ts.
  *
  * The row is kept and changed in place, as Vue patches the reference's keyed
  * labels, so a label filling with its team's colour fades as it does there.
@@ -31,30 +32,14 @@ const KIND_WORD = {
   attack: 'attack',
 } as const satisfies Record<FlashbackKind, keyof TrackerText>
 
-/** How far the flashback reaches in from the canvas's edges, in CSS px, while it shows. */
-export interface FlashbackClear {
-  /** The stroke's width, all round. */
-  stroke: number
-  /** How far the tab reaches up from the bottom, its inset included. */
-  tab: number
-  side: 'left' | 'right'
-}
-
 /**
  * Keep the HUD's controls off the flashback while it shows (styles.ts): the layers button and
- * the badges inside the stroke, and the zoom badge, bottom right, above a right-hand tab. With
- * null they go back to where they were.
+ * the debug badge inside its stroke, `stroke` CSS px wide. With null they go back to where they were.
  */
-export function clearOfFlashback(hud: HTMLElement, clear: FlashbackClear | null): void {
-  hud.classList.toggle('mt-flashback', clear !== null)
-  hud.classList.toggle('mt-flashback-right', clear?.side === 'right')
-  if (clear) {
-    hud.style.setProperty('--mt-flashback-stroke', `${clear.stroke}px`)
-    hud.style.setProperty('--mt-flashback-tab', `${clear.tab}px`)
-  } else {
-    hud.style.removeProperty('--mt-flashback-stroke')
-    hud.style.removeProperty('--mt-flashback-tab')
-  }
+export function clearOfFlashback(hud: HTMLElement, stroke: number | null): void {
+  hud.classList.toggle('mt-flashback', stroke !== null)
+  if (stroke !== null) hud.style.setProperty('--mt-flashback-stroke', `${stroke}px`)
+  else hud.style.removeProperty('--mt-flashback-stroke')
 }
 
 function element<K extends keyof HTMLElementTagNameMap>(tag: K, className: string): HTMLElementTagNameMap[K] {
@@ -165,23 +150,6 @@ function describe(names: Record<TeamId, string>, states: Record<TeamId, TeamStat
 const sameShown = (a: Shown, b: Shown) =>
   a.text === b.text &&
   TEAMS.every((t) => a.names[t] === b.names[t] && a.colors[t] === b.colors[t] && a.states[t] === b.states[t])
-
-/** The zoom, bottom right, while the view is zoomed in. */
-export class ZoomBadge {
-  private readonly el = element('div', 'mt-zoom')
-
-  constructor(private readonly parent: HTMLElement) {}
-
-  update(zoom: number, text: TrackerText): void {
-    if (!(zoom > 1)) {
-      this.el.remove()
-      return
-    }
-    const label = formatText(text.zoomLevel, { zoom: zoom.toFixed(1) })
-    if (this.el.textContent !== label) this.el.textContent = label
-    if (this.el.parentNode !== this.parent) this.parent.append(this.el)
-  }
-}
 
 /** What the badge says of invalid frames, before any countdown. */
 function invalidLabel(loss: PlayerLossState, team: string | null, text: TrackerText): string {

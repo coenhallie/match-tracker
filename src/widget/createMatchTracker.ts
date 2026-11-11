@@ -27,13 +27,12 @@
  *
  * ## The view
  *
- * The widget holds the user's zoom and pan and passes them with every call.
- * The user's own wheel, pinch, drag and double-click (zoomPan.ts) take the
- * view over from a goal's camera (`releaseCamera`) and go in through
- * `setView`. A goal's camera comes back as `camera`, which the widget takes
- * as its own view; either way it says so with `zoom`. Each drawn paint
- * carries the view it was made in, which the renderer is given before it
- * draws.
+ * Only the animations move the view: the viewer has no zoom or pan of their
+ * own, and a wheel, a pinch, a drag or a double-click on the pitch is the
+ * page's. A goal's camera, or the zoom near goal, comes back as `camera`,
+ * which the widget takes as its view and passes with every call, and says so
+ * with `zoom`. Each drawn paint carries the view it was made in, which the
+ * renderer is given before it draws.
  *
  * While the tab is hidden or the widget is out of view nothing is updated or
  * drawn; `push` still records. Coming back is a seek in live mode, so nothing
@@ -42,7 +41,8 @@
  * ## The HUD
  *
  * Over the pitch box: the attacking/defending row above it, the layers menu
- * top right and the zoom badge bottom right (hud.ts, layersMenu.ts). The row
+ * top right and, in developer mode, the debug badge top left (hud.ts,
+ * layersMenu.ts). The row
  * follows the phase of each update; all of it follows the options, in place.
  *
  * ## The overlay
@@ -76,14 +76,14 @@ import { parseRecord } from '../model/parseRecord.js'
 import type { ReplayLayerKey, ReplayLayers, ReplayMoment } from '../model/replayLayers.js'
 import type { TrackerRecord } from '../model/types.js'
 import { createRenderer } from '../render/renderer.js'
-import { flashbackTabExtent, type FlashbackIndicator } from '../render/flashback.js'
+import { flashbackStroke, type FlashbackIndicator } from '../render/flashback.js'
 import type { RenderTheme } from '../render/theme.js'
 import type { FrameBox } from '../render/viewTransform.js'
 import { MATCH_TRACKER_VERSION } from '../version.js'
 import { Emitter, MomentWatch, labelMomentShowing, type TrackerBox, type TrackerEvents } from './events.js'
 import { FlashbackStage } from './flashbackStage.js'
 import { measureBox, pixelRatio, place, sameBox, sizeBitmap } from './layout.js'
-import { clearOfFlashback, LossBadge, PhaseRow, ZoomBadge, type FlashbackClear } from './hud.js'
+import { clearOfFlashback, LossBadge, PhaseRow } from './hud.js'
 import { LayersMenu } from './layersMenu.js'
 import { FrameLoop } from './loop.js'
 import {
@@ -101,9 +101,7 @@ import {
   type Resolved,
 } from './options.js'
 import { STYLES } from './styles.js'
-import { ZoomPan } from './zoomPan.js'
 import { build2DTransform, FRAME_W } from '../model/pitch.js'
-import type { TrackerText } from '../i18n/text.js'
 
 /** What a replay host hands over on each tick of its clock. */
 export interface ReplayState {
@@ -127,8 +125,7 @@ export interface MatchTracker {
    * host turns them on; pressing on it stops every moment, so what is drawn
    * on is the data. An element marked `data-match-tracker-keep` (a
    * transport bar, a frame badge) is the host's own: a press inside it stops
-   * nothing and starts no pan, and a double-click there leaves the zoom. A
-   * ctrl/⌘ + wheel or a pinch over it still zooms the pitch.
+   * nothing.
    */
   readonly overlay: HTMLElement
   /**
@@ -333,13 +330,9 @@ class Tracker implements MatchTracker {
   private readonly hud: HTMLElement
   private readonly phaseRow = new PhaseRow()
   private readonly layersMenu: LayersMenu
-  private readonly zoomBadge: ZoomBadge
   private readonly lossBadge: LossBadge
-  private readonly zoomPan: ZoomPan
   /** Whether the user prefers reduced motion, for both directors. */
   private readonly reducedMotion = prefersReducedMotion()
-  /** The zoom and the words renderZoom last showed it in, or null before it has. */
-  private zoomShown: { zoom: number; text: TrackerText } | null = null
   /** The phase of the last update, which the HUD's row shows. */
   private phase: TeamPhase | null = null
   private readonly renderer: Renderer | null
@@ -353,7 +346,8 @@ class Tracker implements MatchTracker {
   /** The last paint drawn, and with what indicator: drawn again when only the indicator moves. */
   private drawn: { paint: DirectorPaint; indicator: FlashbackIndicator | null } | null = null
   /** What the HUD's controls keep clear of: the flashback as last drawn, in CSS px, or null. */
-  private hudClear: FlashbackClear | null = null
+  /** The replay's stroke the HUD keeps inside, in CSS px, or null while there is none. */
+  private hudClear: number | null = null
   /** The last paint of live play drawn: what a reset leaves on screen in place of a replay. */
   private liveDrawn: DirectorPaint | null = null
   private readonly emitter = new Emitter<TrackerEvents>()
@@ -423,7 +417,6 @@ class Tracker implements MatchTracker {
     host.append(this.overlay)
     this.hud = dom.hud
     this.layersMenu = new LayersMenu(this.shadow, this.onLayerToggle, mode)
-    this.zoomBadge = new ZoomBadge(this.hud)
     this.lossBadge = new LossBadge(this.hud)
     this.hud.append(this.phaseRow.box)
     this.layersMenu.setShown(this.hud, layersMenuOn(this.options))
@@ -446,19 +439,6 @@ class Tracker implements MatchTracker {
     this.loop = new FrameLoop(this.tick, () => this.director.animating || (this.flashback?.animating ?? false))
 
     this.overlay.addEventListener('pointerdown', this.onOverlayPointerDown, { capture: true })
-    this.zoomPan = new ZoomPan(
-      this.viewport,
-      {
-        view: () => this.view,
-        takeCamera: () => {
-          this.director.releaseCamera()
-          this.flashback?.releaseCamera()
-        },
-        setView: this.setUserView,
-        keeps: (target) => this.keeps(target),
-      },
-      [dom.hudLayer],
-    )
     this.doc.addEventListener('visibilitychange', this.onVisibilityChange)
     if (typeof ResizeObserver !== 'undefined') {
       this.resizeObserver = new ResizeObserver(this.measure)
@@ -643,7 +623,6 @@ class Tracker implements MatchTracker {
     this.doc.removeEventListener('visibilitychange', this.onVisibilityChange)
     this.overlay.removeEventListener('pointerdown', this.onOverlayPointerDown, { capture: true })
     this.layersMenu.destroy()
-    this.zoomPan.destroy()
     this.emitter.clear()
     this.history.clear()
     this.flashback?.reset()
@@ -696,29 +675,9 @@ class Tracker implements MatchTracker {
   /** The HUD as the phase, the layers, the view and the options are now, and the pitch's name. */
   private renderHud(): void {
     this.phaseRow.update(this.phase, this.layers.phaseLabels, this.resolved)
-    this.renderZoom()
     this.renderLoss()
     const name = this.resolved.text.pitchLabel
     if (this.canvas.getAttribute('aria-label') !== name) this.canvas.setAttribute('aria-label', name)
-  }
-
-  /**
-   * What shows the zoom: the badge, and on the viewport the grab cursor, the
-   * tooltip on getting back, and the touches it takes. At the whole pitch
-   * one finger scrolls the page up and down; zoomed in, every touch is the
-   * widget's, to pan and pinch.
-   */
-  private renderZoom(): void {
-    const { zoom } = this.view
-    const { text } = this.resolved
-    // Asked on every animation frame: only a new zoom or new words change anything.
-    if (this.zoomShown?.zoom === zoom && this.zoomShown.text === text) return
-    this.zoomShown = { zoom, text }
-    const zoomed = zoom > 1
-    this.zoomBadge.update(zoom, text)
-    this.viewport.classList.toggle('mt-zoomed', zoomed)
-    this.viewport.style.touchAction = zoomed ? 'none' : 'pan-y'
-    this.viewport.title = zoomed ? this.resolved.text.zoomReset : ''
   }
 
   // ── The loop ──────────────────────────────────────────────────────────────
@@ -914,24 +873,19 @@ class Tracker implements MatchTracker {
     this.renderer.renderFrame(paint.frame, indicator ? { ...paint.layers, flashback: indicator } : paint.layers)
     this.stale = false
     this.drawn = { paint, indicator }
-    let clear: FlashbackClear | null = null
-    if (indicator && indicator.alpha > 0) {
-      // Frame units in CSS px: the canvas is drawn at its box.
-      const scale = this.frameBox.width / FRAME_W
-      const extent = flashbackTabExtent(build2DTransform(paint.frame.pitch_dimensions))
-      clear = { stroke: extent.stroke * scale, tab: extent.tab * scale, side: indicator.side }
-    }
-    this.clearHud(clear)
+    // Frame units in CSS px: the canvas is drawn at its box.
+    const stroke =
+      indicator && indicator.alpha > 0
+        ? (flashbackStroke(build2DTransform(paint.frame.pitch_dimensions)) * this.frameBox.width) / FRAME_W
+        : null
+    this.clearHud(stroke)
   }
 
-  /** Keep the HUD's controls off the flashback's stroke and tab as drawn, and put them back once they go. */
-  private clearHud(next: FlashbackClear | null): void {
-    const last = this.hudClear
-    if (last === next || (last && next && last.stroke === next.stroke && last.tab === next.tab && last.side === next.side)) {
-      return
-    }
-    this.hudClear = next
-    clearOfFlashback(this.hud, next)
+  /** Keep the HUD's controls inside the flashback's stroke as drawn, and put them back once it goes. */
+  private clearHud(stroke: number | null): void {
+    if (stroke === this.hudClear) return
+    this.hudClear = stroke
+    clearOfFlashback(this.hud, stroke)
   }
 
   /** Draw again what is on screen, through the director, as the reference's pushView paints. */
@@ -971,23 +925,8 @@ class Tracker implements MatchTracker {
     this.viewMoved(zoom)
   }
 
-  /**
-   * The user moved the view (zoomPan.ts, which has already taken it over
-   * from any sequence): the director pushes it and paints, as the
-   * reference's view watcher does.
-   */
-  private readonly setUserView = (view: DirectorCamera): void => {
-    if (this.destroyed) return
-    const { zoom } = this.view
-    this.view = { zoom: view.zoom, panX: view.panX, panY: view.panY }
-    this.show(this.director.setView(this.directorView()))
-    this.showClip(this.flashback?.setView(this.directorView()))
-    this.viewMoved(zoom)
-  }
-
-  /** The view is where it now is: show its zoom, and tell the host when that changed from `zoom`. */
+  /** The view is where it now is: tell the host when its zoom changed from `zoom`. */
   private viewMoved(zoom: number): void {
-    this.renderZoom()
     if (this.view.zoom !== zoom) this.emitter.emit('zoom', { zoom: this.view.zoom })
   }
 

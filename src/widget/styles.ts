@@ -71,10 +71,6 @@ canvas {
   inset: 0;
   overflow: hidden;
 }
-/* "cursor-grab" while zoomed in. Its touch-action is set with the zoom (createMatchTracker.ts). */
-.mt-viewport.mt-zoomed {
-  cursor: grab;
-}
 /* "absolute", placed in the computed box. */
 .mt-canvas,
 .mt-overlay,
@@ -385,22 +381,9 @@ svg {
   color: rgb(255 255 255 / 0.5);
 }
 
-/* The zoom badge: "absolute bottom-2 right-2 rounded bg-black/50 px-1.5 py-0.5 font-mono text-[10px] text-white". */
-.mt-zoom {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
-  border-radius: 4px;
-  background-color: rgb(0 0 0 / 0.5);
-  padding: 2px 6px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size: 10px;
-  color: var(--mt-hud-text, #fff);
-}
-
 /*
- * The debug badge for a player loss, top left: the widget's own, in the zoom
- * badge's type, on red so it reads as a warning about the data. It keeps
+ * The debug badge for a player loss, top left: the widget's own, in a small
+ * monospace type, on red so it reads as a warning about the data. It keeps
  * clear of the layers button, top right, at any width, wrapping rather than
  * cutting its text short.
  */
@@ -420,13 +403,11 @@ svg {
 }
 
 /*
- * While a replay's stroke and tab show (clearOfFlashback, hud.ts), the HUD's controls keep off
- * them: inside the stroke, and the zoom badge above a right-hand tab. Its sizes come from the
- * canvas, in CSS px. The controls glide there and back rather than jump: the transition is on
+ * While a replay's stroke shows (clearOfFlashback, hud.ts), the HUD's controls keep inside it.
+ * Its width comes from the canvas, in CSS px. The controls glide there and back rather than jump: the transition is on
  * their own rule, not the rules below, so it runs both ways.
  */
 .mt-layers,
-.mt-zoom,
 .mt-loss {
   transition-property: top, right, bottom, left;
   transition-timing-function: ease-out;
@@ -435,13 +416,6 @@ svg {
 .mt-hud.mt-flashback .mt-layers {
   top: calc(8px + var(--mt-flashback-stroke, 0px));
   right: calc(8px + var(--mt-flashback-stroke, 0px));
-}
-.mt-hud.mt-flashback .mt-zoom {
-  bottom: calc(8px + var(--mt-flashback-stroke, 0px));
-  right: calc(8px + var(--mt-flashback-stroke, 0px));
-}
-.mt-hud.mt-flashback-right .mt-zoom {
-  bottom: calc(8px + var(--mt-flashback-tab, 0px));
 }
 .mt-hud.mt-flashback .mt-loss {
   top: calc(8px + var(--mt-flashback-stroke, 0px));
@@ -454,7 +428,6 @@ svg {
   .mt-layers-toggle,
   .mt-layer-option,
   .mt-layers,
-  .mt-zoom,
   .mt-loss {
     transition-property: none;
   }

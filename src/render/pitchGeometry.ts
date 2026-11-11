@@ -154,7 +154,7 @@ export function tracePlayingArea(
  * blitted in a single `drawImage` call each frame. Given the cache drawn
  * before, at the same bitmap size, it clears that and draws into it again
  * rather than making a new one: the view moves every frame while the zoom near
- * goal eases, or someone pinches or drags, and a new full-size bitmap each
+ * goal or a goal's camera eases, and a new full-size bitmap each
  * time is garbage the browser has to reclaim. The markings come out the same,
  * as everything they are drawn with is set before it is used.
  *

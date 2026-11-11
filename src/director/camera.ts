@@ -18,7 +18,11 @@ export function blendCamera(from: Camera, to: Camera, k: number): Camera {
   }
 }
 
-/** A gesture on the pitch that can hand the view to the user. */
+/**
+ * A gesture on the pitch that can hand the view to the user, as the reference has them. The
+ * widget takes no zoom or pan by hand, so none reach the director from it; the parity goldens
+ * still drive them.
+ */
 export type ViewGesture = 'wheel' | 'pointerdown' | 'pointermove' | 'pointerup' | 'dblclick'
 
 /**

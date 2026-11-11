@@ -40,17 +40,6 @@ function mount() {
 }
 
 const view = () => control.views.at(-1)!
-const badge = (host: HTMLElement) => host.shadowRoot!.querySelector('.mt-zoom')
-
-function zoomIn(target: HTMLElement) {
-  const init = { clientX: 400, clientY: 225, ctrlKey: true, metaKey: false, deltaY: -100 }
-  const event = new WheelEvent('wheel', { bubbles: true, cancelable: true, ...init })
-  // happy-dom's WheelEvent leaves out what a browser's has from MouseEvent.
-  for (const key of ['clientX', 'clientY', 'ctrlKey', 'metaKey'] as const) {
-    Object.defineProperty(event, key, { value: init[key] })
-  }
-  target.dispatchEvent(event)
-}
 
 beforeEach(() => {
   env = installEnv()
@@ -65,7 +54,7 @@ afterEach(() => {
 
 describe('the zoom near goal', () => {
   it('eases in on a ball near the goal, says so to the host, and stops asking for frames once there', () => {
-    const { host, tracker, zooms } = mount()
+    const { tracker, zooms } = mount()
     tracker.push(message(0, { withBall: true }))
     env.frame()
     env.frame()
@@ -78,29 +67,6 @@ describe('the zoom near goal', () => {
     expect(zooms.length).toBeGreaterThan(10)
     for (let i = 1; i < zooms.length; i++) expect(zooms[i]!).toBeGreaterThan(zooms[i - 1]!)
     expect(zooms.at(-1)).toBe(view().zoom)
-    expect(badge(host)?.textContent).toBe(`${view().zoom.toFixed(1)}x`)
-  })
-
-  it('leaves the view to the user once they zoom, until a double click gives the whole pitch back', () => {
-    const { tracker, viewport } = mount()
-    tracker.push(message(0, { withBall: true }))
-    env.settle()
-    const eased = view().zoom
-    zoomIn(viewport)
-    const theirs = { ...view() }
-    expect(theirs.zoom).toBeCloseTo(eased + 0.15, 9)
-    for (let i = 1; i < 30; i++) {
-      tracker.push(message(i, { withBall: true }))
-      env.frame()
-    }
-    env.settle()
-    expect(view()).toEqual(theirs)
-
-    viewport.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
-    expect(view()).toMatchObject({ zoom: 1, panX: 0, panY: 0 })
-    tracker.push(message(30, { withBall: true }))
-    env.settle()
-    expect(view().zoom).toBeCloseTo(eased, 3)
   })
 
   it('puts the whole pitch back when switched off in the layers menu', () => {

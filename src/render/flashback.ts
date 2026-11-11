@@ -45,13 +45,11 @@ export interface FlashbackIndicator {
 }
 
 /**
- * How much of the frame the flashback takes from its edges, in frame units through `t`: the
- * stroke's width all round, and how far the tab, with its inset, reaches up from the bottom. For
- * the widget's own controls, which keep clear of them while they show.
+ * How much of the frame the flashback's stroke takes from its edges, all round, in frame units
+ * through `t`: for the widget's own controls, which keep inside it while it shows.
  */
-export function flashbackTabExtent(t: Transform2D): { stroke: number; tab: number } {
-  const u = designUnit(t)
-  return { stroke: STROKE_PX * u, tab: (INSET_PX + TAB_HEIGHT_PX) * u }
+export function flashbackStroke(t: Transform2D): number {
+  return STROKE_PX * designUnit(t)
 }
 
 /**

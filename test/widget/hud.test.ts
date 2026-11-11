@@ -73,7 +73,6 @@ const shadow = (host: HTMLElement) => host.shadowRoot!
 const row = (host: HTMLElement) => shadow(host).querySelector<HTMLElement>('.mt-phase')
 const label = (host: HTMLElement, team: 0 | 1) =>
   shadow(host).querySelector<HTMLElement>(`.mt-phase-team[data-team="${team}"]`)
-const badge = (host: HTMLElement) => shadow(host).querySelector<HTMLElement>('.mt-zoom')
 /** The browser's form of a colour set in a style, to compare with one read back. */
 function cssColor(color: string): string {
   const probe = document.createElement('div')
@@ -319,31 +318,5 @@ describe('the team phase row on a narrow widget', () => {
     const { STYLES } = await import('../../src/widget/styles')
     expect(STYLES).toMatch(/\.mt-phase-name \{[^}]*min-width: 0;[^}]*text-overflow: ellipsis;/)
     expect(STYLES).toMatch(/\.mt-phase-team \{[^}]*overflow: hidden;/)
-  })
-})
-
-describe('the zoom badge', () => {
-  it('shows only while the view is zoomed in, with the zoom to one decimal', () => {
-    const { host, tracker } = withPhase(NOBODY)
-    // The goal's camera alone, which hands the whole pitch back: the zoom near goal would keep the view in.
-    tracker.setOptions({ layers: { goalZoom: false } })
-    expect(badge(host)).toBeNull()
-    const zooms: number[] = []
-    tracker.on('zoom', ({ zoom }) => zooms.push(zoom))
-    expect(tracker.trigger('goal')).toBe(true)
-    let seen = false
-    for (let i = 0; i < 400 && env.queued() > 0; i++) {
-      env.frame()
-      const zoom = zooms.at(-1) ?? 1
-      if (zoom > 1) {
-        seen = true
-        expect(badge(host)?.textContent).toBe(`${zoom.toFixed(1)}x`)
-      } else {
-        expect(badge(host)).toBeNull()
-      }
-    }
-    expect(seen).toBe(true)
-    expect(zooms.at(-1)).toBe(1)
-    expect(badge(host)).toBeNull()
   })
 })

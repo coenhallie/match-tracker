@@ -8,6 +8,12 @@ follow [Semantic Versioning](https://semver.org/).
 
 ### What you see
 
+- **The viewer can no longer zoom or pan the pitch.** Only the animations
+  move the view: a goal's camera and the zoom near goal. Ctrl or ⌘ + wheel, a
+  trackpad or two-finger pinch, a drag and a double-click on the pitch now do
+  what they do on any picture in the page, so the page scrolls and zooms as
+  usual over the widget. The zoom badge, the grab cursor and the "Double-click
+  to reset the zoom" tooltip went with them.
 - **In live mode, replays take frames without `raw_data` the way the picture
   does.** When a stream stops sending `raw_data`, the picture counts its frames
   as valid again once the lookahead's reach (10 s on staging) has passed. The
@@ -23,6 +29,12 @@ follow [Semantic Versioning](https://semver.org/).
   placed its players and markings on the first pitch, while the goals and the
   attack's shade followed the new one. Every match so far is on a 105 by 68 m
   pitch, so nothing has looked wrong yet.
+
+### API
+
+- Removed the `zoomLevel` and `zoomReset` keys of `TrackerText` (and so of
+  `TrackerTextOverrides`): nothing shows them now. A host that overrides
+  either gets a type error, and can drop the override.
 
 ## [0.11.0] - 2026-11-10
 
