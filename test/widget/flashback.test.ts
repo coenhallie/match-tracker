@@ -569,6 +569,48 @@ describe('flashbacks in live mode', () => {
     expect(log.filter((e) => e.startsWith('flashback'))).toHaveLength(2)
   })
 
+  it('ends the replay once the stream has said nothing for longer than its lookahead reached', () => {
+    const { tracker } = mount()
+    const log = events(tracker)
+    const stream = new Stream(tracker)
+    // Two goals, 20 s apart, so a second clip is ready to follow the first.
+    const SECOND = 600
+    stream.push(800, 'valid', (i) => (i === GOAL || i === SECOND ? { labels: ['goal'] } : {}))
+    // An invalid record with no valid one in sight, then 20 s of records with no raw_data. Past
+    // the horizon live play is valid again, as the main picture has it, so the replay ends within
+    // MERGE_GAP_S of it (a carried guess ends one no sooner), before its 12 s clip runs out.
+    stream.push(1, 'long')
+    const silentFrom = stream.i
+    let endedAt = -1
+    tracker.on('flashback', ({ phase }) => {
+      if (phase === 'end') endedAt = stream.i
+    })
+    stream.push(500, 'none')
+    const horizonPassed = silentFrom + Math.ceil(HORIZON / 0.04)
+    expect(endedAt).toBeGreaterThan(horizonPassed)
+    expect(endedAt).toBeLessThanOrEqual(horizonPassed + Math.ceil(1.5 / 0.04) + 1)
+    expect(log.filter((e) => e.startsWith('flashback'))).toEqual([
+      `flashback:start@${stream.t(SECOND)}`,
+      `flashback:end@${stream.t(SECOND)}`,
+    ])
+    const last = control.drawn.at(-1)!
+    expect(frameNo(last.frame)).toBeGreaterThan(FIRST_FRAME + silentFrom)
+    expect(last.layers?.flashback?.alpha ?? 0).toBe(0)
+  })
+
+  it('keeps clips of play the stream said nothing about once its lookahead ran out', () => {
+    const { tracker } = mount()
+    const log = events(tracker)
+    const stream = new Stream(tracker)
+    stream.push(250, 'valid')
+    stream.push(1, 'long')
+    // 30 s with no raw_data, a goal 20 s in: valid play by then, so it is spotted and kept.
+    const goal = stream.i + 500
+    stream.push(750, 'none', (i) => (i === goal ? { labels: ['goal'] } : {}))
+    stream.push(50, 'long')
+    expect(log.filter((e) => e.startsWith('flashback'))).toEqual([`flashback:start@${stream.t(goal)}`])
+  })
+
   it('carries the viewer zoom across, not the clip camera', () => {
     const { host, tracker } = mount()
     const zooms: number[] = []

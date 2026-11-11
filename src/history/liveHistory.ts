@@ -95,6 +95,17 @@ export class LiveHistory {
     return this.newest
   }
 
+  /**
+   * What a held record stands for: what it said, or what it carries of what the stream last
+   * said (see `carried`), decided once, as it arrived. Null for a record that says nothing on a
+   * stream that has not said anything within reach, which is valid, and for one not held.
+   * Everything else that asks whether a live record is valid asks this, so the flashbacks and
+   * the picture never disagree.
+   */
+  validityOf(record: TrackerRecord): RecordValidity | null {
+    return this.validity.get(record) ?? null
+  }
+
   /** The newest valid record, or null when there has been none since the history began. */
   latestValid(): TrackerRecord | null {
     return this.lastValid
@@ -172,7 +183,7 @@ export class LiveHistory {
 
   /** Whether a held record is valid, as it said or as what it carried says. */
   private isValid(record: TrackerRecord): boolean {
-    return this.validity.get(record)?.invalid !== true
+    return this.validityOf(record)?.invalid !== true
   }
 
   /** Drop the records older than `from`, which sit at the front. */

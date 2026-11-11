@@ -18,8 +18,9 @@
  * or `reset()`. After any other cut (a seek, a stream break, the layer going off) or a live label
  * moment, the next clip may start as soon as the start rule holds.
  *
- * A live record with no validity counts as the validity the last one that had it carries
- * (carriedValidity). A carried state that flipped is a guess with no horizon, so it can keep a
+ * A live record with no validity counts as the live history takes it (LiveHistory.validityOf):
+ * the validity the last one that had it carries (carriedValidity), as far as that reached. A
+ * carried state that flipped, or one that ran out, is a guess with no horizon, so it can keep a
  * clip going but never start, chain or end one: a carried guess that the run ended leaves the
  * replay to the next record that says, for MERGE_GAP_S at most.
  *
@@ -27,7 +28,6 @@
  */
 import type { ClipStore } from '../history/clipStore.js'
 import type { Clip } from '../model/flashback.js'
-import { carriedValidity, type CarriedValidity } from '../model/validity.js'
 import type { RecordValidity, TrackerRecord } from '../model/types.js'
 import { ATTACK_IN_MS, ATTACK_OUT_MS } from '../render/attackIndicator.js'
 import { MERGE_GAP_S } from './playerLoss.js'
@@ -65,6 +65,8 @@ export function fitClip(beforeS: number, afterS: number, leftS: number | null): 
 export interface FlashbackLive {
   /** The newest live record as pushed (`LiveHistory.latest()`). */
   newest: TrackerRecord | null
+  /** What the live history takes `newest` for (`LiveHistory.validityOf`): said, or carried. */
+  state: RecordValidity | null
   /** Whether the live director is showing a moment a human label started. */
   labelMoment: boolean
   /** Whether the `flashback` layer is on. */
@@ -151,7 +153,8 @@ export class Flashback {
   private playing: Playing | null = null
   /** The last clip played, named while the tab fades out. */
   private last: Clip | null = null
-  private carried: CarriedValidity | null = null
+  /** The last validity a live record said itself: only such a record ends or holds a replay. */
+  private stated: RecordValidity | null = null
   private newestT: number | null = null
   private time = 0
   private fade: { from: number; atMs: number; target: 0 | 1 } = { from: 0, atMs: 0, target: 0 }
@@ -194,12 +197,12 @@ export class Flashback {
     const { newest } = live
     if (newest) {
       this.newestT = newest.t
-      if (newest.validity) this.carried = { t: newest.t, validity: newest.validity }
+      if (newest.validity) this.stated = newest.validity
     }
-    const state = newest ? (newest.validity ?? carriedValidity(this.carried, newest.t)) : null
+    const state = newest ? live.state : null
     this.state = state
     if (this.held && runEnded(state)) this.held = false
-    const guess = newest !== null && !newest.validity && this.carried?.validity.invalid === true && !state?.invalid
+    const guess = newest !== null && !newest.validity && this.stated?.invalid === true && !state?.invalid
     this.guessMs = guess ? (this.guessMs ?? nowMs) : null
 
     if (this.playing) {
@@ -232,7 +235,7 @@ export class Flashback {
   reset(): void {
     this.playing = null
     this.last = null
-    this.carried = null
+    this.stated = null
     this.newestT = null
     this.fade = { from: 0, atMs: 0, target: 0 }
     this.alpha = 0
@@ -264,7 +267,7 @@ export class Flashback {
    */
   private holds(nowMs: number, state: RecordValidity | null): boolean {
     const playing = this.playing!
-    const stated = this.carried?.validity ?? null
+    const stated = this.stated
     if (!playing.hold) {
       if (inShortGap(state)) playing.hold = { untilMs: nowMs + MERGE_GAP_S * 1000, gap: true }
       else if (runEnding(stated) || this.guessMs !== null) {
@@ -291,7 +294,7 @@ export class Flashback {
   private cuts(nowMs: number, live: FlashbackLive): boolean {
     if (live.labelMoment || !live.layerOn) return true
     if (this.guessMs !== null && nowMs - this.guessMs >= MERGE_GAP_S * 1000) return true
-    return runEnded(this.carried?.validity ?? null)
+    return runEnded(this.stated)
   }
 
   /** Start the next clip if the start rule holds. True when one started. */

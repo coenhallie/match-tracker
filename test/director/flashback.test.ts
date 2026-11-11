@@ -10,6 +10,7 @@ import {
 } from '../../src/director/flashback'
 import { MERGE_GAP_S } from '../../src/director/playerLoss'
 import { ClipStore } from '../../src/history/clipStore'
+import { LiveHistory } from '../../src/history/liveHistory'
 import type { RecordValidity, TrackerRecord } from '../../src/model/types'
 import { ATTACK_IN_MS, ATTACK_OUT_MS } from '../../src/render/attackIndicator'
 
@@ -46,7 +47,7 @@ function storeWith(...ats: number[]): { store: ClipStore; frameOf: Map<number, n
   for (let k = first; k <= last; k++) {
     const t = k / HZ
     const record = rec(t, valid())
-    store.add(record)
+    store.add(record, record.validity ?? null)
     if (ats.includes(t)) {
       store.note({ kind: 'attack', at: t, frameCount: record.frameCount })
       frameOf.set(t, record.frameCount)
@@ -55,15 +56,21 @@ function storeWith(...ats: number[]): { store: ClipStore; frameOf: Map<number, n
   return { store, frameOf }
 }
 
-/** Steps the controller at 40 ms a step, as an animation frame does. */
+/**
+ * Steps the controller at 40 ms a step, as an animation frame does, each live record taken in by
+ * a live history first, as the widget does, which says what it stands for.
+ */
 class Driver {
   nowMs = 1000
   frames: FlashbackFrame[] = []
+  readonly history = new LiveHistory()
   constructor(readonly fb: Flashback) {}
 
-  step(newest: TrackerRecord | null, live: Partial<Omit<FlashbackLive, 'newest'>> = {}): FlashbackFrame {
+  step(newest: TrackerRecord | null, live: Partial<Omit<FlashbackLive, 'newest' | 'state'>> = {}): FlashbackFrame {
     this.nowMs += STEP_MS
-    const frame = this.fb.step(this.nowMs, { newest, labelMoment: false, layerOn: true, ...live })
+    if (newest) this.history.add(newest)
+    const state = newest && this.history.validityOf(newest)
+    const frame = this.fb.step(this.nowMs, { newest, state, labelMoment: false, layerOn: true, ...live })
     this.frames.push(frame)
     return frame
   }
@@ -73,7 +80,7 @@ class Driver {
     from: number,
     seconds: number,
     validity: (t: number, i: number) => RecordValidity | undefined,
-    live: Partial<Omit<FlashbackLive, 'newest'>> = {},
+    live: Partial<Omit<FlashbackLive, 'newest' | 'state'>> = {},
   ): FlashbackFrame[] {
     const out: FlashbackFrame[] = []
     const n = Math.round((seconds * 1000) / STEP_MS)
@@ -82,6 +89,12 @@ class Driver {
       out.push(this.step(rec(t, validity(t, i)), live))
     }
     return out
+  }
+
+  /** Reset as the widget does: the controller, and the live history with it. */
+  reset(): void {
+    this.fb.reset()
+    this.history.clear()
   }
 
   events(phase?: 'start' | 'end'): Array<{ phase: 'start' | 'end'; at: number }> {
@@ -149,7 +162,7 @@ describe('Flashback', () => {
     const notReady = new ClipStore()
     for (let k = 80 * HZ; k <= 102 * HZ; k++) {
       const record = rec(k / HZ, valid())
-      notReady.add(record)
+      notReady.add(record, record.validity ?? null)
       if (k === 100 * HZ) notReady.note({ kind: 'attack', at: 100, frameCount: record.frameCount })
     }
     expect(notReady.clips()).toHaveLength(1)
@@ -422,9 +435,14 @@ describe('Flashback', () => {
     const out: Array<{ nowMs: number; newest: TrackerRecord | null; frame: FlashbackFrame }> = []
     let next = 0
     let newest: TrackerRecord | null = null
+    const history = new LiveHistory()
     for (let nowMs = startMs; nowMs <= untilMs; nowMs += 16) {
-      while (next < arrivals.length && arrivals[next]!.atMs <= nowMs) newest = arrivals[next++]!.record
-      out.push({ nowMs, newest, frame: fb.step(nowMs, { newest, labelMoment: false, layerOn: true }) })
+      while (next < arrivals.length && arrivals[next]!.atMs <= nowMs) {
+        newest = arrivals[next++]!.record
+        history.add(newest)
+      }
+      const state = newest && history.validityOf(newest)
+      out.push({ nowMs, newest, frame: fb.step(nowMs, { newest, state, labelMoment: false, layerOn: true }) })
     }
     return out
   }
@@ -609,8 +627,9 @@ describe('Flashback', () => {
 
   it('chains on a record with no validity, by the validity carried from the last that had it', () => {
     const d = make(storeWith(100, 130).store)
-    // A 20 s run said once: when the first clip ends, 8 s of it are left by the carried countdown.
-    d.run(200, 26, (_t, i) => (i === 0 ? invalid(20) : undefined))
+    // A 20 s run said at its start and 5 s in: when the first clip ends, 7 s after the stream last
+    // said anything (within the HISTORY_S a word with no horizon reaches), 8 s of it are left.
+    d.run(200, 26, (_t, i) => (i === 0 ? invalid(20) : i === 125 ? invalid(15) : undefined))
     expect(d.events()).toEqual([
       { phase: 'start', at: 130 },
       { phase: 'start', at: 100 },
@@ -715,7 +734,7 @@ describe('Flashback', () => {
     const { store } = storeWith(100, 130)
     const d = make(store)
     d.run(200, 2, () => longRun())
-    d.fb.reset()
+    d.reset()
     expect(d.fb.active).toBe(false)
     expect(d.fb.animating).toBe(false)
     // A record with no validity after a reset says nothing: no carried state starts a clip.
@@ -727,7 +746,7 @@ describe('Flashback', () => {
     const d = make(storeWith(100, 130).store)
     d.run(200, 2, () => longRun())
     d.fb.cut(d.nowMs, true)
-    d.fb.reset()
+    d.reset()
     expect(d.step(rec(202, longRun())).events).toEqual([{ phase: 'start', at: 100 }])
   })
 })

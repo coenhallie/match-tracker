@@ -14,7 +14,7 @@
  * play's is never its. Only the viewer's own zoom and pan go to both (`setView`); a director made
  * later starts from the last of them.
  */
-import { deriveAt, HISTORY_S, windowAt } from '../analysis/derive.js'
+import { deriveAt, windowAt } from '../analysis/derive.js'
 import type { BallTrail } from '../analysis/ballTrail.js'
 import type { SecondHalf } from '../analysis/secondHalf.js'
 import type { TeamPhase } from '../analysis/teamPhase.js'
@@ -28,9 +28,8 @@ import {
 import { Flashback, type FlashbackFrame, type FlashbackLive, type FlashbackShot } from '../director/flashback.js'
 import { FlashbackSpotter } from '../director/flashbackSpotter.js'
 import { ClipStore } from '../history/clipStore.js'
-import { carriedValidity, type CarriedValidity } from '../model/validity.js'
 import type { ReplayLayers } from '../model/replayLayers.js'
-import type { TrackerRecord } from '../model/types.js'
+import type { RecordValidity, TrackerRecord } from '../model/types.js'
 import { flashbackSide, type FlashbackIndicator } from '../render/flashback.js'
 import type { FlashbackDebug } from './hud.js'
 
@@ -56,8 +55,6 @@ export class FlashbackStage {
   private director: Director | null = null
   /** The viewer's own last zoom and pan, which a clip director made later starts from. */
   private viewer: DirectorCamera = WHOLE_PITCH
-  /** The validity the last record that said anything carried, for the records that say nothing. */
-  private carried: CarriedValidity | null = null
   /** The shot of the last step, while it plays. */
   private shot: FlashbackShot | null = null
   /** The phase and trail of the record a shot shows, worked out once for it. */
@@ -94,13 +91,12 @@ export class FlashbackStage {
     return this.open
   }
 
-  /** Take in a live record, as it arrives, after the live history took it. */
-  see(record: TrackerRecord, liveWindow: readonly TrackerRecord[]): void {
-    this.store.add(record)
-    // A restart: the validity carried is of the old clock.
-    if (this.carried && record.t < this.carried.t - HISTORY_S) this.carried = null
-    if (record.validity) this.carried = { t: record.t, validity: record.validity }
-    const state = record.validity ?? carriedValidity(this.carried, record.t)
+  /**
+   * Take in a live record, as it arrives, after the live history took it, with what the live
+   * history takes it for (LiveHistory.validityOf).
+   */
+  see(record: TrackerRecord, state: RecordValidity | null, liveWindow: readonly TrackerRecord[]): void {
+    this.store.add(record, state)
     if (state?.invalid) return
     const { phase } = deriveAt(windowAt(liveWindow, record), record)
     const moment = this.spotter.spot(record, phase)
@@ -111,7 +107,6 @@ export class FlashbackStage {
   forget(): void {
     this.store.clear()
     this.spotter.reset()
-    this.carried = null
   }
 
   /** What the clips kept take up, about (ClipStore.bytes). */
@@ -185,7 +180,6 @@ export class FlashbackStage {
     this.spotter.reset()
     this.controller.reset()
     this.director?.reset()
-    this.carried = null
     this.shot = null
     this.derived = null
     this.agoS = null

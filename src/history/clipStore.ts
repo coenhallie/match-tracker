@@ -1,7 +1,6 @@
 import { HISTORY_S } from '../analysis/derive.js'
 import { KIND_RANK, type Clip, type SpottedMoment } from '../model/flashback.js'
-import { carriedValidity, type CarriedValidity } from '../model/validity.js'
-import type { Ball, Frame, FrameAction, Player, Team, TrackerRecord } from '../model/types.js'
+import type { Ball, Frame, FrameAction, Player, RecordValidity, Team, TrackerRecord } from '../model/types.js'
 
 /** How far before its moment a clip starts, and how far after it ends. */
 export const CLIP_LEAD_S = 8
@@ -103,17 +102,17 @@ export class ClipStore {
   private kept: Kept[] = []
   private size = 0
   private invalidTimes: number[] = []
-  private carried: CarriedValidity | null = null
   private newest: number | null = null
   private compactedAt = -Infinity
   private clipList: Clip[] = []
   private nextId = 1
 
-  /** Take a live record in, in arrival order. */
-  add(record: TrackerRecord): void {
+  /**
+   * Take a live record in, in arrival order, with what the live history takes it for
+   * (LiveHistory.validityOf): what it said, or carries of what the stream last said.
+   */
+  add(record: TrackerRecord, state: RecordValidity | null): void {
     if (this.newest !== null && record.t < this.newest - HISTORY_S) this.clear()
-    if (record.validity) this.carried = { t: record.t, validity: record.validity }
-    const state = record.validity ?? carriedValidity(this.carried, record.t)
     if (state?.invalid) {
       insertSorted(this.invalidTimes, record.t)
     } else {
@@ -213,7 +212,6 @@ export class ClipStore {
     this.kept = []
     this.size = 0
     this.invalidTimes = []
-    this.carried = null
     this.newest = null
     this.compactedAt = -Infinity
     this.clipList = []

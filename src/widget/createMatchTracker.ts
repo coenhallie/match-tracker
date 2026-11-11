@@ -490,7 +490,7 @@ class Tracker implements MatchTracker {
     const breaks = this.history.breaks
     if (!this.history.add(record)) return
     // Nothing is kept for flashbacks while their layer is off.
-    if (this.layers.flashback) this.flashback?.see(record, this.history.window())
+    if (this.layers.flashback) this.flashback?.see(record, this.history.validityOf(record), this.history.window())
     if (this.halves.see(record)) this.saySecondHalf()
     // The stream broke and started again (LiveHistory.add): what it shows next is a seek.
     if (this.history.breaks !== breaks) {
@@ -742,9 +742,15 @@ class Tracker implements MatchTracker {
    */
   private stepFlashback(nowMs: number, live: DirectorOutput) {
     const flashback = this.flashback!
+    const newest = this.history.latest()
     const step = flashback.tick(
       nowMs,
-      { newest: this.history.latest(), labelMoment: labelMomentShowing(live.layers), layerOn: this.layers.flashback },
+      {
+        newest,
+        state: newest && this.history.validityOf(newest),
+        labelMoment: labelMomentShowing(live.layers),
+        layerOn: this.layers.flashback,
+      },
       this.halves,
       this.frameBox?.width ?? 0,
     )
