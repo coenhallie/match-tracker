@@ -54,6 +54,13 @@ const LATIN_RANGE =
   'U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD'
 
 let registered: Promise<void> | null = null
+/** How many faces have loaded on the page: each can change how wide text in it measures. */
+let loaded = 0
+
+/** How many of the bundled faces have loaded so far: text measured before the last did is measured again. */
+export function fontGeneration(): number {
+  return loaded
+}
 
 /**
  * Register the bundled faces on the page, once however many widgets there
@@ -74,7 +81,9 @@ export function ensureFonts(): Promise<void> {
       display: 'swap',
     })
     fonts.add(face)
-    return face.load()
+    return face.load().then(() => {
+      loaded++
+    })
   })
   registered = Promise.allSettled(loads).then(() => undefined)
   return registered

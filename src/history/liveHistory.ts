@@ -31,6 +31,8 @@ export class LiveHistory {
   private lastValid: TrackerRecord | null = null
   /** The newest valid record with a ball, kept as `lastValid` is. */
   private lastBall: TrackerRecord | null = null
+  /** What `window()` gave since the last record taken, so it is made once a record. */
+  private windowMade: readonly TrackerRecord[] | null = null
   /** What `shown()` gave for the newest record, so it is made once and keeps its identity. */
   private shownFor: {
     newest: TrackerRecord
@@ -78,6 +80,7 @@ export class LiveHistory {
     while (at > 0 && this.held[at - 1]!.t > record.t) at--
     this.held.splice(at, 0, record)
     this.frames.add(record.frameCount)
+    this.windowMade = null
 
     if (this.isValid(record) && (!this.lastValid || record.t >= this.lastValid.t)) this.lastValid = record
     if (this.isValid(record) && hasBall(record.frame) && (!this.lastBall || record.t >= this.lastBall.t)) {
@@ -134,12 +137,15 @@ export class LiveHistory {
 
   /**
    * The records the last valid one derives its phase and trail from: `windowAt` over the valid
-   * records held, at the last valid one. Empty when there is none.
+   * records held, at the last valid one. Empty when there is none. Made once a record taken, as
+   * the flashbacks and the picture both ask for it.
    */
-  window(): TrackerRecord[] {
+  window(): readonly TrackerRecord[] {
+    if (this.windowMade) return this.windowMade
     if (!this.lastValid) return []
     const isValid = (record: TrackerRecord) => this.isValid(record)
-    return windowAt(this.held.every(isValid) ? this.held : this.held.filter(isValid), this.lastValid)
+    this.windowMade = windowAt(this.held.every(isValid) ? this.held : this.held.filter(isValid), this.lastValid)
+    return this.windowMade
   }
 
   clear(): void {
@@ -149,6 +155,7 @@ export class LiveHistory {
     this.lastValid = null
     this.lastBall = null
     this.shownFor = null
+    this.windowMade = null
     this.said = null
     this.validity = new WeakMap()
     this.carryingFor = null

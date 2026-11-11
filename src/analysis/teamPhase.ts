@@ -170,9 +170,15 @@ export function teamPhaseAt(records: readonly PhaseRecord[], index: number): Tea
         }
       }
     }
+  }
 
-    const dir = directions(frame)
-    for (const k of TEAMS) if (dir[k] !== null) attacks[k] = dir[k]
+  // Which way each team attacks: the newest the lookback says. Read from the newest back, so
+  // usually one record says it for both.
+  for (let i = index; i >= start && (attacks[0] === null || attacks[1] === null); i--) {
+    const record = records[i]
+    if (!record) continue
+    const dir = directions(record.frame)
+    for (const k of TEAMS) if (attacks[k] === null && dir[k] !== null) attacks[k] = dir[k]
   }
 
   if (possession === null) return { ...none, attacks }

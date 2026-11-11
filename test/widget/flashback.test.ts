@@ -41,7 +41,7 @@ const fonts = vi.hoisted(() => {
   }
   return gate
 })
-vi.mock('../../src/assets/fonts', () => ({ ensureFonts: () => fonts.promise }))
+vi.mock('../../src/assets/fonts', () => ({ ensureFonts: () => fonts.promise, fontGeneration: () => 0 }))
 
 /** The lookahead's horizon as the staging stream sends it: never exactly 10. */
 const HORIZON = 9.999999999990905

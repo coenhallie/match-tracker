@@ -14,7 +14,7 @@
  * play's is never its. Only the viewer's own zoom and pan go to both (`setView`); a director made
  * later starts from the last of them.
  */
-import { deriveAt, windowAt } from '../analysis/derive.js'
+import { deriveAt, phaseAt, windowAt } from '../analysis/derive.js'
 import type { BallTrail } from '../analysis/ballTrail.js'
 import type { SecondHalf } from '../analysis/secondHalf.js'
 import type { TeamPhase } from '../analysis/teamPhase.js'
@@ -98,7 +98,9 @@ export class FlashbackStage {
   see(record: TrackerRecord, state: RecordValidity | null, liveWindow: readonly TrackerRecord[]): void {
     this.store.add(record, state)
     if (state?.invalid) return
-    const { phase } = deriveAt(windowAt(liveWindow, record), record)
+    // The live window is already the one at its own last record: at any other, it is made again.
+    const window = liveWindow.at(-1) === record ? liveWindow : windowAt(liveWindow, record)
+    const phase = phaseAt(window, record)
     const moment = this.spotter.spot(record, phase)
     if (moment) this.store.note(moment)
   }

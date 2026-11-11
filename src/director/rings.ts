@@ -29,7 +29,7 @@ import { nearbyTrackIds, possessionTrackIds, type TrackId } from '../render/rend
  */
 export function fadeRings(
   rings: Map<TrackId, number>,
-  target: Set<TrackId>,
+  target: ReadonlySet<TrackId>,
   dt: number | null,
   fadeIn = RING_FADE_S,
 ): void {
@@ -46,6 +46,9 @@ export function fadeRings(
   }
 }
 
+/** No frame: nobody has the ball or is near it. */
+const NOBODY = { withBall: new Set<TrackId>(), nearby: new Set<TrackId>() } as const
+
 /** Both kinds of ring, and who is drawn over the ball, as they move with the clock. */
 export class Rings {
   /** How strong each ring is, by track id. Absent means no ring. */
@@ -55,6 +58,11 @@ export class Rings {
   readonly received = new Map<TrackId, number>()
   /** Seconds since each player last had the ball, for RING_FADE_S after. */
   readonly hadBall = new Map<TrackId, number>()
+  /**
+   * Who has the ball and who is near it on the last frame seen: worked out once a frame, as the
+   * clock moves on every animation frame and a record comes far less often.
+   */
+  private targetsOf: { frame: Frame; withBall: Set<TrackId>; nearby: Set<TrackId> } | null = null
 
   /**
    * Rings partway through a fade, or a player drawn over the ball having just
@@ -74,9 +82,9 @@ export class Rings {
    * the rings fade or not. No frame has no rings.
    */
   update(frame: Frame | null, dt: number | null, receiveDt: number | null = dt): void {
-    const withBall = frame ? possessionTrackIds(frame) : new Set<TrackId>()
+    const { withBall, nearby } = this.targets(frame)
     this.updateReceived(withBall, receiveDt)
-    fadeRings(this.nearby, frame ? nearbyTrackIds(frame) : new Set(), dt)
+    fadeRings(this.nearby, nearby, dt)
     fadeRings(this.possession, withBall, dt, POSSESSION_FADE_IN_S)
   }
 
@@ -101,10 +109,20 @@ export class Rings {
     this.possession.clear()
     this.received.clear()
     this.hadBall.clear()
+    this.targetsOf = null
+  }
+
+  /** Who has the ball on `frame`, and who is near it; nobody with no frame. */
+  private targets(frame: Frame | null): { withBall: ReadonlySet<TrackId>; nearby: ReadonlySet<TrackId> } {
+    if (!frame) return NOBODY
+    if (this.targetsOf?.frame !== frame) {
+      this.targetsOf = { frame, withBall: possessionTrackIds(frame), nearby: nearbyTrackIds(frame) }
+    }
+    return this.targetsOf
   }
 
   /** Start and move on each player drawn over the ball, by `dt` seconds, or clear them. */
-  private updateReceived(withBall: Set<TrackId>, dt: number | null): void {
+  private updateReceived(withBall: ReadonlySet<TrackId>, dt: number | null): void {
     if (dt === null) {
       // Whoever has the ball here has had it: playing on, they did not just get it.
       this.received.clear()

@@ -63,7 +63,7 @@ class Pitch {
   }
 
   loss() {
-    return this.replay.outputs.at(-1)?.loss
+    return this.replay.director.loss()
   }
 }
 

@@ -159,14 +159,22 @@ export function themeFor(resolved: Resolved, icons: RenderTheme['icons']): Rende
   }
 }
 
-/** Whether `matchMedia` says the user prefers reduced motion; asked afresh each time, as the reference does. */
-export function prefersReducedMotion(): boolean {
-  return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+/**
+ * Whether `matchMedia` says the user prefers reduced motion, at each ask, as the reference asks
+ * afresh each time. It is asked several times an animation frame, so one MediaQueryList is made,
+ * on the first ask, and read after: its `matches` follows the setting.
+ */
+export function prefersReducedMotion(): () => boolean {
+  let query: MediaQueryList | null | undefined
+  return () => {
+    query ??= typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null
+    return query?.matches === true
+  }
 }
 
-/** The director's options for `resolved`, the layers aside. */
-export function directorOptions(resolved: Resolved): Omit<DirectorOptions, 'layers'> {
-  return { reducedMotion: prefersReducedMotion, teamName: resolved.teamName, teamColor: resolved.teamColor }
+/** The director's options for `resolved`, the layers aside, asking `reducedMotion` (prefersReducedMotion). */
+export function directorOptions(resolved: Resolved, reducedMotion: () => boolean): Omit<DirectorOptions, 'layers'> {
+  return { reducedMotion, teamName: resolved.teamName, teamColor: resolved.teamColor }
 }
 
 function localStorageOrNull(): Storage | null {

@@ -64,11 +64,15 @@ export class FakeMediaQuery {
   added = 0
   removed = 0
   onchange = null
+  /** `read` says whether it matches now: like a real MediaQueryList, it follows the setting. */
   constructor(
     readonly media: string,
-    readonly matches: boolean,
+    private readonly read: () => boolean,
   ) {
     FakeMediaQuery.all.push(this)
+  }
+  get matches(): boolean {
+    return this.read()
   }
   addEventListener(_type: string, listener: unknown) {
     this.added++
@@ -182,8 +186,8 @@ export function installEnv(): Env {
   vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver)
   vi.stubGlobal('devicePixelRatio', 1)
   vi.stubGlobal('matchMedia', (media: string) => {
-    const matches = media.includes('prefers-reduced-motion') ? env.reducedMotion : media.includes('1dppx')
-    return new FakeMediaQuery(media, matches)
+    const read = media.includes('prefers-reduced-motion') ? () => env.reducedMotion : () => media.includes('1dppx')
+    return new FakeMediaQuery(media, read)
   })
   vi.spyOn(document, 'visibilityState', 'get').mockImplementation(() => visibility)
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(function (this: HTMLCanvasElement) {

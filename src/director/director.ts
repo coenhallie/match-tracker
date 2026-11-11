@@ -218,8 +218,6 @@ export interface DirectorOutput {
   camera: DirectorCamera | null
   /** True while any moment or fade needs another tick. */
   animating: boolean
-  /** The player loss on the record on screen, if it is one, and who covers it: for the debug badge. */
-  loss: PlayerLossState | null
 }
 
 export interface DirectorOptions {
@@ -891,7 +889,14 @@ export class Director {
       paints: this.paints,
       camera,
       animating: this.animating,
-      loss: this.shown.record ? this.playerLoss.state(this.shown.record) : null,
     }
+  }
+
+  /**
+   * The player loss on the record on screen, if it is one, and who covers it: for the debug badge,
+   * which asks only while it shows, as it scans every player.
+   */
+  loss(): PlayerLossState | null {
+    return this.shown.record ? this.playerLoss.state(this.shown.record) : null
   }
 }
