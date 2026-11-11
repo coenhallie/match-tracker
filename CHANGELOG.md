@@ -6,6 +6,11 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-10
+
+No zoom or pan by hand, replays that agree with the picture when `raw_data`
+stops, and a pitch of another size drawn to its own size.
+
 ### What you see
 
 - **The viewer can no longer zoom or pan the pitch.** Only the animations
