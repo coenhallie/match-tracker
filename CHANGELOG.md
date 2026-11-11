@@ -6,6 +6,10 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-11-11
+
+A penalty scored plays the goal.
+
 ### What you see
 
 - **A penalty scored plays the goal.** The ball rolls into the net, the camera
