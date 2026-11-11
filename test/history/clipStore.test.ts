@@ -11,6 +11,7 @@ import {
   ClipStore,
   slimRecord,
 } from '../../src/history/clipStore'
+import { LiveHistory } from '../../src/history/liveHistory'
 import type { FlashbackKind } from '../../src/model/flashback'
 import { parseRecord } from '../../src/model/parseRecord'
 import type { RecordValidity, TrackerRecord } from '../../src/model/types'
@@ -42,18 +43,28 @@ function rec(t: number, validity?: RecordValidity): TrackerRecord {
   return record
 }
 
+/** Each store's live history, which says what a record stands for, as the widget's does. */
+const histories = new WeakMap<ClipStore, LiveHistory>()
+/** Hand `record` to `store` as the widget does: with what the live history takes it for. */
+function add(store: ClipStore, record: TrackerRecord) {
+  let history = histories.get(store)
+  if (!history) histories.set(store, (history = new LiveHistory()))
+  history.add(record)
+  store.add(record, history.validityOf(record))
+}
+
 /** Feed records from `from` to `to` at 25 Hz, each with `validity(t)`. */
 function feed(store: ClipStore, from: number, to: number, validity?: (t: number) => RecordValidity | undefined) {
   for (let i = 0; from + i / HZ <= to + 1e-9; i++) {
     const t = from + i / HZ
-    store.add(rec(t, validity?.(t)))
+    add(store, rec(t, validity?.(t)))
   }
 }
 
 /** Add the record at `at`, then note the moment, as the widget does. */
 function moment(store: ClipStore, kind: FlashbackKind, at: number) {
   const record = rec(at)
-  store.add(record)
+  add(store, record)
   store.note({ kind, at, frameCount: record.frameCount })
 }
 
@@ -133,7 +144,7 @@ describe('ClipStore', () => {
 
   it('keeps no record a carried validity calls invalid', () => {
     feed(store, 10, 10.96)
-    store.add(rec(11, invalid(3)))
+    add(store, rec(11, invalid(3)))
     const before = store.bytes()
     feed(store, 11.04, 12.96)
     expect(store.bytes()).toBe(before)
@@ -150,13 +161,13 @@ describe('ClipStore', () => {
     expect(store.clips().map((c) => c.kind)).toEqual(['goal'])
 
     const other = new ClipStore()
-    for (let t = 90; t < 99.99; t += 1 / HZ) other.add(rec(t))
+    for (let t = 90; t < 99.99; t += 1 / HZ) add(other, rec(t))
     const goal = rec(100)
-    other.add(goal)
+    add(other, goal)
     other.note({ kind: 'goal', at: 100, frameCount: goal.frameCount })
     feed(other, 100.04, 102.96)
     const attack = rec(103)
-    other.add(attack)
+    add(other, attack)
     other.note({ kind: 'attack', at: 103, frameCount: attack.frameCount })
     expect(other.clips().map((c) => c.kind)).toEqual(['goal'])
   })
@@ -195,9 +206,9 @@ describe('ClipStore', () => {
     moment(store, 'goal', 100)
     feed(store, 100.04, 105)
     expect(store.clips()).toHaveLength(1)
-    store.add(rec(100 + CLIP_EXPIRY_S))
+    add(store, rec(100 + CLIP_EXPIRY_S))
     expect(store.clips()).toHaveLength(1)
-    store.add(rec(100 + CLIP_EXPIRY_S + 0.04))
+    add(store, rec(100 + CLIP_EXPIRY_S + 0.04))
     expect(store.clips()).toHaveLength(0)
   })
 
@@ -205,10 +216,10 @@ describe('ClipStore', () => {
     feed(store, 90, 99.96)
     moment(store, 'goal', 100)
     feed(store, 100.04, 105)
-    store.add(rec(300))
+    add(store, rec(300))
     expect(store.clips()).toHaveLength(1)
     expect(store.records(store.clips()[0]!.id).length).toBeGreaterThan(0)
-    store.add(rec(300 - HISTORY_S - 1))
+    add(store, rec(300 - HISTORY_S - 1))
     expect(store.clips()).toHaveLength(0)
     expect(store.bytes()).toBeGreaterThan(0)
     expect(store.bytes()).toBeLessThan(10_000)
@@ -246,7 +257,7 @@ describe('ClipStore', () => {
     let peak = 0
     const watch = (from: number, to: number) => {
       for (let i = 0; from + i / HZ <= to + 1e-9; i++) {
-        store.add(rec(from + i / HZ))
+        add(store, rec(from + i / HZ))
         peak = Math.max(peak, store.bytes())
       }
     }
@@ -271,7 +282,7 @@ describe('ClipStore', () => {
     const slim = live.map(slimRecord)
     const moment0 = live.find((r) => r.t >= 1630)!
     for (const r of live) {
-      store.add(r)
+      add(store, r)
       if (r === moment0) store.note({ kind: 'goal', at: r.t, frameCount: r.frameCount })
     }
     const clip = store.next()!
@@ -294,9 +305,9 @@ describe('ClipStore', () => {
     feed(store, 90, 99.96)
     moment(store, 'goal', 100)
     feed(store, 100.04, 105)
-    store.add(rec(999.9))
+    add(store, rec(999.9))
     expect(store.clips()).toHaveLength(1)
-    store.add(rec(1000.2))
+    add(store, rec(1000.2))
     expect(store.clips()).toHaveLength(0)
     expect(store.bytes()).toBeLessThan(3 * 6_000)
   })

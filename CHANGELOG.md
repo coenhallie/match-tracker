@@ -6,6 +6,18 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### What you see
+
+- **In live mode, replays take frames without `raw_data` the way the picture
+  does.** When a stream stops sending `raw_data`, the picture counts its frames
+  as valid again once the lookahead's reach (10 s on staging) has passed. The
+  replays did not: they kept taking those frames for the run they last heard
+  of. So a moment in them, a goal say, was never kept for a replay, and a replay
+  under way ran on to its clip's end over live play the picture already showed.
+  Now both go by one rule. Those frames are kept and their moments are
+  replayed later, and a replay under way ends with live play, within 1.5 s of
+  the lookahead running out, as a replay ends on a frame that says nothing.
+
 ## [0.11.0] - 2026-11-10
 
 Replays of earlier moments while the live camera is away, invalid frames
