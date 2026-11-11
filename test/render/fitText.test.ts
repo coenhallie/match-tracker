@@ -2,9 +2,10 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { ELLIPSIS, MIN_FIT, fitFontPx, fitText, wrapText } from '../../src/render/fitText'
 import { createRenderer, type FrameLayers } from '../../src/render/renderer'
 import { DEFAULT_THEME, type RenderTheme } from '../../src/render/theme'
-import { build2DTransform, designUnit, worldToPx } from '../../src/render/pitchGeometry'
+import { designUnit } from '../../src/render/pitchGeometry'
 import type { Frame } from '../../src/model/types'
 import { recordingCtx, stubOffscreenCanvas, type Op } from '../helpers/recordingCtx'
+import { build2DTransform, worldToPx } from '../../src/model/pitch'
 
 // The recording context measures every character as 0.6 of the font size.
 const ctx = () => recordingCtx().ctx as unknown as CanvasRenderingContext2D

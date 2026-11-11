@@ -1,9 +1,9 @@
 import type { Transform2D, TrackerRecord } from '../model/types.js'
-import { FRAME_H, FRAME_W } from './constants.js'
 import { interBaselinePx } from './eventBanner.js'
 import { measureWidth } from './fitText.js'
 import { designUnit } from './pitchGeometry.js'
 import type { RenderTheme } from './theme.js'
+import { FRAME_H, FRAME_W } from '../model/pitch.js'
 
 /**
  * The flashback's look, as the design shows it (Figma frame 81:4738): a white

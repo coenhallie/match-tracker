@@ -78,8 +78,6 @@ import type { ReplayLayerKey, ReplayLayers, ReplayMoment } from '../model/replay
 import type { TrackerRecord } from '../model/types.js'
 import { createRenderer } from '../render/renderer.js'
 import { flashbackTabExtent, type FlashbackIndicator } from '../render/flashback.js'
-import { FRAME_W } from '../render/constants.js'
-import { build2DTransform } from '../render/pitchGeometry.js'
 import type { RenderTheme } from '../render/theme.js'
 import type { FrameBox } from '../render/viewTransform.js'
 import { MATCH_TRACKER_VERSION } from '../version.js'
@@ -104,6 +102,7 @@ import {
 } from './options.js'
 import { STYLES } from './styles.js'
 import { ZoomPan } from './zoomPan.js'
+import { build2DTransform, FRAME_W } from '../model/pitch.js'
 
 /** What a replay host hands over on each tick of its clock. */
 export interface ReplayState {

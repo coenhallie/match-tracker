@@ -1,16 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import {
-  isGoalFrame,
-  planGoal,
-  goalStateAt,
-  goalCamera,
-  goalCameraWeight,
-  GOAL_SEQUENCE_MS,
-  NET_DEPTH_METRES,
-} from '../../src/analysis/goalSequence'
-import { build2DTransform, worldToPx } from '../../src/render/pitchGeometry'
-import { FRAME_W, FRAME_H } from '../../src/render/constants'
+import { isGoalFrame, planGoal, goalStateAt, goalCamera, goalCameraWeight, GOAL_SEQUENCE_MS } from '../../src/analysis/goalSequence'
 import type { Frame } from '../../src/model/types'
+import { build2DTransform, FRAME_H, FRAME_W, NET_DEPTH_METRES, worldToPx } from '../../src/model/pitch'
 
 const PITCH = { length: 105, width: 68, goal_width: 7.32 }
 const HALF = PITCH.length / 2

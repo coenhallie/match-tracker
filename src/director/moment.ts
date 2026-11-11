@@ -10,7 +10,8 @@ import type { TeamId, TeamPhase } from '../analysis/teamPhase.js'
 import type { LabelCardKey } from '../model/labelCards.js'
 import type { ReplayLayers } from '../model/replayLayers.js'
 import type { TrackerRecord } from '../model/types.js'
-import type { Camera, PipelineView } from '../render/viewTransform.js'
+import type { PipelineView } from '../render/viewTransform.js'
+import type { Camera } from '../model/pitch.js'
 
 /**
  * What a moment's animation frame did: painted and wants another frame, painted

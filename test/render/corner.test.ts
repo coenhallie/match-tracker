@@ -12,11 +12,12 @@ import {
   isCornerFrame,
   type CornerBanner,
 } from '../../src/render/corner'
-import { build2DTransform, designUnit, worldToPx } from '../../src/render/pitchGeometry'
+import { designUnit } from '../../src/render/pitchGeometry'
 import { createRenderer } from '../../src/render/renderer'
 import type { Frame } from '../../src/model/types'
 import { fakeCanvas, recordingCtx, stubOffscreenCanvas, type Op } from '../helpers/recordingCtx'
 import { normalizeCalls } from '../helpers/normalize'
+import { build2DTransform, worldToPx } from '../../src/model/pitch'
 
 const PITCH = { length: 105, width: 68 }
 const T = build2DTransform(PITCH)

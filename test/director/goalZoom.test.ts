@@ -4,8 +4,9 @@ import { GOAL_SEQUENCE_MS } from '../../src/analysis/goalSequence'
 import { BALL_HOLD_S } from '../../src/director/goalZoom'
 import type { DirectorOutput } from '../../src/director/director'
 import type { Frame } from '../../src/model/types'
-import { cameraFromView, type Camera } from '../../src/render/viewTransform'
+import { cameraFromView } from '../../src/render/viewTransform'
 import { FakeReplay, VIEW } from './harness'
+import type { Camera } from '../../src/model/pitch'
 
 // The zoom near goal: the widget's own, so none of this is ported. The harness keeps it off for the
 // reference's cases; here it is on.

@@ -2,12 +2,12 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { drawSmallCard } from '../../src/render/smallCard'
 import { DEFAULT_THEME } from '../../src/render/theme'
 import { drawThrowInIndicator, isThrowInFrame, type ThrowInIndicator } from '../../src/render/throwIn'
-import { build2DTransform, designUnit, worldToPx } from '../../src/render/pitchGeometry'
+import { designUnit } from '../../src/render/pitchGeometry'
 import { createRenderer } from '../../src/render/renderer'
-import { FRAME_W } from '../../src/render/constants'
 import type { Frame } from '../../src/model/types'
 import { fakeCanvas, recordingCtx, stubOffscreenCanvas, type Op } from '../helpers/recordingCtx'
 import { normalizeCalls } from '../helpers/normalize'
+import { build2DTransform, FRAME_W, worldToPx } from '../../src/model/pitch'
 
 const PITCH = { length: 105, width: 68 }
 const T = build2DTransform(PITCH)

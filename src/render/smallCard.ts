@@ -1,8 +1,8 @@
 import type { PitchDimensions, Transform2D } from '../model/types.js'
-import { FRAME_W } from './constants.js'
 import { drawEventBand, drawEventTitle, interBaselinePx, type TitleLayout } from './eventBanner.js'
 import { measureWidth } from './fitText.js'
-import { designUnit, resolvePitchDimensions, worldToPx } from './pitchGeometry.js'
+import { designUnit } from './pitchGeometry.js'
+import { FRAME_W, resolvePitchDimensions, worldToPx } from '../model/pitch.js'
 
 /**
  * The small card, as the match-summary design shows it (Figma "Game Animation

@@ -8,8 +8,7 @@ import {
   approachWeight,
 } from '../../src/analysis/goalApproach'
 import { edgeAt } from '../../src/render/attackIndicator'
-import { FRAME_H, FRAME_W } from '../../src/render/constants'
-import { build2DTransform, worldToPx } from '../../src/render/pitchGeometry'
+import { build2DTransform, FRAME_H, FRAME_W, worldToPx } from '../../src/model/pitch'
 
 const PITCH = { length: 105, width: 68, goal_width: 7.32 }
 const HALF = PITCH.length / 2

@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { Frame } from '../../src/model/types'
 import { createRenderer, type FrameLayers } from '../../src/render/renderer'
 import { PLAYER_RADIUS } from '../../src/render/constants'
-import { build2DTransform, worldToPx } from '../../src/render/pitchGeometry'
 import { fakeCanvas, stubOffscreenCanvas, type Op } from '../helpers/recordingCtx'
+import { build2DTransform, worldToPx } from '../../src/model/pitch'
 
 // The shadow under a high ball: the widget's own (the `ballShadow` layer), which the reference does not have.
 

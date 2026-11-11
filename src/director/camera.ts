@@ -1,10 +1,10 @@
+import type { Camera } from '../model/pitch.js'
 /**
  * The goal's camera, ported from PipelineOutputSurface.vue (6f14d1f): how it
  * moves between two views (`blendCamera`, :498-504), and when the user takes
  * the view over from it (`releaseSequenceCamera`, :546-548, as the surface's
  * wheel, press and double-click handlers call it, :307-368).
  */
-import type { Camera } from '../render/viewTransform.js'
 
 /** The zoom the view is at when it is not zoomed in: the whole pitch. */
 export const MIN_ZOOM = 1

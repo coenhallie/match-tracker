@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { build2DTransform, worldToPx } from '../../src/render/pitchGeometry'
-import { FRAME_W, FRAME_H } from '../../src/render/constants'
+import { build2DTransform, FRAME_H, FRAME_W, worldToPx } from '../../src/model/pitch'
 
 const FULL = { length: 105, width: 68 }
 

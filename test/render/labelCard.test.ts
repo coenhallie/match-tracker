@@ -2,12 +2,12 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { drawLabelCard, drawSmallLabelCard, isLabelCardFrame } from '../../src/render/labelCard'
 import { createRenderer, type FrameLayers } from '../../src/render/renderer'
 import { drawSmallCard } from '../../src/render/smallCard'
-import { build2DTransform, designUnit, worldToPx } from '../../src/render/pitchGeometry'
-import { FRAME_W } from '../../src/render/constants'
+import { designUnit } from '../../src/render/pitchGeometry'
 import { DEFAULT_THEME, type RenderTheme } from '../../src/render/theme'
 import { LABEL_CARDS } from '../../src/model/labelCards'
 import type { Frame } from '../../src/model/types'
 import { fakeCanvas, recordingCtx, stubOffscreenCanvas, type Op } from '../helpers/recordingCtx'
+import { build2DTransform, FRAME_W, worldToPx } from '../../src/model/pitch'
 
 const T = build2DTransform({ length: 105, width: 68 })
 const u = designUnit(T)

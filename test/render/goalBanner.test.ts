@@ -9,12 +9,12 @@ import {
   type GoalBanner,
 } from '../../src/render/goalBanner'
 import { GOAL_SEQUENCE_MS, planGoal } from '../../src/analysis/goalSequence'
-import { build2DTransform, designUnit, worldToPx } from '../../src/render/pitchGeometry'
-import { FRAME_W } from '../../src/render/constants'
+import { designUnit } from '../../src/render/pitchGeometry'
 import { createRenderer } from '../../src/render/renderer'
 import type { Frame } from '../../src/model/types'
 import { fakeCanvas, recordingCtx, stubOffscreenCanvas, type Op } from '../helpers/recordingCtx'
 import { normalizeCalls } from '../helpers/normalize'
+import { build2DTransform, FRAME_W, worldToPx } from '../../src/model/pitch'
 
 const PITCH = { length: 105, width: 68 }
 const T = build2DTransform(PITCH)

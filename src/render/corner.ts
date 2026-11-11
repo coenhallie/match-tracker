@@ -1,8 +1,9 @@
 import type { Frame, PitchDimensions, Transform2D } from '../model/types.js'
 import { frameHasAction } from '../analysis/actionLabels.js'
 import { CARD_MIDDLE_PX, drawCentreCard } from './eventBanner.js'
-import { resolvePitchDimensions, tracePlayingArea, worldToPx } from './pitchGeometry.js'
+import { tracePlayingArea } from './pitchGeometry.js'
 import { DEFAULT_THEME, type RenderTheme } from './theme.js'
+import { resolvePitchDimensions, worldToPx } from '../model/pitch.js'
 
 /**
  * The corner: "CORNER" and the corner icon on a dark card across the middle

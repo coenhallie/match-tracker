@@ -1,4 +1,4 @@
-import { FRAME_W, FRAME_H } from './constants.js'
+import { FRAME_H, FRAME_W, type Camera } from '../model/pitch.js'
 
 export interface PipelineView {
   /** 1 = fit, >1 zoomed in. */
@@ -125,13 +125,6 @@ export function fitFrameBox(
     pixelWidth,
     pixelHeight,
   }
-}
-
-/** A view described by what it looks at: a zoom and a centre in frame units. */
-export interface Camera {
-  zoom: number
-  x: number
-  y: number
 }
 
 /**

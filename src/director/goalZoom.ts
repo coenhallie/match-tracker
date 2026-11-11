@@ -11,9 +11,8 @@
  */
 import { approachCamera, WHOLE_PITCH_CAMERA } from '../analysis/goalApproach.js'
 import type { PitchDimensions } from '../model/types.js'
-import { FRAME_H, FRAME_W } from '../render/constants.js'
-import type { Camera } from '../render/viewTransform.js'
 import { MIN_ZOOM } from './camera.js'
+import { type Camera, FRAME_H, FRAME_W } from '../model/pitch.js'
 
 /** How quickly the view follows: it is about 90% of the way to where it is going after twice this. */
 export const GOAL_ZOOM_SMOOTH_MS = 700

@@ -18,7 +18,8 @@ The reference is video-annotation's 2D replay. What a viewer sees must match it.
 
 `src/` is layered. `model` imports nothing from the others, and `widget` sits on top
 of all of them, so keep dependencies pointing down towards `model`.
-- `model`: the tracking data types and parsing.
+- `model`: the tracking data types and parsing, and the frame's coordinate system (`pitch.ts`: the
+  pitch dimensions, frame units and the transform between them).
 - `analysis`: derived football facts (action labels, team phase, goal sequence, ball trail, player loss,
   the second half, which turns the frames round from a human half label on).
 - `render`: canvas drawing of the pitch, players, ball and cards.

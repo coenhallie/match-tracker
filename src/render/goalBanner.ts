@@ -1,9 +1,9 @@
 import type { Transform2D } from '../model/types.js'
-import { FRAME_W } from './constants.js'
 import { CARD_MIDDLE_PX, INTER_ASCENT, drawCentreCard, drawEventBand, drawEventTitle, type TitleLayout } from './eventBanner.js'
-import { designUnit, worldToPx } from './pitchGeometry.js'
+import { designUnit } from './pitchGeometry.js'
 import { DEFAULT_THEME, type RenderTheme } from './theme.js'
 import { GOAL_SEQUENCE_MS, type GoalPlan } from '../analysis/goalSequence.js'
+import { FRAME_W, worldToPx } from '../model/pitch.js'
 
 /**
  * The goal's banner, as the match-summary design shows it (Figma "Game

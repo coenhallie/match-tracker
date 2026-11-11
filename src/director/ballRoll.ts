@@ -10,8 +10,8 @@
 import { rolled, UPRIGHT, type Spin } from '../analysis/football.js'
 import type { Frame } from '../model/types.js'
 import { BALL_RADIUS } from '../render/constants.js'
-import { build2DTransform, worldToPx } from '../render/pitchGeometry.js'
 import type { GoalOverlay } from '../render/renderer.js'
+import { build2DTransform, worldToPx } from '../model/pitch.js'
 
 /**
  * Further than this in one step, in metres, the tracked ball has jumped
