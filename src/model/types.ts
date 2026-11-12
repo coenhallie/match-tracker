@@ -75,6 +75,10 @@ export interface FrameAction {
   team_id?: number
   /** On a human's label about a player, as a card is: the player's shirt number. */
   player_number?: number
+  /** On a substitution: the player going off, as the labelling tool's roster id. */
+  from?: number
+  /** On a substitution: the player coming on, as the labelling tool's roster id. */
+  to?: number
 }
 
 /** Frame-level metadata carried inside `frame_data`. */

@@ -94,6 +94,7 @@ const NOTHING_AVAILABLE: MomentAvailability = {
   headerOnGoal: false,
   yellowCard: false,
   redCard: false,
+  substitution: false,
 }
 
 /** Whether two availabilities say the same, whatever moments there are. */

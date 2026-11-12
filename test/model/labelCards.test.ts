@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { PLAYER_CARD_KEYS, isPlayerCardKey, labelCard, playerCardColor } from '../../src/model/labelCards'
+import { PLAYER_CARD_KEYS, isPlayerCardKey, isSubstitutionKey, labelCard, playerCardColor } from '../../src/model/labelCards'
 import { isLabelCardFrame } from '../../src/render/labelCard'
 import type { Frame } from '../../src/model/types'
 
@@ -32,5 +32,22 @@ describe('the player cards', () => {
     for (const key of PLAYER_CARD_KEYS) {
       expect(labelCard(key)).toMatchObject({ size: 'centre', below: 'icon', until: 'labelOff', makesWay: true })
     }
+  })
+})
+
+describe('the substitution card', () => {
+  it("reads the labelling tool's substitution label as the substitution card", () => {
+    const labels = labelCard('substitution').labels
+    for (const name of ['substitute', 'Substitute', 'Substitution', 'EventType.SUBSTITUTION']) {
+      expect(isLabelCardFrame(labelled(name), labels)).toBe(true)
+    }
+    expect(isLabelCardFrame(labelled('substitute', 'ai'), labels)).toBe(false)
+    expect(isSubstitutionKey('substitution')).toBe(true)
+    expect(isSubstitutionKey('redCard')).toBe(false)
+    expect(isPlayerCardKey('substitution')).toBe(false)
+  })
+
+  it('plays as the VAR check does: a centre card under an icon, making way for the whole pitch', () => {
+    expect(labelCard('substitution')).toMatchObject({ size: 'centre', below: 'icon', until: 'labelOff', makesWay: true })
   })
 })

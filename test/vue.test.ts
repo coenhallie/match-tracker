@@ -461,6 +461,7 @@ describe('the Vue component over the pitch', () => {
       headerOnGoal: false,
       yellowCard: false,
       redCard: false,
+      substitution: false,
     })
   })
 })

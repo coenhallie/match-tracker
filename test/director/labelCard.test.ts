@@ -428,7 +428,7 @@ describe('the half time card', () => {
   it('fades out over its full time on any other label, however long it has rested', () => {
     const replay = resting()
     replay.idle(60 * 60 * 1000)
-    record(replay, ['Substitution'])
+    record(replay, ['Kick off'])
     expect(card(replay)).toEqual({ key: 'halfTime', intensity: 1 })
     expect(replay.outputs.at(-1)!.animating).toBe(true)
     animate(replay, 200)
@@ -470,7 +470,7 @@ describe('the half time card', () => {
     animate(replay, 200)
     const was = card(replay)!.intensity
     const from = replay.outputs.length
-    record(replay, ['Substitution'])
+    record(replay, ['Kick off'])
     animate(replay, 500)
     let last = was
     for (const output of replay.outputs.slice(from)) {
@@ -544,7 +544,7 @@ describe('the half time card', () => {
     animate(replay, 10000)
     expect(card(replay)).toEqual({ key: 'halfTime', intensity: 1 })
     expect(replay.outputs.at(-1)!.animating).toBe(false)
-    record(replay, ['Substitution'])
+    record(replay, ['Kick off'])
     animate(replay, 500)
     expect(card(replay)).toBeUndefined()
   })
@@ -557,7 +557,7 @@ describe('the half time card', () => {
     replay.play()
     play(replay, 500)
     expect(card(replay)).toEqual({ key: 'halfTime', intensity: 1 })
-    record(replay, ['Substitution'])
+    record(replay, ['Kick off'])
     animate(replay, 500)
     expect(card(replay)).toBeUndefined()
   })
@@ -599,14 +599,14 @@ describe('the half time card', () => {
     animate(replay, 20)
     expect(card(replay)).toEqual({ key: 'halfTime', intensity: 1 })
     expect(replay.outputs.at(-1)!.animating).toBe(false)
-    record(replay, ['Substitution'])
+    record(replay, ['Kick off'])
     animate(replay, 20)
     expect(card(replay)).toBeUndefined()
   })
 
   it('plays again for a new half time after it has gone', () => {
     const replay = resting()
-    record(replay, ['Substitution'])
+    record(replay, ['Kick off'])
     animate(replay, 500)
     offFor(replay, 15.1)
     record(replay, HALF)
@@ -653,10 +653,10 @@ describe('the full time card', () => {
   it('fades out on any other human label, but not on an AI one or its own', () => {
     const replay = resting()
     record(replay, FULL)
-    replay.set({ time: replay.time + 0.04, frame: frameAt(['Substitution'], 40, 'ai') })
+    replay.set({ time: replay.time + 0.04, frame: frameAt(['Kick off'], 40, 'ai') })
     animate(replay, 500)
     expect(card(replay)).toEqual({ key: 'fullTime', intensity: 1 })
-    record(replay, ['Substitution'])
+    record(replay, ['Kick off'])
     animate(replay, 200)
     expect(card(replay)!.intensity).toBeLessThan(1)
     animate(replay, 300)

@@ -111,6 +111,7 @@ const LABEL_CARD_ICON_BOXES: Record<IconCardKey, CardBox> = {
   goalDisallowed: { left: 29.25, top: 29.25, width: 149.5, height: 149.5 },
   yellowCard: { left: 0, top: 0, width: 208, height: 208 },
   redCard: { left: 0, top: 0, width: 208, height: 208 },
+  substitution: { left: 0, top: 0, width: 208, height: 208 },
 }
 
 const TITLE_BASELINE_PX = PADDING_Y_PX + interBaselinePx(TITLE_PX, TITLE_LINE_PX)

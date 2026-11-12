@@ -50,6 +50,11 @@ export const LABEL_CARDS = [
    */
   { key: 'yellowCard', labels: ['player yellow card', 'yellow card'], size: 'centre', below: 'icon', until: 'labelOff', makesWay: true, player: { color: '#EAB308' } },
   { key: 'redCard', labels: ['player red card', 'red card'], size: 'centre', below: 'icon', until: 'labelOff', makesWay: true, player: { color: '#EF4444' } },
+  /**
+   * A team's substitutions, listed under the band, each joining the card while it is up (labelCard.ts in director).
+   * The labelling tool sends "substitute".
+   */
+  { key: 'substitution', labels: ['substitute', 'substitution'], size: 'centre', below: 'icon', until: 'labelOff', makesWay: true, substitution: true },
 ] as const satisfies ReadonlyArray<{
   key: string
   labels: readonly string[]
@@ -66,6 +71,8 @@ export const LABEL_CARDS = [
   makesWay: boolean
   /** A card about a player: the team and the player under the band, with a small card in `color` (and the icon's card). */
   player?: { color: string }
+  /** The substitution card: a team's substitutions listed under the band. */
+  substitution?: true
 }>
 
 type Card = (typeof LABEL_CARDS)[number]
@@ -90,6 +97,11 @@ export const TEXT_CARD_KEYS: readonly TextCardKey[] = keysOf(LABEL_CARDS.filter(
 
 /** The cards about a player, in LABEL_CARDS order. */
 export const PLAYER_CARD_KEYS: readonly PlayerCardKey[] = keysOf(LABEL_CARDS.filter((card) => 'player' in card))
+
+/** Whether `key` names the substitution card. */
+export function isSubstitutionKey(key: string): key is 'substitution' {
+  return key === 'substitution'
+}
 
 /** Whether `key` names a card about a player. */
 export function isPlayerCardKey(key: string): key is PlayerCardKey {

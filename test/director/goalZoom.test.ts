@@ -280,7 +280,7 @@ describe('the zoom near goal making way', () => {
     expect(camera(replay)).toEqual(WHOLE_PITCH_CAMERA)
     expect(replay.outputs.at(-1)!.animating).toBe(false)
     expect(replay.last()?.labelCard).toEqual({ key: 'halfTime', intensity: 1 })
-    replay.set({ time: replay.time + 0.04, frame: ballFrame({ x: 40, y: 0 }, ['Substitution']) })
+    replay.set({ time: replay.time + 0.04, frame: ballFrame({ x: 40, y: 0 }, ['Kick off']) })
     settle(replay)
     expect(replay.last()?.labelCard).toBeUndefined()
     expect(camera(replay).zoom).toBeCloseTo(zoomedIn, 2)

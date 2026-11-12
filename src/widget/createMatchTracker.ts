@@ -319,7 +319,7 @@ class Tracker implements MatchTracker {
   private readonly mode: MatchTrackerOptions['mode']
   private options: MutableOptions
   private resolved: Resolved
-  private icons: RenderTheme['icons'] = { corner: null, ...iconCardRecord(() => null) }
+  private icons: RenderTheme['icons'] = { corner: null, substitutionOut: null, substitutionIn: null, ...iconCardRecord(() => null) }
   private layers: ReplayLayers
   private readonly doc: Document
   private readonly host: HTMLElement

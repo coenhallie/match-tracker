@@ -79,23 +79,52 @@ const playerCardSvg = (fill: string) => `<svg width="208" height="208" viewBox="
 </svg>
 `
 
+/**
+ * The substitution card's icon (Figma "Game Animation Visualizer", viewport/eventSubstitution): an up
+ * arrow and a down arrow, 208 px square, filling the card's icon slot.
+ */
+const SUBSTITUTION_SVG = `<svg width="208" height="208" viewBox="0 0 208 208" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M89.9501 80.6C89.1282 80.6048 88.3137 80.4049 87.5545 80.0119C86.7953 79.619 86.1067 79.0409 85.5291 78.3116L64.9255 52.6199L44.3219 78.3116C43.1359 79.6896 41.5673 80.4398 39.9466 80.4042C38.3258 80.3685 36.7794 79.5498 35.6332 78.1205C34.4869 76.6912 33.8304 74.7629 33.8018 72.7419C33.7732 70.7208 34.3748 68.7649 35.4799 67.286L60.5045 36.0815C61.6775 34.6206 63.2676 33.8 64.9255 33.8C66.5834 33.8 68.1735 34.6206 69.3465 36.0815L94.3712 67.286C95.5427 68.7488 96.2008 70.7315 96.2008 72.7988C96.2008 74.8661 95.5427 76.8489 94.3712 78.3116C93.7936 79.0409 93.105 79.619 92.3458 80.0119C91.5866 80.4049 90.7721 80.6048 89.9501 80.6Z" fill="#E2E8F0"/>
+<path d="M65.0012 104C62.9409 103.983 60.9725 103.471 59.5155 102.571C58.0585 101.671 57.2281 100.455 57.2012 99.1825V54.2178C57.2012 52.9401 58.023 51.7147 59.4857 50.8112C60.9485 49.9077 62.9325 49.4001 65.0012 49.4001C67.0699 49.4001 69.0538 49.9077 70.5166 50.8112C71.9794 51.7147 72.8012 52.9401 72.8012 54.2178V99.1825C72.7742 100.455 71.9438 101.671 70.4868 102.571C69.0298 103.471 67.0615 103.983 65.0012 104Z" fill="#E2E8F0"/>
+<path d="M127.4 174.2C126.425 174.204 125.459 174.013 124.559 173.637C123.659 173.26 122.842 172.707 122.157 172.008L82.5907 132.164C81.2803 130.748 80.5669 128.874 80.6008 126.939C80.6347 125.003 81.4133 123.157 82.7725 121.788C84.1317 120.419 85.9655 119.635 87.8874 119.601C89.8094 119.567 91.6695 120.285 93.0758 121.605L127.4 156.17L161.723 121.605C163.13 120.285 164.99 119.567 166.912 119.601C168.834 119.635 170.667 120.419 172.027 121.788C173.386 123.157 174.165 125.003 174.198 126.939C174.232 128.874 173.519 130.748 172.209 132.164L132.642 172.008C131.957 172.707 131.141 173.26 130.24 173.637C129.34 174.013 128.374 174.204 127.4 174.2Z" fill="#FDE047"/>
+<path d="M127.4 166.4C125.339 166.38 123.371 165.778 121.914 164.72C120.457 163.663 119.627 162.234 119.6 160.739V55.0612C119.6 53.5597 120.421 52.1198 121.884 51.0581C123.347 49.9964 125.331 49.3999 127.4 49.3999C129.468 49.3999 131.452 49.9964 132.915 51.0581C134.378 52.1198 135.2 53.5597 135.2 55.0612V160.739C135.173 162.234 134.342 163.663 132.885 164.72C131.428 165.778 129.46 166.38 127.4 166.4V166.4Z" fill="#FDE047"/>
+</svg>
+`
+
+/** The badge before the player going off: a down chevron in red, 56 px square. */
+const SUBSTITUTION_OUT_SVG = `<svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="56" height="56" rx="8" fill="#343434"/>
+<path d="M14.1076 20.0019C14.3848 20.0008 14.6594 20.0483 14.9154 20.1417C15.1713 20.2352 15.4035 20.3726 15.5983 20.546L28.1706 31.5999L40.743 20.6202C41.1394 20.3942 41.6107 20.2917 42.0813 20.3293C42.5518 20.3669 42.9944 20.5422 43.3381 20.8273C43.6818 21.1124 43.9067 21.4906 43.9767 21.9015C44.0467 22.3123 43.9579 22.7319 43.7243 23.0931L29.6613 35.4576C29.2658 35.8049 28.7296 36 28.1706 36C27.6116 36 27.0755 35.8049 26.6799 35.4576L12.6169 23.0931C12.2219 22.7453 12 22.2739 12 21.7824C12 21.2909 12.2219 20.8195 12.6169 20.4718C13.024 20.1486 13.5597 19.9797 14.1076 20.0019V20.0019Z" fill="#E95151"/>
+</svg>
+`
+
+/** The badge before the player coming on: an up chevron in green, 56 px square. */
+const SUBSTITUTION_IN_SVG = `<svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="56" height="56" rx="8" fill="#343434"/>
+<path d="M41.8924 35.9981C41.6152 35.9992 41.3406 35.9517 41.0846 35.8583C40.8287 35.7648 40.5965 35.6274 40.4017 35.454L27.8294 24.4001L15.257 35.3798C14.8606 35.6058 14.3893 35.7083 13.9187 35.6707C13.4482 35.6331 13.0056 35.4578 12.6619 35.1727C12.3182 34.8876 12.0933 34.5094 12.0233 34.0985C11.9533 33.6877 12.0421 33.2681 12.2757 32.9069L26.3387 20.5424C26.7342 20.1951 27.2704 20 27.8294 20C28.3884 20 28.9245 20.1951 29.3201 20.5424L43.3831 32.9069C43.7781 33.2547 44 33.7261 44 34.2176C44 34.7091 43.7781 35.1805 43.3831 35.5282C42.976 35.8514 42.4403 36.0203 41.8924 35.9981V35.9981Z" fill="#22C55E"/>
+</svg>
+`
+
 /** Each label card's icon. Where it goes on the card is LABEL_CARD_ICON_BOXES (labelCard.ts in render). */
 const LABEL_CARD_ICONS: Record<IconCardKey, string> = {
   varCheck: VAR_CHECK_SVG,
   goalDisallowed: GOAL_DISALLOWED_SVG,
   yellowCard: playerCardSvg(playerCardColor('yellowCard')),
   redCard: playerCardSvg(playerCardColor('redCard')),
+  substitution: SUBSTITUTION_SVG,
 }
 
 const dataUrl = (svg: string) => `data:image/svg+xml,${encodeURIComponent(svg)}`
 
-export type CardIcons = { corner: HTMLImageElement | null } & Record<
-  IconCardKey,
-  HTMLImageElement | null
->
+export type CardIcons = {
+  corner: HTMLImageElement | null
+  /** The substitution card's badges, before the player going off and the one coming on. */
+  substitutionOut: HTMLImageElement | null
+  substitutionIn: HTMLImageElement | null
+} & Record<IconCardKey, HTMLImageElement | null>
 
 /** No icon loaded yet: every card is drawn without its own. */
-export const NO_ICONS: CardIcons = { corner: null, ...iconCardRecord(() => null) }
+export const NO_ICONS: CardIcons = { corner: null, substitutionOut: null, substitutionIn: null, ...iconCardRecord(() => null) }
 
 let loading: Promise<CardIcons> | null = null
 
@@ -115,11 +144,16 @@ function load(svg: string): Promise<HTMLImageElement | null> {
  */
 export function loadIcons(): Promise<CardIcons> {
   if (typeof Image === 'undefined') return Promise.resolve(NO_ICONS)
-  loading ??= Promise.all([load(CORNER_SVG), ...ICON_CARD_KEYS.map((key) => load(LABEL_CARD_ICONS[key]))]).then(
-    ([corner, ...cards]) => ({
-      corner: corner ?? null,
-      ...iconCardRecord((key) => cards[ICON_CARD_KEYS.indexOf(key)] ?? null),
-    }),
-  )
+  loading ??= Promise.all([
+    load(CORNER_SVG),
+    ...ICON_CARD_KEYS.map((key) => load(LABEL_CARD_ICONS[key])),
+    load(SUBSTITUTION_OUT_SVG),
+    load(SUBSTITUTION_IN_SVG),
+  ]).then(([corner, ...rest]) => ({
+    corner: corner ?? null,
+    ...iconCardRecord((key) => rest[ICON_CARD_KEYS.indexOf(key)] ?? null),
+    substitutionOut: rest[ICON_CARD_KEYS.length] ?? null,
+    substitutionIn: rest[ICON_CARD_KEYS.length + 1] ?? null,
+  }))
   return loading
 }

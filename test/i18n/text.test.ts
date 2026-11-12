@@ -112,7 +112,9 @@ describe('the built-in text', () => {
     })).toBe('Red attacking, Blue defending')
     // The corner is the widget's own: the reference has none. So is the throw-in's hint, as the widget's
     // throw-in fades in where the reference's slides in from the ball's half. And so is the zoom near goal.
-    const { corner, throwInBanner, playerLoss, flashback, goalZoom, ballShadow, varCheck, goalDisallowed, halfTime, secondHalf, fullTime, foul, shotOnGoal, headerOnGoal, yellowCard, redCard, ...referenceLayers } = en.layers
+    const { corner, throwInBanner, playerLoss, flashback, goalZoom, ballShadow, varCheck, goalDisallowed, halfTime, secondHalf, fullTime, foul, shotOnGoal, headerOnGoal, yellowCard, redCard, substitution, ...referenceLayers } = en.layers
+    expect(en.substitution).toBe('SUBSTITUTION')
+    expect(substitution).toEqual({ label: 'Substitution', hint: 'A banner across the middle of the pitch on a substitution label, listing the team\u2019s substitutions' })
     // The player cards are the widget's own too.
     expect(en.yellowCard).toBe('YELLOW CARD')
     expect(en.redCard).toBe('RED CARD')
@@ -201,7 +203,9 @@ describe('the built-in text', () => {
       blue: '蓝队',
       yellowCard: '黄牌',
       redCard: '红牌',
+      substitution: '换人',
     })
+    expect(zh.layers.substitution.label).toBe('换人')
     expect(zh.layers.yellowCard.label).toBe('黄牌')
     expect(zh.layers.redCard.label).toBe('红牌')
     expect(formatText(zh.playerNumber, { number: '9' })).toBe('9号')
