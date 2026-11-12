@@ -25,13 +25,17 @@ export function cardLabels(frame: Frame): CardLabel[] {
     const name = actionName(action.action_type)
     const key = PLAYER_CARD_KEYS.find((k) => (labelCard(k).labels as readonly string[]).includes(name))
     if (!key) continue
-    const { uuid, team_id: team, player_number: number } = action
-    cards.push({
-      key,
-      uuid: typeof uuid === 'string' && uuid !== '' ? uuid : null,
-      team: team === 0 || team === 1 ? team : null,
-      number: typeof number === 'number' && Number.isInteger(number) && number >= 0 ? number : null,
-    })
+    cards.push({ key, uuid: plainUuid(action.uuid), team: plainTeam(action.team_id), number: plainNumber(action.player_number) })
   }
   return cards
 }
+
+/** A label's uuid, or null when it has none. */
+export const plainUuid = (uuid: unknown): string | null => (typeof uuid === 'string' && uuid !== '' ? uuid : null)
+
+/** A label's team, 0 or 1, or null for anything else. */
+export const plainTeam = (team: unknown): TeamId | null => (team === 0 || team === 1 ? team : null)
+
+/** A whole number of 0 or more, or null for anything else. */
+export const plainNumber = (number: unknown): number | null =>
+  typeof number === 'number' && Number.isInteger(number) && number >= 0 ? number : null
