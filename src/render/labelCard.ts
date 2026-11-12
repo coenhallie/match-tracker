@@ -2,7 +2,7 @@ import type { Frame, Transform2D } from '../model/types.js'
 import { labelCard, labelCardTextKey, type IconCardKey, type LabelCardKey } from '../model/labelCards.js'
 import { frameHasAction } from '../analysis/actionLabels.js'
 import { drawEventTitle, interBaselinePx, type CardBox, type TitleLayout } from './eventBanner.js'
-import { measureWidth, wrapText } from './fitText.js'
+import { fitText, measureWidth, wrapText } from './fitText.js'
 import { designUnit } from './pitchGeometry.js'
 import { drawSmallCard } from './smallCard.js'
 import type { PitchDimensions } from '../model/types.js'
@@ -29,6 +29,19 @@ export interface LabelCardIndicator {
   intensity: number
   /** Its icon, if it has one, once it has loaded. Until then it is drawn without it. Default the theme's. */
   icon?: CanvasImageSource | null
+  /** For a card about a player (yellowCard, redCard): the team and the player under the band. */
+  player?: LabelCardPlayer
+}
+
+/**
+ * Who a card is for, in the words drawn: the team's name, and the player's name or shirt number,
+ * each null when the label does not say it, and the card's colour, for the small card before the
+ * player.
+ */
+export interface LabelCardPlayer {
+  team: string | null
+  player: string | null
+  color: string
 }
 
 /**
@@ -102,6 +115,29 @@ const LABEL_CARD_ICON_BOXES: Record<IconCardKey, CardBox> = {
 
 const TITLE_BASELINE_PX = PADDING_Y_PX + interBaselinePx(TITLE_PX, TITLE_LINE_PX)
 
+/**
+ * The lines under a player card's band (Figma "Game Animation Visualizer", viewport/eventYellowCard
+ * and eventRedCard), in design pixels from the band's foot: the team's name in Inter Black, 48 px,
+ * its baseline 84 below; then the player row, Inter Semi Bold, 40 px, its baseline 177 below: a
+ * small card 32 by 44 in the card's colour, its middle on the middle of the capitals, 40 before the
+ * text. Both white, both centred on the pitch, the row as a whole. The fonts and shadows are the
+ * design's; the places were measured from its frames.
+ */
+const TEAM_PX = 48
+const TEAM_BASELINE_PX = 84
+const PLAYER_PX = 40
+const PLAYER_BASELINE_PX = 177
+const SMALL_CARD_W_PX = 32
+const SMALL_CARD_H_PX = 44
+const SMALL_CARD_GAP_PX = 40
+/** Inter's capitals are 1490 of its 2048 units high. */
+const INTER_CAP_HEIGHT = 1490 / 2048
+/** Each line's shadow: 0 2px 4px, black, at 50% under the team and 25% under the player. */
+const LINE_SHADOW_Y_PX = 2
+const LINE_SHADOW_BLUR_PX = 4
+const TEAM_SHADOW = 'rgba(0, 0, 0, 0.5)'
+const PLAYER_SHADOW = 'rgba(0, 0, 0, 0.25)'
+
 /** The band's colour, and its opacity across it: clear at each end, solid at its middle. */
 const BAND_RGB = '12, 63, 47'
 const BAND_STOPS: ReadonlyArray<readonly [number, number]> = [
@@ -167,7 +203,57 @@ export function drawLabelCard(
       ctx.fillText(line, cx, top + (TEXT_TOP_PX + i * TEXT_LINE_PX + interBaselinePx(TEXT_PX, TEXT_LINE_PX)) * u)
     })
   }
+  if (card.player) drawPlayerLines(ctx, card.player, cx, top + CARD_HEIGHT_PX * u, u, font)
   ctx.restore()
+}
+
+/**
+ * The team and the player under a card's band, whose foot is at `foot`, centred on `cx`. Each line
+ * is at most as wide as the frame less the band's padding either side: a longer one is drawn
+ * smaller, then cut short (fitText).
+ */
+function drawPlayerLines(
+  ctx: CanvasRenderingContext2D,
+  player: LabelCardPlayer,
+  cx: number,
+  foot: number,
+  u: number,
+  family: string,
+): void {
+  const maxWidth = FRAME_W - 2 * PADDING_X_PX * u
+  // A shadow is drawn in the bitmap's pixels, whatever the transform.
+  const scale = ctx.getTransform().a * u
+  ctx.shadowOffsetX = 0
+  ctx.shadowOffsetY = LINE_SHADOW_Y_PX * scale
+  ctx.shadowBlur = LINE_SHADOW_BLUR_PX * scale
+  ctx.textBaseline = 'alphabetic'
+  ctx.fillStyle = '#ffffff'
+  if (player.team !== null) {
+    const teamFont = (px: number) => `900 ${px}px ${family}`
+    const team = fitText(ctx, player.team, teamFont, TEAM_PX * u, maxWidth)
+    ctx.font = teamFont(team.px)
+    ctx.textAlign = 'center'
+    ctx.shadowColor = TEAM_SHADOW
+    ctx.fillText(team.text, cx, foot + TEAM_BASELINE_PX * u)
+  }
+  if (player.player !== null) {
+    const nameFont = (px: number) => `600 ${px}px ${family}`
+    const lead = (SMALL_CARD_W_PX + SMALL_CARD_GAP_PX) * u
+    const name = fitText(ctx, player.player, nameFont, PLAYER_PX * u, maxWidth - lead)
+    const nameWidth = measureWidth(ctx, name.text, nameFont(name.px))
+    const left = cx - (lead + nameWidth) / 2
+    const baseline = foot + PLAYER_BASELINE_PX * u
+    const capMiddle = baseline - (INTER_CAP_HEIGHT * PLAYER_PX * u) / 2
+    ctx.shadowColor = 'transparent'
+    ctx.fillStyle = player.color
+    ctx.fillRect(left, capMiddle - (SMALL_CARD_H_PX / 2) * u, SMALL_CARD_W_PX * u, SMALL_CARD_H_PX * u)
+    ctx.font = nameFont(name.px)
+    ctx.textAlign = 'left'
+    ctx.fillStyle = '#ffffff'
+    ctx.shadowColor = PLAYER_SHADOW
+    ctx.fillText(name.text, left + lead, baseline)
+  }
+  ctx.shadowColor = 'transparent'
 }
 
 /** Draw a small label card, in the theme's words and font (smallCard.ts). */

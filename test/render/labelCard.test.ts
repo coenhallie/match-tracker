@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { drawLabelCard, drawSmallLabelCard, isLabelCardFrame } from '../../src/render/labelCard'
+import { drawLabelCard, drawSmallLabelCard, isLabelCardFrame, type LabelCardPlayer } from '../../src/render/labelCard'
 import { createRenderer, type FrameLayers } from '../../src/render/renderer'
 import { drawSmallCard } from '../../src/render/smallCard'
 import { designUnit } from '../../src/render/pitchGeometry'
@@ -376,5 +376,94 @@ describe('a label card’s labels', () => {
     expect(isLabelCardFrame(frame('VAR'), names)).toBe(false)
     expect(isLabelCardFrame(frame('Goal'), names)).toBe(false)
     expect(isLabelCardFrame(frame('VAR check', 'ai'), names)).toBe(false)
+  })
+})
+
+describe('a card about a player', () => {
+  // The band's foot: the card is 384 px high, centred on the pitch.
+  const FOOT = CY + 192 * u
+  // Inter's capitals are 1490 of its 2048 units high.
+  const CAP = 1490 / 2048
+
+  /** Draw the yellow card with `player`, noting the shadow each text is written with. */
+  function drawPlayer(player: LabelCardPlayer | undefined, intensity = 1) {
+    const { ctx, ops } = recordingCtx()
+    const shadows = new Map<string, { color: string; blur: number; y: number }>()
+    const fillText = ctx.fillText.bind(ctx)
+    ctx.fillText = (...args: unknown[]) => {
+      shadows.set(String(args[0]), { color: ctx.shadowColor, blur: ctx.shadowBlur, y: ctx.shadowOffsetY })
+      fillText(...args)
+    }
+    drawLabelCard(ctx as unknown as CanvasRenderingContext2D, T, { key: 'yellowCard', intensity, ...(player ? { player } : {}) })
+    return { ops, shadows }
+  }
+  const text = (ops: Op[], s: string) => ops.find((o) => o.op === 'fillText' && o.args[0] === s)
+  const smallCard = (ops: Op[]) => ops.find((o) => o.op === 'fillRect' && o.fillStyle === '#EAB308')
+  const PLAYER: LabelCardPlayer = { team: 'Ajax', player: 'Name', color: '#EAB308' }
+
+  it('writes the team in Inter Black 48 px, centred, 84 px below the band', () => {
+    const { ops, shadows } = drawPlayer(PLAYER)
+    const team = text(ops, 'Ajax')!
+    expect(team.font).toContain(`900 ${48 * u}px`)
+    expect(team.font).not.toContain('italic')
+    expect(team.textAlign).toBe('center')
+    expect(team.fillStyle).toBe('#ffffff')
+    expect(team.args[1]).toBeCloseTo(CX, 6)
+    expect(team.args[2]).toBeCloseTo(FOOT + 84 * u, 6)
+    expect(shadows.get('Ajax')).toEqual({ color: 'rgba(0, 0, 0, 0.5)', blur: 4 * u, y: 2 * u })
+  })
+
+  it('writes the player in Inter 600 40 px, 177 px below the band, after a small card in its colour', () => {
+    const { ops, shadows } = drawPlayer(PLAYER)
+    const name = text(ops, 'Name')!
+    const [x, y, w, h] = smallCard(ops)!.args as number[]
+    expect(w).toBeCloseTo(32 * u, 6)
+    expect(h).toBeCloseTo(44 * u, 6)
+    expect(y! + h! / 2).toBeCloseTo(FOOT + (177 - (CAP * 40) / 2) * u, 6)
+    expect(name.font).toContain(`600 ${40 * u}px`)
+    expect(name.textAlign).toBe('left')
+    expect(name.fillStyle).toBe('#ffffff')
+    expect(name.args[2]).toBeCloseTo(FOOT + 177 * u, 6)
+    expect(name.args[1]).toBeCloseTo(x! + (32 + 40) * u, 6)
+    // The recording context measures every character at 0.6 of the size: "Name" is 96 px.
+    const right = (name.args[1] as number) + 4 * 40 * u * 0.6
+    expect((x! + right) / 2).toBeCloseTo(CX, 6)
+    expect(shadows.get('Name')).toEqual({ color: 'rgba(0, 0, 0, 0.25)', blur: 4 * u, y: 2 * u })
+  })
+
+  it('leaves out the team line, or the player row, it is not given', () => {
+    const noTeam = drawPlayer({ ...PLAYER, team: null }).ops
+    expect(noTeam.some((o) => o.op === 'fillText' && o.font.startsWith('900 '))).toBe(false)
+    expect(text(noTeam, 'Name')).toBeDefined()
+    const noPlayer = drawPlayer({ ...PLAYER, player: null }).ops
+    expect(smallCard(noPlayer)).toBeUndefined()
+    expect(text(noPlayer, 'Ajax')).toBeDefined()
+    const neither = drawPlayer(undefined).ops
+    expect(neither.filter((o) => o.op === 'fillText').map((o) => o.args[0])).toEqual(['YELLOW CARD'])
+  })
+
+  it('shrinks a long name, then cuts it, inside the frame', () => {
+    const long = 'Bartholomew-Maximilian '.repeat(8).trim()
+    const { ops } = drawPlayer({ ...PLAYER, team: long, player: long })
+    const limit = (FRAME_W - 380 * u) / 2
+    const team = ops.find((o) => o.op === 'fillText' && o.font.startsWith('900 '))!
+    const teamPx = Number(/([\d.]+)px/.exec(team.font)![1])
+    expect(teamPx).toBeLessThan(48 * u)
+    expect((String(team.args[0]).length * teamPx * 0.6) / 2).toBeLessThanOrEqual(limit + 1e-6)
+    const name = ops.find((o) => o.op === 'fillText' && o.font.startsWith('600 '))!
+    const namePx = Number(/([\d.]+)px/.exec(name.font)![1])
+    expect(namePx).toBeLessThan(40 * u)
+    expect(String(name.args[0]).endsWith('…')).toBe(true)
+    const [x] = smallCard(ops)!.args as number[]
+    const right = (name.args[1] as number) + String(name.args[0]).length * namePx * 0.6
+    expect(x!).toBeGreaterThanOrEqual(CX - limit - 1e-6)
+    expect(right).toBeLessThanOrEqual(CX + limit + 1e-6)
+  })
+
+  it('fades the lines with the card', () => {
+    const { ops } = drawPlayer(PLAYER, 0.5)
+    expect(text(ops, 'Ajax')!.globalAlpha).toBe(0.5)
+    expect(text(ops, 'Name')!.globalAlpha).toBe(0.5)
+    expect(smallCard(ops)!.globalAlpha).toBe(0.5)
   })
 })
