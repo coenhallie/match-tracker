@@ -6,6 +6,25 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### What you see
+
+- **Substitutions.** A human's substitution label (`substitute`, as the
+  labelling tool sends it) plays a card across the middle of the pitch:
+  "SUBSTITUTION" over an up and a down arrow, the team's name, and a row per
+  substitution, the player going off, a red and a green chevron, the player
+  coming on, named from `teams.*.players` or by shirt number. The players come
+  as roster ids and are read as shirt numbers; one above 99 is not shown unless
+  named. A substitution for the same team while the card is up joins its list,
+  fading in, up to 5, the card gliding up to keep them on the pitch, and the
+  card stays 5 s from the last. One for the other team, a 6th, or one arriving
+  as the card fades out plays as its own card, after. Chinese: 换人.
+
+### API
+
+- The moment, layer and `trigger` key `substitution`, in `MomentAvailability`
+  and `ReplayLayers` too: a TypeScript literal of either type now needs it.
+- The text key `substitution`.
+
 ## [0.13.0] - 2026-11-12
 
 Yellow and red cards, with the team and the player.
