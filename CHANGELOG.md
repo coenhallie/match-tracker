@@ -6,6 +6,10 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-12
+
+Substituted players named as the labeller named them.
+
 ### What you see
 
 - **Substituted players' names from the label.** The substitution card now
