@@ -6,6 +6,10 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-12
+
+Yellow and red cards, with the team and the player.
+
 ### What you see
 
 - **Yellow and red cards.** A human's `Player yellow card` or `Player red card`
