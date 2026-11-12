@@ -40,6 +40,14 @@ describe('the cards waiting to play', () => {
     expect(drain(queue).map((l) => l.key)).toEqual(['redCard', 'yellowCard'])
   })
 
+  it('tells two players apart without a uuid, by team and number', () => {
+    const queue = new CardQueue()
+    queue.add(yellow(null, 4), 10)
+    queue.add(yellow(null, 9), 10)
+    queue.add(yellow(null, 4), 10.04)
+    expect(drain(queue).map((l) => l.number)).toEqual([4, 9])
+  })
+
   it('puts a card cut short back at the head', () => {
     const queue = new CardQueue()
     queue.add(red('a'), 10)

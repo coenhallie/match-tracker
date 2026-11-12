@@ -1,6 +1,7 @@
 # Player cards: the yellow and the red card
 
-Status: design, approved 2026-11-12. Not built.
+Status: built, 2026-11-12. Where the build settled something differently, the
+section says so.
 
 ## Why
 
@@ -104,7 +105,8 @@ snapped to the card's own scale. In design px, from the foot of the band:
 | Team name's shadow | 0 2 px 4 px, black at 50% |
 | Player row | Inter 600 Semi Bold, 40 px, line height 64 px, white; baseline 177 below the band |
 | Player row's shadow | 0 2 px 4 px, black at 25% |
-| Small card | 32 × 44, in the icon's card colour (`#EAB308`, `#EF4444`), its middle on the middle of the capitals, 40 px left of the text |
+| Small card | 32 × 44, in the icon's card colour (`#EAB308`, `#EF4444`), its middle on the middle of the capitals, the text 37 px after it (the letters' ink 40 px after it, as measured) |
+| Player row | its middle 6 px right of the pitch's middle: measured in Chrome against both frames, which agree; the team name is centred |
 
 The fonts, sizes, line heights, colours and shadows are Figma's (Dev Mode,
 read by the user, 2026-11-12). The positions are measured from the
@@ -142,9 +144,12 @@ A name too long for the frame is drawn smaller to fit, as titles are
   other, and so do two cards a second apart. Waiting cards are dropped on a
   seek or a reset, and a card's waiting entries when its layer goes off.
   (My call, from the user's "show them as soon as possible when received".)
-- **Priority:** a goal or a corner takes over from a card showing, and the
-  card goes back to the head of the queue only if it had not yet stayed its
-  2 s (my call: a card cut short by a goal is not a card played). A card
+- **Priority:** a goal, a corner or another centre card takes over from a card
+  showing, and the card goes back to the head of the queue if it had not yet
+  stayed its 2 s (my call: a card cut short is not a card played). The next
+  waiting card comes in only once the one before has faded out (settled in the
+  build's review). A pause, a press or a moment by hand lets go of the cards
+  waiting, as a seek does, and a label seen while paused is not played. A card
   takes over from a small card, and other centre cards (VAR check, half time
   and the rest) take over from it as they do from each other.
 - **No team:** a label without `team_id` shows no team line. **No number:** a

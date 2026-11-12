@@ -62,6 +62,18 @@ function shown(replay: FakeReplay): string[] {
   return keys.filter((k) => k !== '-')
 }
 
+/** Which player each output's card named, a run of the same counted once. */
+function players(replay: FakeReplay): string[] {
+  const names: string[] = []
+  for (const output of replay.outputs) {
+    if (!output.layers) continue
+    const card = output.layers.labelCard
+    const name = card?.player ? `${card.key} ${card.player.player}` : '-'
+    if (names.at(-1) !== name) names.push(name)
+  }
+  return names.filter((n) => n !== '-')
+}
+
 describe('a player card', () => {
   it("plays a human's card with the team and the player, and not an AI's", () => {
     const replay = ready()
@@ -159,5 +171,56 @@ describe('a player card', () => {
     record(noNumber, [cardLabel('red', 'u2', 0, -1)])
     noNumber.animate(100, true)
     expect(card(noNumber)?.player).toEqual({ team: 'Red', player: null, color: '#EF4444' })
+  })
+
+  it('fades one card out before the next fades in', () => {
+    const replay = ready()
+    record(replay, [cardLabel('yellow', 'u1', 1, 4), cardLabel('yellow', 'u2', 1, 7)])
+    play(replay, LABEL_CARD_SHOW_MS + LABEL_CARD_OUT_MS + 1200)
+    const cards = replay.outputs.flatMap((o) => (o.layers ? [o.layers.labelCard] : []))
+    const second = cards.findIndex((c) => c?.player?.player === '#7')
+    expect(second).toBeGreaterThan(0)
+    // The first had gone, and the second comes in from nothing.
+    expect(cards.slice(0, second).filter((c) => c?.player?.player === '#4').at(-1)!.intensity).toBeLessThan(0.1)
+    expect(cards[second]!.intensity).toBeLessThan(0.3)
+    expect(players(replay)).toEqual(['yellowCard #4', 'yellowCard #7'])
+  })
+
+  it('does not play a card on a new record while paused, nor after', () => {
+    const replay = ready()
+    record(replay)
+    replay.pause()
+    replay.set({ frame: frameAt([cardLabel('red', 'u1', 0, 3)]) })
+    replay.animate(1000, true)
+    expect(card(replay)).toBeUndefined()
+    replay.play()
+    play(replay, 1000)
+    expect(shown(replay)).toEqual([])
+  })
+
+  it('forgets the waiting card when play pauses', () => {
+    const replay = ready()
+    record(replay, [cardLabel('yellow', 'u1', 1, 4), cardLabel('red', 'u2', 0, 3)])
+    play(replay, 500)
+    replay.pause()
+    replay.play()
+    play(replay, LABEL_CARD_SHOW_MS + 2000)
+    expect(shown(replay)).toEqual(['yellowCard'])
+  })
+
+  it('forgets the waiting cards on a press', () => {
+    const replay = ready()
+    record(replay, [cardLabel('yellow', 'u1', 1, 4), cardLabel('red', 'u2', 0, 3)])
+    play(replay, 500)
+    replay.stopAll()
+    play(replay, LABEL_CARD_SHOW_MS + 2000)
+    expect(shown(replay)).toEqual(['yellowCard'])
+  })
+
+  it('plays two cards of one colour for two players on one record, with no uuid', () => {
+    const replay = ready()
+    record(replay, [cardLabel('yellow', undefined, 1, 4), cardLabel('yellow', undefined, 1, 9)])
+    play(replay, 2 * (LABEL_CARD_SHOW_MS + LABEL_CARD_OUT_MS) + 1500)
+    expect(players(replay)).toEqual(['yellowCard #4', 'yellowCard #9'])
   })
 })

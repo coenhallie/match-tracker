@@ -6,8 +6,9 @@
  * the other label cards do once nothing blocks them. So each card label waits here, and the
  * director plays them in the order they came, each its full time, the next as soon as nothing
  * blocks it. A label is one card however many records carry it: by its `uuid`, or, as replay data
- * has none, by the label cards' re-arm (LABEL_CARD_REARM_S): seen again within that of the last
- * time, it is the same card.
+ * has none, by its card, team and shirt number, with the label cards' re-arm (LABEL_CARD_REARM_S):
+ * seen again within that of the last time, it is the same card. Two players booked together are
+ * two cards either way.
  */
 import type { CardLabel } from '../analysis/cardLabels.js'
 import type { PlayerCardKey } from '../model/labelCards.js'
@@ -17,8 +18,8 @@ export class CardQueue {
   private waiting: CardLabel[] = []
   /** The labels seen, queued or skipped, by uuid. */
   private uuids = new Set<string>()
-  /** For labels with no uuid: when each card's label was last seen, in replay seconds. */
-  private lastSeen = new Map<PlayerCardKey, number>()
+  /** For labels with no uuid: when each card for each player was last seen, in replay seconds. */
+  private lastSeen = new Map<string, number>()
 
   /** Queue `label`, seen at `now`, unless it has been seen before. */
   add(label: CardLabel, now: number): void {
@@ -62,8 +63,9 @@ export class CardQueue {
       this.uuids.add(label.uuid)
       return true
     }
-    const last = this.lastSeen.get(label.key)
-    this.lastSeen.set(label.key, now)
+    const who = `${label.key} ${label.team} ${label.number}`
+    const last = this.lastSeen.get(who)
+    this.lastSeen.set(who, now)
     return last === undefined || now - last > LABEL_CARD_REARM_S
   }
 }

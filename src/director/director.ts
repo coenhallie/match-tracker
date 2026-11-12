@@ -725,6 +725,8 @@ export class Director {
     this.stopMoment(this.corner)
     this.stopMoment(this.throwIn)
     for (const card of this.labelCards) if (!keepStaying || !card.staysOn) this.stopMoment(card)
+    // A pause, a press, a seek or a moment by hand: the cards waiting go with the one showing.
+    this.cardQueue.clear()
   }
 
   /** End the label cards at once; with `letFade`, one already fading out finishes doing so. */
@@ -740,16 +742,19 @@ export class Director {
 
   /**
    * The player cards on `frame`, into their queue, and the first waiting card played if nothing
-   * holds it back: a goal, a corner or a centre card up. A card's label sits on one record, so a
-   * card waits its turn rather than being missed (cardQueue.ts). Landed on by a seek, a label is
+   * holds it back: a goal, a corner, or a centre card on screen, fading out included, so one card
+   * goes before the next comes in. A card's label sits on one record, so a card waits its turn
+   * rather than being missed (cardQueue.ts). Landed on by a seek, or seen while paused, a label is
    * under way, and is not played.
    */
   private queueCards(frame: Frame, time: number): void {
+    const playing = this.shown.playing && this.lastStepWasPlayback
     for (const label of cardLabels(frame)) {
-      if (!this.lastStepWasPlayback) this.cardQueue.skip(label, time)
+      if (!playing) this.cardQueue.skip(label, time)
       else if (this.layers[label.key]) this.cardQueue.add(label, time)
     }
-    if (!this.lastStepWasPlayback || this.goal.active || this.corner.active || this.centreCardHoldsBack()) return
+    const centreCardUp = this.labelCards.some((card) => !card.small && card.active)
+    if (!playing || this.goal.active || this.corner.active || centreCardUp) return
     const label = this.cardQueue.take()
     if (!label) return
     const card = this.labelCards.find((c) => c.key === label.key)!

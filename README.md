@@ -277,7 +277,7 @@ The layers are `goal`, `goalZoom`, `attack`, `playerLoss`, `flashback`, `corner`
 #### Labels
 
 The goal, the corner, the throw-in, the VAR check, the goal disallowed, the
-half time, the second half, the full time, the foul and the shot and header on goal play when playback runs into the pipeline's label for them, in a frame's `state.actions`, and only when a
+half time, the second half, the full time, the foul, the shot and header on goal, and the yellow and red cards play when playback runs into the pipeline's label for them, in a frame's `state.actions`, and only when a
 human gave it: its `action_origin` is `"human"`. A label from the pipeline's
 AI (`"ai"`), or one from an older export with no `action_origin`, plays
 nothing. The bottom-left action text follows the same rule: it lists only the
@@ -386,11 +386,14 @@ player.
   everyone on the pitch and the ball faded out.
 - Every card plays, however soon after another it comes: a card's label sits on
   one record, so a card that cannot play yet (a goal, a corner or another centre
-  card showing) waits its turn, and cards play one after the other in the order
-  they came. A label seen on several records is one card (by its `uuid`). A
-  card cut short by a goal, a corner or a centre card before its 2 s plays again
-  after it. A card landed on by a seek is not played, and a seek or a `reset()`
-  forgets the cards waiting.
+  card on screen) waits its turn, and cards play one after the other in the
+  order they came, each fading out before the next fades in. A label seen on
+  several records is one card: by its `uuid`, or, without one, by its card, team
+  and shirt number. A card cut short by a goal, a corner or a centre card before
+  its 2 s plays again after it.
+- A card landed on by a seek, or seen while paused, is not played. A seek, a
+  pause, a press on the pitch, a moment played by hand or a `reset()` lets go of
+  the cards waiting.
 - Played by hand (`trigger('redCard', team)`), it names the team and no player.
 
 #### Small cards: foul, shot and header on goal
