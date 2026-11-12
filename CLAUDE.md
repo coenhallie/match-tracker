@@ -24,7 +24,9 @@ of all of them, so keep dependencies pointing down towards `model`.
   the second half, which turns the frames round from a human half label on).
 - `render`: canvas drawing of the pitch, players, ball and cards.
 - `director`: moments (goal, attack, corner, throw-in, the label cards, and the attack over a
-  player loss), camera and playback. The corner, the label cards, the player loss cover and the goal
+  player loss), camera and playback. The two player cards (yellow, red) are label cards that
+  name the team and the player from the label; they wait their turn in a queue (`cardQueue.ts`),
+  as their label sits on one record. The corner, the label cards, the player loss cover and the goal
   on a penalty scored label are ours alone; video-annotation has none of them. A label card (`src/model/labelCards.ts`) is played
   by a label, either across the middle (a title over an icon or a short text, the pitch faded out) or small
   on the bottom touchline (the title alone, the pitch left as it is). A new one is a registry entry and its words,

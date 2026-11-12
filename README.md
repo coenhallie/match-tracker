@@ -234,10 +234,10 @@ destroyed on can have a new one.
 | `push(message)` | Live: one websocket message. |
 | `present(state)` | Replay: `{ time, playing, record, lookback }` at the host's clock. |
 | `reset()` | Forget everything seen and end every moment. What comes next is a seek. The last picture stays until new data arrives. In live mode the clips kept for replays go too, and a replay playing ends, with a `flashback` `end` (see [Flashbacks](#flashbacks)). |
-| `trigger(moment, team?)` | Play `'goal'`, `'attack'`, `'corner'`, `'throwIn'`, `'varCheck'`, `'goalDisallowed'`, `'halfTime'`, `'secondHalf'`, `'fullTime'`, `'foul'`, `'shotOnGoal'` or `'headerOnGoal'` now, on the frame on screen. `team` (0 home, 1 away, default 0) is for an attack. Returns false when the moment cannot be played on that frame (for example before the first frame, or a goal with no ball). |
+| `trigger(moment, team?)` | Play `'goal'`, `'attack'`, `'corner'`, `'throwIn'`, `'varCheck'`, `'goalDisallowed'`, `'halfTime'`, `'secondHalf'`, `'fullTime'`, `'foul'`, `'shotOnGoal'`, `'headerOnGoal'`, `'yellowCard'` or `'redCard'` now, on the frame on screen. `team` (0 home, 1 away, default 0) is for an attack, and for a card the team it names. Returns false when the moment cannot be played on that frame (for example before the first frame, or a goal with no ball). |
 | `setOptions(options)` | Change any option but `mode` and `layersStorageKey`, which are fixed at mount. The HUD and the canvas follow at once, without a remount. Options that throw change nothing. |
 | `on(event, listener)` | Listen to an event. Returns a function that unsubscribes. |
-| `availability()` | Which moments `trigger` can play on the frame on screen: `{ goal, attack: { 0, 1 }, corner, throwIn, varCheck, goalDisallowed, halfTime, secondHalf, fullTime, foul, shotOnGoal, headerOnGoal }`, each a boolean (`MomentAvailability`). All false before the first frame and after a reset. A goal needs a ball, and an attack needs the direction that team attacks in, which needs the keepers. A fresh copy on every call. |
+| `availability()` | Which moments `trigger` can play on the frame on screen: `{ goal, attack: { 0, 1 }, corner, throwIn, varCheck, goalDisallowed, halfTime, secondHalf, fullTime, foul, shotOnGoal, headerOnGoal, yellowCard, redCard }`, each a boolean (`MomentAvailability`). All false before the first frame and after a reset. A goal needs a ball, and an attack needs the direction that team attacks in, which needs the keepers. A fresh copy on every call. |
 | `overlay` | An element over the pitch, in the canvas's own box, for a host's drawing layer and anything it anchors to the pitch. It is a `div` child of the host, with `slot="overlay"`, so the page's CSS reaches it and its content. Its inline style fills the box and turns pointer events off. Pointer events pass through it unless you turn them on for your own elements. A press on it, or on anything in it, stops every moment, except inside an element in it marked `data-match-tracker-keep` (your transport, a frame badge). |
 | `box` | `{ left, top, width, height }`, the canvas's box in CSS px from the host's top-left corner, below the attacking/defending row (`TrackerBox`, frozen). Null until the widget has been laid out with a size, and after `destroy()`. |
 | `version` | The package version this tracker runs. |
@@ -261,7 +261,7 @@ Also exported:
 | `locale` | `'en' \| 'zh'`, or a language tag | `'en'` | The built-in text. A tag is read by its language: `'zh-CN'`, `'zh-TW'` and `'zh-Hans'` are `'zh'`, `'en-GB'` is `'en'`. Anything else is English. |
 | `momentLocale` | `'en' \| 'zh'`, or a language tag | `locale` | The language of the words the moments write on the canvas: the cards' titles and texts, and the word under the team's name in the attack's label. Read as `locale` is. For keeping them in one language while the HUD follows `locale`, for example English until a translation is approved. `text` overrides them as it does the rest. Can be changed with `setOptions`. |
 | `text` | `TrackerTextOverrides` | | Any string, in place of the locale's. In `layers`, any `label` or `hint` of any layer: what you leave out stays the locale's. |
-| `teams` | `{ home?: { name?, color? }, away?: { name?, color? } }` | | Team 0 is home and team 1 is away. A name defaults to the localised "Red" and "Blue". A `color` is the team's fill, on its players, its attack and its label. |
+| `teams` | `{ home?: { name?, color?, players? }, away?: { name?, color?, players? } }` | | Team 0 is home and team 1 is away. A name defaults to the localised "Red" and "Blue". A `color` is the team's fill, on its players, its attack and its label. `players` names the team's players by shirt number, `{ 9: 'Name' }`, for the cards; a player with no name is shown by the number ("#9"). |
 | `colors` | `Partial<Record<PersonRole, Partial<PersonColors>>>` | video-annotation's | `fill`, `outline` and `text` per role: `home`, `away`, `goalkeeper`, `official`, `unknown`. A team's `color` wins over `fill` here. |
 | `layers` | `Partial<ReplayLayers>` | all on | The layers shown until the viewer chooses in the menu. |
 | `layersMenu` | `boolean` | `true` | `false` takes the layers button and menu out. The layers are then the defaults over `layers`, and nothing is read from or written to `layersStorageKey`. Can be changed with `setOptions`. |
@@ -272,7 +272,7 @@ Also exported:
 | `debug` | `boolean` | `false` | Developer mode. A red badge, top left of the pitch, while fewer than 18 players are tracked on the frame on screen: how many are, and whose attack covers the loss when one does (see [Player loss](#player-loss)). In live mode it also says when the frame on screen is invalid (see [Invalid frames](#invalid-frames)), and which replay plays while one does (see [Flashbacks](#flashbacks)). For telling a real attack from one shown over lost players or invalid frames. Can be changed with `setOptions`. |
 
 The layers are `goal`, `goalZoom`, `attack`, `playerLoss`, `flashback`, `corner`, `throwInBanner`,
-`varCheck`, `goalDisallowed`, `halfTime`, `secondHalf`, `fullTime`, `foul`, `shotOnGoal`, `headerOnGoal`, `ballTrail`, `ballShadow`, `phaseLabels`, `nearbyRings`, `farFade` and `ringFades`.
+`varCheck`, `goalDisallowed`, `halfTime`, `secondHalf`, `fullTime`, `foul`, `shotOnGoal`, `headerOnGoal`, `yellowCard`, `redCard`, `ballTrail`, `ballShadow`, `phaseLabels`, `nearbyRings`, `farFade` and `ringFades`.
 
 #### Labels
 
@@ -371,6 +371,27 @@ as it does in the stadium. Their height is kept.
   right ends through a reconnect or a reload. The earlier of the two is where
   the second half starts.
 - `reset()` forgets the labels seen, as everything else, but not `secondHalfFrom`.
+
+#### Cards: yellow and red
+
+"YELLOW CARD" or "RED CARD" over a hand holding up the card, on the dark band
+across the middle of the pitch, as the VAR check's, on a human's card label
+(the labelling tool's "Player yellow card" and "Player red card"; the
+`yellowCard` and `redCard` layers, on by default). Under the band, the team's
+name, and a small card in the card's colour before the player: named from the
+`teams` option's `players`, or by shirt number. The live stream gives the team
+and the number with the label; a label without them shows no team, or no
+player.
+- It fades in, stays at least 2 s and fades out as the VAR check does, with
+  everyone on the pitch and the ball faded out.
+- Every card plays, however soon after another it comes: a card's label sits on
+  one record, so a card that cannot play yet (a goal, a corner or another centre
+  card showing) waits its turn, and cards play one after the other in the order
+  they came. A label seen on several records is one card (by its `uuid`). A
+  card cut short by a goal, a corner or a centre card before its 2 s plays again
+  after it. A card landed on by a seek is not played, and a seek or a `reset()`
+  forgets the cards waiting.
+- Played by hand (`trigger('redCard', team)`), it names the team and no player.
 
 #### Small cards: foul, shot and header on goal
 
@@ -554,7 +575,7 @@ little more the nearer it gets (the `goalZoom` layer, on by default):
 - With reduced motion it does nothing.
 
 The `TrackerText` keys are:
-- on the canvas: `goal`, `corner`, `throwIn`, `varCheck`, `goalDisallowed`, `halfTime`, `halfTimeText`, `secondHalf`, `secondHalfText`, `fullTime`, `fullTimeText`, `foul`, `shotOnGoal`, `headerOnGoal`, `attack`, and the replay's tab, `flashback` ("REPLAY") and `flashbackAgo` (with `{time}`);
+- on the canvas: `goal`, `corner`, `throwIn`, `varCheck`, `goalDisallowed`, `halfTime`, `halfTimeText`, `secondHalf`, `secondHalfText`, `fullTime`, `fullTimeText`, `foul`, `shotOnGoal`, `headerOnGoal`, `yellowCard`, `redCard`, `playerNumber` (a carded player with no name, with `{number}`), `attack`, and the replay's tab, `flashback` ("REPLAY") and `flashbackAgo` (with `{time}`);
 - the row: `attacking`, `defending`, `versus`, `phaseTooltip`, `red` and `blue` (the default team names);
 - ARIA templates: `phaseAttackingAria` and `phaseDefendingAria` (with `{team}`), and `phaseAria` (with `{home}` and `{away}`);
 - the menu: `layersButton`, `layersTooltip`, `layersMenuLabel`, and `layers` (`{ label, hint }` per layer);

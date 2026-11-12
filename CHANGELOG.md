@@ -6,6 +6,31 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### What you see
+
+- **Yellow and red cards.** A human's `Player yellow card` or `Player red card`
+  label (also `Yellow card`, `Red card`) plays a card across the middle of the
+  pitch, as the VAR check's: "YELLOW CARD" or "RED CARD" over a hand holding up
+  the card, then under the band the team's name in Inter Black and a small card
+  in the card's colour before the player, named from `teams.*.players` or by
+  shirt number ("#9"). The team and the number come with the label on the live
+  stream; a label without them shows no team, or no player. Every card plays:
+  one that cannot play yet (a goal, a corner or another centre card showing)
+  waits its turn, cards play one after another in the order they came, a card
+  cut short before its 2 s plays again, and a label seen on several records is
+  one card. A card landed on by a seek is not played. Chinese: 黄牌, 红牌, and
+  "9号" for a player with no name.
+
+### API
+
+- `teams.home.players` and `teams.away.players`: names by shirt number, for
+  the cards.
+- The moments, layers and `trigger` keys `yellowCard` and `redCard`, in
+  `MomentAvailability` too.
+- The text keys `yellowCard`, `redCard` and `playerNumber` (with `{number}`).
+- The package bundles one more font file, Inter Black upright
+  (`inter-latin-900-normal.woff2`), beside the others.
+
 ## [0.12.2] - 2026-11-12
 
 Live mode sees every label a human gives.
