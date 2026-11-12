@@ -413,7 +413,7 @@ describe('a card about a player', () => {
     expect(shadows.get('Ajax')).toEqual({ color: 'rgba(0, 0, 0, 0.5)', blur: 4 * u, y: 2 * u })
   })
 
-  it('writes the player in Inter 600 40 px, 177 px below the band, after a small card in its colour', () => {
+  it('writes the player in Inter 600 40 px, 177 px below the band, after a small card in its colour, as the design places it', () => {
     const { ops, shadows } = drawPlayer(PLAYER)
     const name = text(ops, 'Name')!
     const [x, y, w, h] = smallCard(ops)!.args as number[]
@@ -424,10 +424,12 @@ describe('a card about a player', () => {
     expect(name.textAlign).toBe('left')
     expect(name.fillStyle).toBe('#ffffff')
     expect(name.args[2]).toBeCloseTo(FOOT + 177 * u, 6)
-    expect(name.args[1]).toBeCloseTo(x! + (32 + 40) * u, 6)
-    // The recording context measures every character at 0.6 of the size: "Name" is 96 px.
+    // 37 px from the small card to the text, which puts the letters' ink 40 px from it, as in the design.
+    expect(name.args[1]).toBeCloseTo(x! + (32 + 37) * u, 6)
+    // The recording context measures every character at 0.6 of the size: "Name" is 96 px. The design
+    // has the row 6 px right of the pitch's middle (measured on both frames; the team's name is centred).
     const right = (name.args[1] as number) + 4 * 40 * u * 0.6
-    expect((x! + right) / 2).toBeCloseTo(CX, 6)
+    expect((x! + right) / 2).toBeCloseTo(CX + 6 * u, 6)
     expect(shadows.get('Name')).toEqual({ color: 'rgba(0, 0, 0, 0.25)', blur: 4 * u, y: 2 * u })
   })
 

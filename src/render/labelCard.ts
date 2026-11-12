@@ -119,9 +119,10 @@ const TITLE_BASELINE_PX = PADDING_Y_PX + interBaselinePx(TITLE_PX, TITLE_LINE_PX
  * The lines under a player card's band (Figma "Game Animation Visualizer", viewport/eventYellowCard
  * and eventRedCard), in design pixels from the band's foot: the team's name in Inter Black, 48 px,
  * its baseline 84 below; then the player row, Inter Semi Bold, 40 px, its baseline 177 below: a
- * small card 32 by 44 in the card's colour, its middle on the middle of the capitals, 40 before the
- * text. Both white, both centred on the pitch, the row as a whole. The fonts and shadows are the
- * design's; the places were measured from its frames.
+ * small card 32 by 44 in the card's colour, its middle on the middle of the capitals, the text 37
+ * after it, which puts its letters' ink 40 after it, as the design has them. Both white; the team
+ * centred on the pitch, the row as a whole 6 right of the middle, as both of the design's frames
+ * have it. The fonts and shadows are the design's; the places were measured from its frames.
  */
 const TEAM_PX = 48
 const TEAM_BASELINE_PX = 84
@@ -129,7 +130,9 @@ const PLAYER_PX = 40
 const PLAYER_BASELINE_PX = 177
 const SMALL_CARD_W_PX = 32
 const SMALL_CARD_H_PX = 44
-const SMALL_CARD_GAP_PX = 40
+const SMALL_CARD_GAP_PX = 37
+/** How far right of the pitch's middle the player row's middle is. */
+const PLAYER_ROW_SHIFT_PX = 6
 /** Inter's capitals are 1490 of its 2048 units high. */
 const INTER_CAP_HEIGHT = 1490 / 2048
 /** Each line's shadow: 0 2px 4px, black, at 50% under the team and 25% under the player. */
@@ -239,9 +242,10 @@ function drawPlayerLines(
   if (player.player !== null) {
     const nameFont = (px: number) => `600 ${px}px ${family}`
     const lead = (SMALL_CARD_W_PX + SMALL_CARD_GAP_PX) * u
-    const name = fitText(ctx, player.player, nameFont, PLAYER_PX * u, maxWidth - lead)
+    // The row sits right of the middle: it keeps clear of the frame's right edge as of its left.
+    const name = fitText(ctx, player.player, nameFont, PLAYER_PX * u, maxWidth - lead - 2 * PLAYER_ROW_SHIFT_PX * u)
     const nameWidth = measureWidth(ctx, name.text, nameFont(name.px))
-    const left = cx - (lead + nameWidth) / 2
+    const left = cx + PLAYER_ROW_SHIFT_PX * u - (lead + nameWidth) / 2
     const baseline = foot + PLAYER_BASELINE_PX * u
     const capMiddle = baseline - (INTER_CAP_HEIGHT * PLAYER_PX * u) / 2
     ctx.shadowColor = 'transparent'
