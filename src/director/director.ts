@@ -756,7 +756,8 @@ export class Director {
     const centreCardUp = this.labelCards.some((card) => !card.small && card.active)
     if (!playing || this.goal.active || this.corner.active || centreCardUp) return
     const label = this.cardQueue.take()
-    if (!label) return
+    // Substitutions wait here too, but play as their own card (playSubstitutions).
+    if (!label || label.key === 'substitution') return
     const card = this.labelCards.find((c) => c.key === label.key)!
     // As any centre card does: it takes over from the one fading out, and play is stopped for it.
     const strength = this.labelCardStrength(false)
