@@ -220,6 +220,7 @@ describe('Director', () => {
         reducedMotion: () => false,
         teamName: () => '',
         playerName: (_team, number) => `#${number}`,
+        substitutionName: (_team, number) => (number === null ? null : `#${number}`),
         teamColor: () => '',
       })
       director.update(input(10, frameWith(10, 0), false), VIEW)

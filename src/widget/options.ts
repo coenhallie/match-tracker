@@ -104,6 +104,9 @@ export const DEFAULT_LAYERS_STORAGE_KEY = 'match-tracker.layers'
 
 const ROLES: readonly PersonRole[] = ['home', 'away', 'goalkeeper', 'official', 'unknown']
 
+/** The highest shirt number: a substitution's player above it is a roster id, not a number. */
+const MAX_SHIRT_NUMBER = 99
+
 /** What the options come to, worked out afresh on every change. */
 export interface Resolved {
   /** The HUD's and the layers menu's words, in `locale`. */
@@ -115,6 +118,11 @@ export interface Resolved {
   teamColor: (team: TeamId) => string
   /** A carded player's name, or shirt number, as the moments write it. */
   playerName: (team: TeamId, number: number) => string
+  /**
+   * A substituted player's name, or shirt number, or null: the substitution's players are roster ids,
+   * so one above 99, not a shirt number, is shown only if the host names it.
+   */
+  substitutionName: (team: TeamId | null, number: number | null) => string | null
   formatAction: (actionType: string) => string
   aiLabels: boolean
 }
@@ -142,6 +150,12 @@ export function resolveOptions(options: MutableOptions): Resolved {
     teamColor: (team) => fills[team],
     playerName: (team, number) =>
       players[team]?.[number] || formatText(momentText.playerNumber, { number: String(number) }),
+    substitutionName: (team, number) => {
+      if (number === null) return null
+      const name = team === null ? undefined : players[team]?.[number]
+      if (name) return name
+      return number <= MAX_SHIRT_NUMBER ? formatText(momentText.playerNumber, { number: String(number) }) : null
+    },
     formatAction: options.formatAction ?? DEFAULT_THEME.formatAction,
     aiLabels: options.aiLabels ?? DEFAULT_THEME.aiLabels,
   }
@@ -184,7 +198,13 @@ export function prefersReducedMotion(): () => boolean {
 
 /** The director's options for `resolved`, the layers aside, asking `reducedMotion` (prefersReducedMotion). */
 export function directorOptions(resolved: Resolved, reducedMotion: () => boolean): Omit<DirectorOptions, 'layers'> {
-  return { reducedMotion, teamName: resolved.teamName, teamColor: resolved.teamColor, playerName: resolved.playerName }
+  return {
+    reducedMotion,
+    teamName: resolved.teamName,
+    teamColor: resolved.teamColor,
+    playerName: resolved.playerName,
+    substitutionName: resolved.substitutionName,
+  }
 }
 
 function localStorageOrNull(): Storage | null {

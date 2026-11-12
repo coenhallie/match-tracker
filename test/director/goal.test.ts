@@ -328,6 +328,7 @@ describe('goal sequence', () => {
         reducedMotion: () => false,
         teamName: () => 'Red',
         playerName: (_team, number) => `#${number}`,
+        substitutionName: (_team, number) => (number === null ? null : `#${number}`),
         teamColor: () => '#e51a1a',
       })
       const record = { t: 10, frameCount: 1, frame: goalFrame(['other']) }
