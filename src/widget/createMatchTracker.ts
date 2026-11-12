@@ -54,6 +54,7 @@
  * slot. Its inline style, set through the CSSOM, fills the box and lets
  * pointer events through, against whatever the page's CSS says of divs.
  */
+import { isHumanLabel, withHiddenLabels } from '../analysis/actionLabels.js'
 import { deriveAt, windowAt } from '../analysis/derive.js'
 import { SecondHalf } from '../analysis/secondHalf.js'
 import type { BallTrail } from '../analysis/ballTrail.js'
@@ -376,6 +377,10 @@ class Tracker implements MatchTracker {
   private resumed = true
   /** Live: that seek is only coming back after being hidden or scrolled away (DirectorInput.rejoining). */
   private rejoining = false
+  /** Live: the records taken since the last display frame that carry a human's label. */
+  private labelled: TrackerRecord[] = []
+  /** Live: the record last shown with labels carried onto it (carryLabels), and what it was before. */
+  private carried: { from: TrackerRecord; record: TrackerRecord } | null = null
 
   private readonly history = new LiveHistory()
   /** Where the second half starts, from the half labels seen: from there on every frame is shown turned round. */
@@ -472,6 +477,7 @@ class Tracker implements MatchTracker {
     if (!record) return
     const breaks = this.history.breaks
     if (!this.history.add(record)) return
+    if ((record.frame.state?.actions ?? []).some(isHumanLabel)) this.labelled.push(record)
     // Nothing is kept for flashbacks while their layer is off.
     if (this.layers.flashback) this.flashback?.see(record, this.history.validityOf(record), this.history.window())
     if (this.halves.see(record)) this.saySecondHalf()
@@ -766,6 +772,22 @@ class Tracker implements MatchTracker {
     if (redraw) this.repaint()
   }
 
+  /**
+   * Live: `turned`, the record shown, with the human labels of the records taken since the last
+   * display frame that it hides. The pipeline puts a label on one record alone, and records come
+   * in bursts, so the next one often arrives before the display frame, which shows only the
+   * newest: without this, the label would never be seen. Nothing is carried over a seek, as
+   * coming back to the tab is: a label from before it says nothing about the record now shown.
+   * The record is one object for as long as it is shown, as the director takes a new one for a
+   * new record.
+   */
+  private carryLabels(turned: TrackerRecord): TrackerRecord {
+    const hidden = this.resumed ? [] : this.labelled.filter((r) => r.frameCount !== turned.frameCount)
+    this.labelled = []
+    if (hidden.length > 0) this.carried = { from: turned, record: withHiddenLabels(turned, hidden) }
+    return this.carried?.from === turned ? this.carried.record : turned
+  }
+
   /** What the director is to see at `nowMs`, or null in replay before anything is presented. */
   private nextInput(nowMs: number): DirectorInput | null {
     if (this.mode === 'live') {
@@ -773,7 +795,8 @@ class Tracker implements MatchTracker {
       // the last valid one's: nothing reads what the pipeline made up while its camera was away.
       // In the second half all of it is turned round, as the record shown is.
       const shown = this.history.shown()
-      const record = shown && this.halves.shown(shown)
+      const turned = shown && this.halves.shown(shown)
+      const record = turned && this.carryLabels(turned)
       const { phase, trail } = this.derive([this.historyVersion, this.halves.from], () => {
         const valid = this.history.latestValid()
         // The window turned as the record shown is, so a half label on an invalid record turns

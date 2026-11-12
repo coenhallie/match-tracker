@@ -69,6 +69,8 @@ export interface FrameAction {
   action_type?: string
   /** Who reported the action: the AI pipeline or a human analyst. */
   action_origin?: 'ai' | 'human' | string
+  /** The label's own id, which the live stream gives a human's label. */
+  uuid?: string
 }
 
 /** Frame-level metadata carried inside `frame_data`. */

@@ -19,9 +19,9 @@ function mount(options: Partial<MatchTrackerOptions> = {}) {
   return { host, tracker }
 }
 
-/** The fixture's message with these labels on its frame. */
-function labelled(actions: Array<{ action_type: string; action_origin?: string }>): string {
-  const parsed = JSON.parse(message(0)) as { match: { state?: unknown } }
+/** The fixture's message `i` with these labels on its frame. */
+function labelled(actions: Array<{ action_type: string; action_origin?: string }>, i = 0): string {
+  const parsed = JSON.parse(message(i)) as { match: { state?: unknown } }
   parsed.match.state = { actions }
   return JSON.stringify(parsed)
 }
@@ -70,6 +70,38 @@ describe('the bottom-left labels', () => {
     tracker.setOptions({ aiLabels: true })
     env.settle()
     expect(bottomLeft(host)).toBe('BALL_IN_PLAY, THROW_IN')
+  })
+
+  it('lists a human label whose record the next one hid before the display frame', () => {
+    const { host, tracker } = mount({ formatAction: (a) => a.slice(a.indexOf('.') + 1) })
+    tracker.push(message(0))
+    env.settle()
+    tracker.push(labelled(LABELS, 1))
+    tracker.push(message(2))
+    env.frame()
+    expect(bottomLeft(host)).toBe('THROW_IN')
+  })
+
+  it('lists a label once when the hidden record and the one shown both carry it', () => {
+    const { host, tracker } = mount({ formatAction: (a) => a.slice(a.indexOf('.') + 1) })
+    tracker.push(message(0))
+    env.settle()
+    tracker.push(labelled(LABELS, 1))
+    tracker.push(labelled(LABELS, 2))
+    env.frame()
+    expect(bottomLeft(host)).toBe('THROW_IN')
+  })
+
+  it('does not list a label from a record hidden while the tab was away', () => {
+    const { host, tracker } = mount({ formatAction: (a) => a.slice(a.indexOf('.') + 1) })
+    tracker.push(message(0))
+    env.settle()
+    env.setVisibility('hidden')
+    tracker.push(labelled(LABELS, 1))
+    tracker.push(message(2))
+    env.setVisibility('visible')
+    env.frame()
+    expect(bottomLeft(host)).toBeUndefined()
   })
 
   it('shows no text when no human gave a label', () => {

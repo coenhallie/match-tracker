@@ -1,4 +1,4 @@
-import type { Frame, FrameAction } from '../model/types.js'
+import type { Frame, FrameAction, TrackerRecord } from '../model/types.js'
 
 /**
  * A pipeline action label reduced to its bare name, so the same label matches
@@ -38,4 +38,31 @@ export function humanLabelNames(frame: Frame): string[] {
  */
 export function frameHasAction(frame: Frame, name: string): boolean {
   return (frame.state?.actions ?? []).some((a) => isHumanLabel(a) && actionName(a.action_type) === name)
+}
+
+/**
+ * `record` with the human labels of `hidden` added to its own: records the display never showed,
+ * as the next one came before its frame. The pipeline puts a human's label on one record alone,
+ * so a label on a hidden record is seen on the next record shown instead. A label already there
+ * is not added again: the same `uuid`, or, without one, the same origin and name (actionName).
+ */
+export function withHiddenLabels(record: TrackerRecord, hidden: readonly TrackerRecord[]): TrackerRecord {
+  const own = record.frame.state?.actions ?? []
+  const seen = new Set(own.map(labelKey))
+  const carried: FrameAction[] = []
+  for (const r of hidden) {
+    for (const action of r.frame.state?.actions ?? []) {
+      const key = labelKey(action)
+      if (!isHumanLabel(action) || seen.has(key)) continue
+      seen.add(key)
+      carried.push(action)
+    }
+  }
+  if (carried.length === 0) return record
+  return { ...record, frame: { ...record.frame, state: { ...record.frame.state, actions: [...own, ...carried] } } }
+}
+
+/** What makes two labels one: the pipeline's `uuid` for the label, or its origin and bare name. */
+function labelKey(action: FrameAction): string {
+  return typeof action.uuid === 'string' ? `uuid ${action.uuid}` : `${String(action.action_origin)} ${actionName(action.action_type)}`
 }

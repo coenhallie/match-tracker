@@ -155,6 +155,32 @@ describe('a label card through the widget', () => {
     expect(env.queued()).toBe(0)
   })
 
+  it('plays a label whose record the next one hid before the display frame', () => {
+    const { tracker, log } = mount()
+    playing(tracker)
+    // The pipeline puts a human's label on one record, and records come in bursts: the next one
+    // often arrives before the display frame, which paints only the newest.
+    tracker.push(labelled(5, 'VAR check'))
+    tracker.push(message(6, { withBall: true }))
+    env.frame()
+    expect(log).toEqual(['varCheck:start'])
+  })
+
+  it('hands the director the same record, hidden label and all, until the next one comes', () => {
+    const { tracker } = mount()
+    playing(tracker)
+    tracker.push(labelled(5, 'VAR check'))
+    tracker.push(message(6, { withBall: true }))
+    // The card's fade keeps asking for frames, with no record coming in between.
+    env.frame()
+    env.frame()
+    env.frame()
+    const [first, ...later] = control.inputs.slice(-3).map((input) => input.record)
+    const human = first!.frame.state?.actions?.filter((a) => a.action_origin === 'human')
+    expect(human?.map((a) => a.action_type)).toEqual(['VAR check'])
+    for (const record of later) expect(record).toBe(first)
+  })
+
   it('keeps half time through a hidden tab, while any other moment ends as a seek', () => {
     const { tracker, log } = mount()
     playing(tracker)
