@@ -6,6 +6,10 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.12.2] - 2026-11-12
+
+Live mode sees every label a human gives.
+
 ### What you see
 
 - **Live mode no longer misses a human's label.** The live stream puts a
@@ -13,9 +17,10 @@ follow [Semantic Versioning](https://semver.org/).
   often came before the screen's next frame, which shows only the newest.
   The label was then never seen: its moment (a goal, a corner, a VAR check and
   the rest) did not play, and it was not listed bottom left. In one test on
-  the staging stream, 6 labels of 23 were lost that way. Now a label on a record the screen
-  skipped is seen on the next record shown, a frame later. A label from before
-  the widget went out of view, or the tab was hidden, is still let go.
+  the staging stream, 6 labels of 23 were lost that way. Now a label on a
+  record the screen skipped is seen on the next record shown, a frame later.
+  A label from before the widget went out of view, or the tab was hidden, is
+  still let go.
 
 ## [0.12.1] - 2026-11-11
 
