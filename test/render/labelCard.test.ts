@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { drawLabelCard, drawSmallLabelCard, isLabelCardFrame, type LabelCardPlayer } from '../../src/render/labelCard'
+import { drawLabelCard, drawSmallLabelCard, isLabelCardFrame, substitutionLiftPx, type LabelCardPlayer, type LabelCardSubstitution } from '../../src/render/labelCard'
 import { createRenderer, type FrameLayers } from '../../src/render/renderer'
 import { drawSmallCard } from '../../src/render/smallCard'
 import { designUnit } from '../../src/render/pitchGeometry'
@@ -469,3 +469,95 @@ describe('a card about a player', () => {
     expect(smallCard(ops)!.globalAlpha).toBe(0.5)
   })
 })
+
+describe('the substitution card', () => {
+  const FOOT = CY + 192 * u
+  const CAP = 1490 / 2048
+  const OUT = { badge: 'out' } as unknown as CanvasImageSource
+  const IN = { badge: 'in' } as unknown as CanvasImageSource
+  const THEME: RenderTheme = { ...DEFAULT_THEME, icons: { ...DEFAULT_THEME.icons, substitutionOut: OUT, substitutionIn: IN } }
+  const row = (out: string | null, inn: string | null, intensity = 1) => ({ out, in: inn, intensity })
+
+  function drawSubs(substitution: LabelCardSubstitution, intensity = 1) {
+    const { ctx, ops } = recordingCtx()
+    drawLabelCard(ctx as unknown as CanvasRenderingContext2D, T, { key: 'substitution', intensity, substitution }, THEME)
+    return ops
+  }
+  const text = (ops: Op[], s: string) => ops.filter((o) => o.op === 'fillText' && o.args[0] === s)
+  const badges = (ops: Op[], badge: CanvasImageSource) =>
+    ops.filter((o) => o.op === 'drawImage' && o.args[0] === badge).map((o) => o.args.slice(1) as number[])
+  const bandTop = (ops: Op[]) => (ops.find((o) => o.op === 'fillRect')!.args as number[])[1]!
+
+  it('lifts the card only once the last row would pass the touchline', () => {
+    expect(substitutionLiftPx(T, 0)).toBe(0)
+    expect(substitutionLiftPx(T, 1)).toBeCloseTo(0, 0)
+    expect(substitutionLiftPx(T, 2)).toBeLessThan(2)
+    expect(substitutionLiftPx(T, 3)).toBeCloseTo(64, -1)
+    expect(substitutionLiftPx(T, 4) - substitutionLiftPx(T, 3)).toBeCloseTo(72, 6)
+    expect(substitutionLiftPx(T, 5) - substitutionLiftPx(T, 4)).toBeCloseTo(72, 6)
+    expect(substitutionLiftPx(T, 5)).toBeCloseTo(208, -1)
+  })
+
+  it('writes each row: going off, two badges, coming on', () => {
+    const ops = drawSubs({ team: 'Arsenal', rows: [row('Off A', 'On A'), row('Off B', 'On B')], rowsShown: 2 })
+    expect(text(ops, 'Arsenal')[0]!.args[2]).toBeCloseTo(FOOT + 84 * u, 6)
+    for (const [i, [off, on]] of [['Off A', 'On A'], ['Off B', 'On B']].entries()) {
+      const baseline = FOOT + (177 + 72 * i) * u
+      const out = text(ops, off!)[0]!
+      expect(out.textAlign).toBe('right')
+      expect(out.args[1]).toBeCloseTo(CX - (12 + 56 + 24) * u, 6)
+      expect(out.args[2]).toBeCloseTo(baseline, 6)
+      expect(out.font).toContain(`600 ${40 * u}px`)
+      const inn = text(ops, on!)[0]!
+      expect(inn.textAlign).toBe('left')
+      expect(inn.args[1]).toBeCloseTo(CX + (12 + 56 + 24) * u, 6)
+      const capMiddle = baseline - (CAP * 40 * u) / 2
+      const [ox, oy, ow, oh] = badges(ops, OUT)[i]!
+      expect([ox, ow, oh].map((v) => v! / u)).toEqual([expect.closeTo((CX - (12 + 56) * u) / u, 6), expect.closeTo(56, 6), expect.closeTo(56, 6)])
+      expect(oy! + oh! / 2).toBeCloseTo(capMiddle, 6)
+      const [ix] = badges(ops, IN)[i]!
+      expect(ix).toBeCloseTo(CX + 12 * u, 6)
+    }
+  })
+
+  it('draws the whole card higher by its lift, the band included', () => {
+    const two = drawSubs({ team: 'A', rows: [row('a', 'b'), row('c', 'd')], rowsShown: 2 })
+    const five = drawSubs({ team: 'A', rows: Array.from({ length: 5 }, () => row('a', 'b')), rowsShown: 5 })
+    const lift = substitutionLiftPx(T, 5) - substitutionLiftPx(T, 2)
+    expect(bandTop(two) - bandTop(five)).toBeCloseTo(lift * u, 6)
+    expect((text(two, 'A')[0]!.args[2] as number) - (text(five, 'A')[0]!.args[2] as number)).toBeCloseTo(lift * u, 6)
+    // Halfway through a row joining, halfway up.
+    const half = drawSubs({ team: 'A', rows: [row('a', 'b'), row('c', 'd'), row('e', 'f')], rowsShown: 2.5 })
+    expect(bandTop(two) - bandTop(half)).toBeCloseTo(((substitutionLiftPx(T, 3) - substitutionLiftPx(T, 2)) / 2) * u, 6)
+  })
+
+  it('fades a row in with its intensity', () => {
+    const ops = drawSubs({ team: 'A', rows: [row('a', 'b'), row('c', 'd', 0.25)], rowsShown: 2 }, 0.8)
+    expect(text(ops, 'a')[0]!.globalAlpha).toBeCloseTo(0.8, 6)
+    expect(text(ops, 'c')[0]!.globalAlpha).toBeCloseTo(0.2, 6)
+  })
+
+  it('leaves out a side with no name, and a row with neither', () => {
+    const ops = drawSubs({ team: null, rows: [row(null, 'In'), row(null, null)], rowsShown: 2 })
+    expect(ops.filter((o) => o.op === 'fillText').map((o) => o.args[0])).toEqual(['SUBSTITUTION', 'In'])
+    expect(badges(ops, OUT)).toHaveLength(1)
+    expect(badges(ops, IN)).toHaveLength(1)
+  })
+
+  it('shrinks and cuts long names inside the frame', () => {
+    const long = 'Bartholomew-Maximilian '.repeat(8).trim()
+    const ops = drawSubs({ team: 'A', rows: [row(long, long)], rowsShown: 1 })
+    const limit = FRAME_W / 2 - 190 * u
+    const names = ops.filter((o) => o.op === 'fillText' && o.font.startsWith('600 '))
+    expect(names).toHaveLength(2)
+    for (const name of names) {
+      const px = Number(/([\d.]+)px/.exec(name.font)![1])
+      expect(px).toBeLessThan(40 * u)
+      const width = String(name.args[0]).length * px * 0.6
+      const x = name.args[1] as number
+      if (name.textAlign === 'right') expect(x - width).toBeGreaterThanOrEqual(CX - limit - 1e-6)
+      else expect(x + width).toBeLessThanOrEqual(CX + limit + 1e-6)
+    }
+  })
+})
+

@@ -31,6 +31,8 @@ export interface LabelCardIndicator {
   icon?: CanvasImageSource | null
   /** For a card about a player (yellowCard, redCard): the team and the player under the band. */
   player?: LabelCardPlayer
+  /** For the substitution card: the team and its substitutions under the band. */
+  substitution?: LabelCardSubstitution
 }
 
 /**
@@ -43,6 +45,33 @@ export interface LabelCardPlayer {
   player: string | null
   color: string
 }
+
+/** A substitution on the card: the player going off and the one coming on, null for one not named; and how far it has faded in. */
+export interface SubstitutionRow {
+  out: string | null
+  in: string | null
+  intensity: number
+}
+
+/**
+ * A substitution card's team and rows, oldest first. `rowsShown` is how many rows the card is
+ * sized for, between whole numbers as it glides up for a row joining.
+ */
+export interface LabelCardSubstitution {
+  team: string | null
+  rows: SubstitutionRow[]
+  rowsShown: number
+}
+
+/**
+ * How a substitution card is shown: at least SUBSTITUTION_SHOW_MS from its last row joining, a row
+ * fading in over SUBSTITUTION_ROW_IN_MS, the card gliding to its new height over
+ * SUBSTITUTION_LIFT_MS, and at most SUBSTITUTION_MAX_ROWS rows.
+ */
+export const SUBSTITUTION_SHOW_MS = 5000
+export const SUBSTITUTION_ROW_IN_MS = 400
+export const SUBSTITUTION_LIFT_MS = 400
+export const SUBSTITUTION_MAX_ROWS = 5
 
 /**
  * How a small label card is shown: as the throw-in is (throwIn.ts), fading in
@@ -142,6 +171,20 @@ const LINE_SHADOW_BLUR_PX = 4
 const TEAM_SHADOW = 'rgba(0, 0, 0, 0.5)'
 const PLAYER_SHADOW = 'rgba(0, 0, 0, 0.25)'
 
+/**
+ * The substitution card's rows (Figma "Game Animation Visualizer", viewport/eventSubstitution), in
+ * design pixels: each 72 below the one before (a 64 px line and 8 between), the first where the
+ * player cards' player is. Two 56 px badges either side of the pitch's middle, 24 apart; the player
+ * going off right-aligned 24 before the first, the one coming on left-aligned 24 after the second.
+ * Measured from the design's frames. The card rises so the last row's baseline is at most
+ * SUBSTITUTION_BELOW_TOUCHLINE_PX below the bottom touchline, as the 5-row frame has it.
+ */
+const SUBSTITUTION_ROW_STEP_PX = 72
+const BADGE_PX = 56
+const BADGE_GAP_PX = 24
+const NAME_GAP_PX = 24
+const SUBSTITUTION_BELOW_TOUCHLINE_PX = 10
+
 /** The band's colour, and its opacity across it: clear at each end, solid at its middle. */
 const BAND_RGB = '12, 63, 47'
 const BAND_STOPS: ReadonlyArray<readonly [number, number]> = [
@@ -153,6 +196,28 @@ const BAND_STOPS: ReadonlyArray<readonly [number, number]> = [
 ]
 
 const clamp01 = (k: number) => Math.min(1, Math.max(0, k))
+
+/**
+ * How far a substitution card with `rows` rows is raised, in design pixels, so its last row's
+ * baseline stays at most SUBSTITUTION_BELOW_TOUCHLINE_PX below the bottom touchline: 0 while it
+ * fits where every centre card sits.
+ */
+export function substitutionLiftPx(t: Transform2D, rows: number): number {
+  if (rows <= 0) return 0
+  const u = designUnit(t)
+  const [, cy] = worldToPx(0, 0, t)
+  const touchline = Math.max(worldToPx(0, t.pw / 2, t)[1], worldToPx(0, -t.pw / 2, t)[1])
+  const lastBaseline = cy + (CARD_HEIGHT_PX / 2 + PLAYER_BASELINE_PX + SUBSTITUTION_ROW_STEP_PX * (rows - 1)) * u
+  return Math.max(0, (lastBaseline - touchline) / u - SUBSTITUTION_BELOW_TOUCHLINE_PX)
+}
+
+/** The lift for a card sized for `rowsShown` rows, between whole numbers as it glides. */
+function liftFor(t: Transform2D, rowsShown: number): number {
+  const below = Math.floor(rowsShown)
+  const k = rowsShown - below
+  const from = substitutionLiftPx(t, below)
+  return k === 0 ? from : from + (substitutionLiftPx(t, below + 1) - from) * k
+}
 
 /**
  * Draw a label card over everything else on the pitch, in frame units through
@@ -177,7 +242,8 @@ export function drawLabelCard(
   const widthPx = Math.min(FRAME_W / u, contentPx + 2 * PADDING_X_PX)
   const [cx, cy] = worldToPx(0, 0, t)
   const left = cx - (widthPx / 2) * u
-  const top = cy - (CARD_HEIGHT_PX / 2) * u
+  const lift = card.substitution ? liftFor(t, card.substitution.rowsShown) : 0
+  const top = cy - (CARD_HEIGHT_PX / 2 + lift) * u
   const width = widthPx * u
 
   ctx.save()
@@ -208,7 +274,77 @@ export function drawLabelCard(
     })
   }
   if (card.player) drawPlayerLines(ctx, card.player, cx, top + CARD_HEIGHT_PX * u, u, font)
+  if (card.substitution) drawSubstitutionLines(ctx, card.substitution, cx, top + CARD_HEIGHT_PX * u, u, font, theme.icons)
   ctx.restore()
+}
+
+/** The lines' shadow geometry, in the bitmap's pixels whatever the transform, and their white, on the baseline. */
+function setLineShadow(ctx: CanvasRenderingContext2D, u: number): void {
+  const scale = ctx.getTransform().a * u
+  ctx.shadowOffsetX = 0
+  ctx.shadowOffsetY = LINE_SHADOW_Y_PX * scale
+  ctx.shadowBlur = LINE_SHADOW_BLUR_PX * scale
+  ctx.textBaseline = 'alphabetic'
+  ctx.fillStyle = '#ffffff'
+}
+
+/** The team's name under a card's band, whose foot is at `foot`, centred on `cx`; nothing for no team. */
+function drawTeamLine(ctx: CanvasRenderingContext2D, name: string | null, cx: number, foot: number, u: number, family: string): void {
+  if (name === null) return
+  const teamFont = (px: number) => `900 ${px}px ${family}`
+  const team = fitText(ctx, name, teamFont, TEAM_PX * u, FRAME_W - 2 * PADDING_X_PX * u)
+  ctx.font = teamFont(team.px)
+  ctx.textAlign = 'center'
+  ctx.fillStyle = '#ffffff'
+  ctx.shadowColor = TEAM_SHADOW
+  ctx.fillText(team.text, cx, foot + TEAM_BASELINE_PX * u)
+}
+
+/**
+ * The team and a substitution card's rows under its band, whose foot is at `foot`, each row at its
+ * own strength. Each name is at most as wide as the frame less the band's padding allows on its
+ * side: a longer one is drawn smaller, then cut short (fitText). A side not named shows its badge
+ * alone; a row with neither player is left out. A badge is drawn once its image has loaded.
+ */
+function drawSubstitutionLines(
+  ctx: CanvasRenderingContext2D,
+  sub: LabelCardSubstitution,
+  cx: number,
+  foot: number,
+  u: number,
+  family: string,
+  icons: RenderTheme['icons'],
+): void {
+  setLineShadow(ctx, u)
+  drawTeamLine(ctx, sub.team, cx, foot, u, family)
+  const nameFont = (px: number) => `600 ${px}px ${family}`
+  const inner = (BADGE_GAP_PX / 2) * u
+  const nameEdge = (BADGE_GAP_PX / 2 + BADGE_PX + NAME_GAP_PX) * u
+  const maxName = FRAME_W / 2 - PADDING_X_PX * u - nameEdge
+  const alpha = ctx.globalAlpha
+  sub.rows.forEach((row, i) => {
+    if (row.out === null && row.in === null) return
+    const baseline = foot + (PLAYER_BASELINE_PX + SUBSTITUTION_ROW_STEP_PX * i) * u
+    const badgeTop = baseline - (INTER_CAP_HEIGHT * PLAYER_PX * u) / 2 - (BADGE_PX / 2) * u
+    ctx.globalAlpha = alpha * clamp01(row.intensity)
+    ctx.shadowColor = 'transparent'
+    if (icons.substitutionOut) ctx.drawImage(icons.substitutionOut, cx - inner - BADGE_PX * u, badgeTop, BADGE_PX * u, BADGE_PX * u)
+    if (icons.substitutionIn) ctx.drawImage(icons.substitutionIn, cx + inner, badgeTop, BADGE_PX * u, BADGE_PX * u)
+    ctx.fillStyle = '#ffffff'
+    ctx.shadowColor = PLAYER_SHADOW
+    for (const [name, align, x] of [
+      [row.out, 'right', cx - nameEdge],
+      [row.in, 'left', cx + nameEdge],
+    ] as const) {
+      if (name === null) continue
+      const fit = fitText(ctx, name, nameFont, PLAYER_PX * u, maxName)
+      ctx.font = nameFont(fit.px)
+      ctx.textAlign = align
+      ctx.fillText(fit.text, x, baseline)
+    }
+  })
+  ctx.globalAlpha = alpha
+  ctx.shadowColor = 'transparent'
 }
 
 /**
@@ -225,21 +361,8 @@ function drawPlayerLines(
   family: string,
 ): void {
   const maxWidth = FRAME_W - 2 * PADDING_X_PX * u
-  // A shadow is drawn in the bitmap's pixels, whatever the transform.
-  const scale = ctx.getTransform().a * u
-  ctx.shadowOffsetX = 0
-  ctx.shadowOffsetY = LINE_SHADOW_Y_PX * scale
-  ctx.shadowBlur = LINE_SHADOW_BLUR_PX * scale
-  ctx.textBaseline = 'alphabetic'
-  ctx.fillStyle = '#ffffff'
-  if (player.team !== null) {
-    const teamFont = (px: number) => `900 ${px}px ${family}`
-    const team = fitText(ctx, player.team, teamFont, TEAM_PX * u, maxWidth)
-    ctx.font = teamFont(team.px)
-    ctx.textAlign = 'center'
-    ctx.shadowColor = TEAM_SHADOW
-    ctx.fillText(team.text, cx, foot + TEAM_BASELINE_PX * u)
-  }
+  setLineShadow(ctx, u)
+  drawTeamLine(ctx, player.team, cx, foot, u, family)
   if (player.player !== null) {
     const nameFont = (px: number) => `600 ${px}px ${family}`
     const lead = (SMALL_CARD_W_PX + SMALL_CARD_GAP_PX) * u
