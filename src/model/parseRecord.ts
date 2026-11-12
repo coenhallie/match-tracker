@@ -52,7 +52,7 @@ export function parseRecord(message: unknown): TrackerRecord | null {
   const candidate = isRecord(value.match) ? value.match : value
   if (!Array.isArray(candidate.teams)) return null
 
-  const frame = withLabelName(normalizeFrame(candidate), value.raw_data)
+  const frame = withLabelNames(normalizeFrame(candidate), value.raw_data)
 
   const meta: unknown = Array.isArray(frame.frame_data) ? frame.frame_data[0] : undefined
   // Not finite (JSON reads 1e999 as Infinity): such a record can never be told apart from the next.
@@ -83,22 +83,41 @@ export function plainName(name: unknown): string | null {
   return trimmed === '' || trimmed === 'None' || trimmed === 'null' ? null : trimmed
 }
 
+/** A name a human label gives, by the field of its entry in `state.actions` it goes on. */
+type NameField = 'player_name' | 'player_name_out'
+
 /**
- * `frame`, with the player's name from the record's human label on the label's own entry in
- * `state.actions`, the entry with its `uuid`. Since 2026-11-12 the labelling tool's `player_name`
- * reaches the stream only in `raw_data.labels.human_label.items`, and `raw_data` is dropped once
- * the record is read. The name is taken only from a label about one player (`obj: 'player'`, as a
- * card is): a substitution is about two, and its one `player_name` names neither. A name the entry
- * has of its own comes first. The entry is copied, never changed.
+ * The names each kind of human label (its `obj`) gives: a label about one player, as a card is, names
+ * that player in `player_name`; a substitution names the player coming on in `player_name` and the
+ * one going off in `player_name_out`. A game label names no one.
  */
-function withLabelName(frame: Frame, raw: unknown): Frame {
+const LABEL_NAMES = new Map<unknown, readonly NameField[]>([
+  ['player', ['player_name']],
+  ['subst', ['player_name', 'player_name_out']],
+])
+
+/**
+ * `frame`, with the players' names from the record's human label on the label's own entry in
+ * `state.actions`, the entry with its `uuid`. Since 2026-11-12 the labelling tool's names reach the
+ * stream only in `raw_data.labels.human_label.items`, and `raw_data` is dropped once the record is
+ * read. A name the entry has of its own comes first. The entry is copied, never changed.
+ */
+function withLabelNames(frame: Frame, raw: unknown): Frame {
   const label = isRecord(raw) && isRecord(raw.labels) ? raw.labels.human_label : undefined
-  if (!isRecord(label) || label.obj !== 'player' || typeof label.uuid !== 'string' || !isRecord(label.items)) return frame
-  const name = plainName(label.items.player_name)
+  if (!isRecord(label) || typeof label.uuid !== 'string' || !isRecord(label.items)) return frame
+  const items = label.items
+  const fields = LABEL_NAMES.get(label.obj) ?? []
   const actions = frame.state?.actions
   const at = actions?.findIndex((action) => action.uuid === label.uuid) ?? -1
-  if (name === null || !actions || at < 0 || plainName(actions[at]!.player_name) !== null) return frame
-  const named = actions.map((action, i) => (i === at ? { ...action, player_name: name } : action))
+  if (!actions || at < 0) return frame
+  const entry = actions[at]!
+  const names: Partial<Record<NameField, string>> = {}
+  for (const field of fields) {
+    const name = plainName(items[field])
+    if (name !== null && plainName(entry[field]) === null) names[field] = name
+  }
+  if (Object.keys(names).length === 0) return frame
+  const named = actions.map((action, i) => (i === at ? { ...action, ...names } : action))
   return { ...frame, state: { ...frame.state, actions: named } }
 }
 

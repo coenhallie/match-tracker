@@ -9,8 +9,16 @@ const sub = (over: Record<string, unknown>): FrameAction =>
 describe('who a substitution is for', () => {
   it('reads the team, the player going off and the one coming on', () => {
     expect(substitutionLabels(frame(sub({ uuid: 'u', team_id: 0, from: 1, to: 16 })))).toEqual([
-      { key: 'substitution', uuid: 'u', team: 0, from: 1, to: 16 },
+      { key: 'substitution', uuid: 'u', team: 0, from: 1, to: 16, fromName: null, toName: null },
     ])
+  })
+
+  it("reads the two players' names, when the label has them", () => {
+    const [label] = substitutionLabels(frame(sub({ team_id: 1, from: 20, to: 30, player_name_out: 'Charles Windu', player_name: 'Han Tano' })))
+    expect(label).toMatchObject({ from: 20, to: 30, fromName: 'Charles Windu', toName: 'Han Tano' })
+    for (const name of [null, '', 'None', 7]) {
+      expect(substitutionLabels(frame(sub({ player_name_out: name, player_name: name })))[0]).toMatchObject({ fromName: null, toName: null })
+    }
   })
 
   it('leaves out what the label does not say plainly, and keeps a roster id for naming to decide', () => {

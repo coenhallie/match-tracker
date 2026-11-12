@@ -57,6 +57,15 @@ describe("a substituted player's name", () => {
     expect(substitutionName(0, null)).toBeNull()
   })
 
+  it("takes the label's name for a player the host does not name, a roster id too", () => {
+    const { substitutionName } = resolveOptions({ teams: { home: { players: { 16: 'Name' } } } })
+    expect(substitutionName(0, 20, 'Charles Windu')).toBe('Charles Windu')
+    expect(substitutionName(0, 16, 'Charles Windu')).toBe('Name')
+    expect(substitutionName(0, 91001, 'Charles Windu')).toBe('Charles Windu')
+    expect(substitutionName(null, null, 'Charles Windu')).toBe('Charles Windu')
+    expect(substitutionName(0, 91001, null)).toBeNull()
+  })
+
   it('names a roster id the host names', () => {
     const { substitutionName } = resolveOptions({ teams: { away: { players: { 91001: 'Name' } } } })
     expect(substitutionName(1, 91001)).toBe('Name')

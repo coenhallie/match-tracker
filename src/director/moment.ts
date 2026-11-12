@@ -79,7 +79,7 @@ export interface MomentContext {
   /** A carded player's name, or shirt number (DirectorOptions.playerName). */
   playerName(team: TeamId, number: number, labelName?: string | null): string
   /** A substituted player's name, or shirt number, or null (DirectorOptions.substitutionName). */
-  substitutionName(team: TeamId | null, number: number | null): string | null
+  substitutionName(team: TeamId | null, number: number | null, labelName?: string | null): string | null
   teamColor(team: TeamId): string
   /** `showCamera`: put the user's view on `camera`. The view reaches the renderer at the next flush. */
   showCamera(camera: Camera): void

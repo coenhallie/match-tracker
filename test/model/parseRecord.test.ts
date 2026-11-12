@@ -208,8 +208,23 @@ describe("a player label's name", () => {
     expect(entry(labelled({ player_name: '  Lando Fring ' })).player_name).toBe('Lando Fring')
   })
 
-  it('takes no name from a label about no one player, or about another entry', () => {
-    expect(entry(labelled({}, { obj: 'subst' })).player_name).toBeUndefined()
+  it("puts a substitution label's two names on its entry: the player coming on's, and the player going off's", () => {
+    const sub = entry(labelled({ player_name: 'Han Tano', player_name_out: 'Charles Windu' }, { obj: 'subst', action_name: 'substitute' }))
+    expect(sub.player_name).toBe('Han Tano')
+    expect(sub.player_name_out).toBe('Charles Windu')
+    const none = entry(labelled({ player_name: null, player_name_out: 'None' }, { obj: 'subst' }))
+    expect(none.player_name).toBeUndefined()
+    expect(none.player_name_out).toBeUndefined()
+    const own = entry(labelled({ player_name: 'Han Tano', player_name_out: 'Charles Windu' }, { obj: 'subst' }, { player_name_out: 'Own Name' }))
+    expect(own.player_name).toBe('Han Tano')
+    expect(own.player_name_out).toBe('Own Name')
+  })
+
+  it('takes no going-off name from a label about one player', () => {
+    expect(entry(labelled({ player_name_out: 'Charles Windu' })).player_name_out).toBeUndefined()
+  })
+
+  it('takes no name from a label about no player, or about another entry', () => {
     expect(entry(labelled({}, { obj: 'game' })).player_name).toBeUndefined()
     expect(entry(labelled({}, { uuid: 'u2' })).player_name).toBeUndefined()
     expect(entry(labelled({}, {}, { uuid: undefined })).player_name).toBeUndefined()

@@ -76,10 +76,13 @@ export interface FrameAction {
   /** On a human's label about a player, as a card is: the player's shirt number. */
   player_number?: number
   /**
-   * On a human's label about a player, as a card is: the player's name, when the labeller has one. The
-   * stream sends it in the label's `raw_data`, and parseRecord puts it here.
+   * The player's name, when the labeller has one: on a label about a player, as a card is, that
+   * player's; on a substitution, the player coming on's. The stream sends it in the label's
+   * `raw_data`, and parseRecord puts it here.
    */
   player_name?: string
+  /** On a substitution: the player going off's name, when the labeller has one (as `player_name`). */
+  player_name_out?: string
   /** On a substitution: the player going off, as the labelling tool's roster id. */
   from?: number
   /** On a substitution: the player coming on, as the labelling tool's roster id. */

@@ -232,8 +232,8 @@ export interface DirectorOptions {
   teamColor: (team: TeamId) => string
   /** A carded player's name, or shirt number, as the moments write it, given the name its label gave if any. */
   playerName: (team: TeamId, number: number, labelName?: string | null) => string
-  /** A substituted player's name, or shirt number, or null for a roster id with no name. */
-  substitutionName: (team: TeamId | null, number: number | null) => string | null
+  /** A substituted player's name, or shirt number, or null for a roster id with no name, given the name its label gave if any. */
+  substitutionName: (team: TeamId | null, number: number | null, labelName?: string | null) => string | null
   /**
    * Cover the records the pipeline marks invalid with the attack over a player loss
    * (playerLoss.ts). Live mode only: replay data has no such records, and replay must
@@ -349,7 +349,7 @@ export class Director {
       teamName: (team) => this.options.teamName(team),
       teamColor: (team) => this.options.teamColor(team),
       playerName: (team, number, labelName) => this.options.playerName(team, number, labelName),
-      substitutionName: (team, number) => this.options.substitutionName(team, number),
+      substitutionName: (team, number, labelName) => this.options.substitutionName(team, number, labelName),
       showCamera: (camera) => this.showCamera(camera),
     }
     this.goal = new Goal(this.context)
@@ -814,8 +814,8 @@ export class Director {
   private substitutionOnCard(label: SubstitutionLabel): SubstitutionOnCard {
     return {
       label,
-      out: this.options.substitutionName(label.team, label.from),
-      in: this.options.substitutionName(label.team, label.to),
+      out: this.options.substitutionName(label.team, label.from, label.fromName),
+      in: this.options.substitutionName(label.team, label.to, label.toName),
     }
   }
 

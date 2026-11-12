@@ -6,6 +6,16 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### What you see
+
+- **Substituted players' names from the label.** The substitution card now
+  names the player going off and the player coming on as the labeller did,
+  where `teams.*.players` does not name them: the live stream sends the names
+  in the label's `raw_data` (`human_label.items.player_name_out` and
+  `player_name`), and the widget now reads them there. The host's `players`
+  still comes first, and a player the label does not name still shows the
+  number. A roster id above 99 the label names is now shown by that name.
+
 ## [0.15.0] - 2026-11-12
 
 A carded player named as the labeller named them.

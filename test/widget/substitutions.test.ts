@@ -29,6 +29,27 @@ function subbed(i: number, uuid: string, from: number, to: number, team = 0): st
   return JSON.stringify(parsed)
 }
 
+/**
+ * `subbed`, with the two players' names where the live stream has sent them since 2026-11-12: only in
+ * the label's own copy, `raw_data.labels.human_label.items`, `player_name` for the player coming on and
+ * `player_name_out` for the one going off.
+ */
+function named(i: number, uuid: string, from: number, to: number, out: string | null, on: string | null, team = 0): string {
+  const parsed = JSON.parse(subbed(i, uuid, from, to, team)) as Record<string, unknown>
+  parsed.raw_data = {
+    labels: {
+      human_label: {
+        uuid,
+        frame_match: 'current',
+        action_name: 'substitute',
+        obj: 'subst',
+        items: { team_id: team, player_name: on, player_name_out: out, team_name: 'Team Home', from, to },
+      },
+    },
+  }
+  return JSON.stringify(parsed)
+}
+
 /** Live play, up to a frame before the card. */
 function playing(tracker: MatchTracker, from = 0, to = 5) {
   for (let i = from; i < to; i++) {
@@ -78,6 +99,26 @@ describe('the substitution card through the widget', () => {
     tracker.push(subbed(5, 'a', 1, 16))
     frames(600)
     expect(written(host)).toEqual(expect.arrayContaining(['SUBSTITUTION', 'Arsenal', 'Off Name', 'On Name']))
+  })
+
+  it("names the players from the label's names, when the host does not name them", () => {
+    const { host, tracker } = mount({ teams: { home: { name: 'Arsenal', players: { 16: 'On Name' } } } })
+    playing(tracker)
+    written(host)
+    tracker.push(named(5, 'a', 20, 16, 'Charles Windu', 'Han Tano'))
+    frames(600)
+    const texts = written(host)
+    expect(texts).toEqual(expect.arrayContaining(['SUBSTITUTION', 'Arsenal', 'Charles Windu', 'On Name']))
+    expect(texts).not.toContain('Han Tano')
+  })
+
+  it('names a roster id the label names, and writes the number for a name the label has not', () => {
+    const { host, tracker } = mount()
+    playing(tracker)
+    written(host)
+    tracker.push(named(5, 'a', 91001, 30, 'Charles Windu', null))
+    frames(600)
+    expect(written(host)).toEqual(expect.arrayContaining(['SUBSTITUTION', 'Charles Windu', '#30']))
   })
 
   it('switches it off in the layers menu', () => {

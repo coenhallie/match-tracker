@@ -122,10 +122,11 @@ export interface Resolved {
    */
   playerName: (team: TeamId, number: number, labelName?: string | null) => string
   /**
-   * A substituted player's name, or shirt number, or null: the substitution's players are roster ids,
-   * so one above 99, not a shirt number, is shown only if the host names it.
+   * A substituted player's name, or shirt number, or null: the host's name for the number first, then
+   * the name the label gave (`labelName`), then the number. The substitution's players are roster ids,
+   * so one above 99, not a shirt number, is shown only if the host or the label names it.
    */
-  substitutionName: (team: TeamId | null, number: number | null) => string | null
+  substitutionName: (team: TeamId | null, number: number | null, labelName?: string | null) => string | null
   formatAction: (actionType: string) => string
   aiLabels: boolean
 }
@@ -153,10 +154,11 @@ export function resolveOptions(options: MutableOptions): Resolved {
     teamColor: (team) => fills[team],
     playerName: (team, number, labelName) =>
       players[team]?.[number] || labelName || formatText(momentText.playerNumber, { number: String(number) }),
-    substitutionName: (team, number) => {
-      if (number === null) return null
-      const name = team === null ? undefined : players[team]?.[number]
+    substitutionName: (team, number, labelName) => {
+      const name = team === null || number === null ? undefined : players[team]?.[number]
       if (name) return name
+      if (labelName) return labelName
+      if (number === null) return null
       return number <= MAX_SHIRT_NUMBER ? formatText(momentText.playerNumber, { number: String(number) }) : null
     },
     formatAction: options.formatAction ?? DEFAULT_THEME.formatAction,

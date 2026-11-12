@@ -74,7 +74,7 @@ export class FakeReplay {
       reducedMotion: () => this.reducedMotion,
       teamName: (team) => (team === 0 ? 'Red' : 'Blue'),
       playerName: (_team, number, labelName) => labelName || `#${number}`,
-      substitutionName: (_team, number) => (number === null ? null : `#${number}`),
+      substitutionName: (_team, number, labelName) => labelName || (number === null ? null : `#${number}`),
       teamColor: (team) => (team === 0 ? '#e51a1a' : '#184fe7'),
       ...options,
     })
