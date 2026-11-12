@@ -6,6 +6,10 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-12
+
+A carded player named as the labeller named them.
+
 ### What you see
 
 - **A carded player's name from the label.** A yellow or red card now names the
