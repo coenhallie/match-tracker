@@ -201,7 +201,8 @@ const clamp01 = (k: number) => Math.min(1, Math.max(0, k))
 /**
  * How far a substitution card with `rows` rows is raised, in design pixels, so its last row's
  * baseline stays at most SUBSTITUTION_BELOW_TOUCHLINE_PX below the bottom touchline: 0 while it
- * fits where every centre card sits.
+ * fits where every centre card sits. Never so far that the band leaves the top of the frame: on a
+ * pitch narrow for its length the last row then goes a little further below the touchline.
  */
 export function substitutionLiftPx(t: Transform2D, rows: number): number {
   if (rows <= 0) return 0
@@ -209,7 +210,8 @@ export function substitutionLiftPx(t: Transform2D, rows: number): number {
   const [, cy] = worldToPx(0, 0, t)
   const touchline = Math.max(worldToPx(0, t.pw / 2, t)[1], worldToPx(0, -t.pw / 2, t)[1])
   const lastBaseline = cy + (CARD_HEIGHT_PX / 2 + PLAYER_BASELINE_PX + SUBSTITUTION_ROW_STEP_PX * (rows - 1)) * u
-  return Math.max(0, (lastBaseline - touchline) / u - SUBSTITUTION_BELOW_TOUCHLINE_PX)
+  const toTop = cy / u - CARD_HEIGHT_PX / 2
+  return Math.min(toTop, Math.max(0, (lastBaseline - touchline) / u - SUBSTITUTION_BELOW_TOUCHLINE_PX))
 }
 
 /** The lift for a card sized for `rowsShown` rows, between whole numbers as it glides. */
@@ -305,7 +307,8 @@ function drawTeamLine(ctx: CanvasRenderingContext2D, name: string | null, cx: nu
  * The team and a substitution card's rows under its band, whose foot is at `foot`, each row at its
  * own strength. Each name is at most as wide as the frame less the band's padding allows on its
  * side: a longer one is drawn smaller, then cut short (fitText). A side not named shows its badge
- * alone; a row with neither player is left out. A badge is drawn once its image has loaded.
+ * alone; a row with neither player is left out, and takes no place. A badge is drawn once its image
+ * has loaded.
  */
 function drawSubstitutionLines(
   ctx: CanvasRenderingContext2D,
@@ -323,8 +326,8 @@ function drawSubstitutionLines(
   const nameEdge = (BADGE_GAP_PX / 2 + BADGE_PX + NAME_GAP_PX) * u
   const maxName = FRAME_W / 2 - PADDING_X_PX * u - nameEdge
   const alpha = ctx.globalAlpha
-  sub.rows.forEach((row, i) => {
-    if (row.out === null && row.in === null) return
+  // A row that names no one takes no place: the next one is laid out where it would have been.
+  sub.rows.filter((row) => row.out !== null || row.in !== null).forEach((row, i) => {
     const baseline = foot + (PLAYER_BASELINE_PX + SUBSTITUTION_ROW_STEP_PX * i) * u
     const badgeTop = baseline - (INTER_CAP_HEIGHT * PLAYER_PX * u) / 2 - (BADGE_PX / 2) * u
     ctx.globalAlpha = alpha * clamp01(row.intensity)

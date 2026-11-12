@@ -560,5 +560,19 @@ describe('the substitution card', () => {
       else expect(x + width).toBeLessThanOrEqual(CX + limit + 1e-6)
     }
   })
+
+  it('lays a row out in the first free place when the one before it names no one', () => {
+    const ops = drawSubs({ team: 'A', rows: [row(null, null), row('a', 'b')], rowsShown: 1 })
+    expect(text(ops, 'a')[0]!.args[2]).toBeCloseTo(FOOT + 177 * u, 6)
+  })
+
+  it('never lifts the band past the top of the frame, on a pitch narrower for its length', () => {
+    for (const pitch of [{ length: 110, width: 64 }, { length: 105, width: 60 }]) {
+      const t = build2DTransform(pitch)
+      const [, cy] = worldToPx(0, 0, t)
+      const ut = designUnit(t)
+      expect(cy - (192 + substitutionLiftPx(t, 5)) * ut).toBeGreaterThanOrEqual(-1e-6)
+    }
+  })
 })
 

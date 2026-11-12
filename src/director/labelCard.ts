@@ -74,6 +74,9 @@ export interface CardAbout {
   substitution?: { team: TeamId | null; teamName: string | null; rows: SubstitutionOnCard[] }
 }
 
+/** Whether a row names anyone: one that does not is not drawn, and takes no place on the card. */
+const names = (row: SubstitutionOnCard): boolean => row.out !== null || row.in !== null
+
 /** A row on a substitution card showing, and when it joined, in ms from the card's start. */
 interface Row extends SubstitutionOnCard {
   joinedMs: number
@@ -170,6 +173,7 @@ export class LabelCard implements Moment {
     const card = this.showing
     const sub = card?.substitution
     if (!card || !sub) return
+    // A row naming no one keeps the card up as any does, but is not drawn, so nothing glides for it.
     sub.glideFrom = this.rowsShown(card)
     sub.glideStartMs = card.elapsedMs
     sub.rows.push({ ...row, joinedMs: card.elapsedMs })
@@ -264,7 +268,7 @@ export class LabelCard implements Moment {
             teamName: about.substitution.teamName,
             rows: about.substitution.rows.map((row) => ({ ...row, joinedMs: 0 })),
             lastJoinMs: 0,
-            glideFrom: about.substitution.rows.length,
+            glideFrom: about.substitution.rows.filter(names).length,
             glideStartMs: 0,
           }
         : null,
@@ -323,12 +327,12 @@ export class LabelCard implements Moment {
     const still = this.ctx.reducedMotion()
     return {
       team: sub.teamName,
-      rows: sub.rows.map((row) => ({
+      rows: sub.rows.filter(names).map((row) => ({
         out: row.out,
         in: row.in,
         intensity: still || row.joinedMs === 0 ? 1 : Math.min(1, (card.elapsedMs - row.joinedMs) / SUBSTITUTION_ROW_IN_MS),
       })),
-      rowsShown: still ? sub.rows.length : this.rowsShown(card),
+      rowsShown: still ? sub.rows.filter(names).length : this.rowsShown(card),
     }
   }
 
@@ -337,7 +341,7 @@ export class LabelCard implements Moment {
     const sub = card.substitution!
     const k = Math.min(1, Math.max(0, (card.elapsedMs - sub.glideStartMs) / SUBSTITUTION_LIFT_MS))
     const eased = 1 - (1 - k) ** 3
-    return sub.glideFrom + (sub.rows.length - sub.glideFrom) * eased
+    return sub.glideFrom + (sub.rows.filter(names).length - sub.glideFrom) * eased
   }
 
   /** Whether it is time to go: at once under reduced motion, or else with room left to fade out when played by hand. */

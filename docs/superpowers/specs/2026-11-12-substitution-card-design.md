@@ -1,6 +1,7 @@
 # The substitution card
 
-Status: design, approved 2026-11-12. Not built.
+Status: built, 2026-11-12. Where the build settled something differently, the
+section says so.
 
 ## Why
 
@@ -78,8 +79,11 @@ and the exported assets:
 - The team line: the player cards', the same font, size, shadow and place.
 - Each row: the player going off, right-aligned, ending before the going-off badge; the two
   badges either side of the pitch's middle; the player coming on, left-aligned, after the
-  coming-on badge. The names: Inter 600, 40 px on a 64 px line, white, shadow 0 2 px 4 px
-  black at 25%, as the player cards' player.
+  coming-on badge. The names: Inter Regular (400), 40 px on a 64 px line, white, shadow 0 2 px
+  4 px black at 25%. Built so after measuring in Chrome: the design's names are lighter than the
+  player cards' Semi Bold (1.29 times lighter once the screenshots' scale is taken out), and
+  Regular matches; they are also about 2% wider, perhaps letter spacing, for the user to confirm
+  in Dev Mode.
 
 ### Sizes (measured)
 
@@ -109,7 +113,13 @@ as the cards' were.
   squatter than the Figma frame's (about 1356 × 968), so the frames' lifts (about 17, 89 and
   162 px for 3, 4 and 5 rows, measured: 163.5) would put the 5th row's baseline at the canvas's
   bottom edge. In the widget, 2 rows reach the touchline, and 3, 4 and 5 rows lift the card by
-  about 64, 136 and 208 px. On a pitch narrower still, 2 rows may lift it a little.
+  about 64, 136 and 208 px. On a pitch narrower still, 2 rows may lift it a little. The lift
+  never takes the band past the top of the frame (settled in the build's review: on 110 × 64,
+  within FIFA's range, 5 rows would have); the last row then goes a little further below the
+  touchline.
+- A row that names no one (both players roster ids with no name) is not drawn and takes no
+  place: the next row is laid out where it would have been, and the card does not rise for it.
+  It still counts towards the 5 rows and restarts the 5 s (settled in the build's review).
 - A new row fades in over 0.4 s, and the card glides to its new height over 0.4 s, easing
   out. (My call: the design has the two states, not the move.)
 - The card stays at least 5 s from the last row's arrival (the user's decision: substitutions

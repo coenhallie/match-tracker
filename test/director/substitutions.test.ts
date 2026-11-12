@@ -24,8 +24,8 @@ const frameAt = (labels: Label[] = []): Frame =>
 
 const NOBODY: TeamPhase = { possession: null, attacks: { 0: 1, 1: -1 }, states: { 0: null, 1: null } }
 
-function ready(): FakeReplay {
-  const replay = new FakeReplay()
+function ready(options: ConstructorParameters<typeof FakeReplay>[1] = {}): FakeReplay {
+  const replay = new FakeReplay({}, options)
   replay.set({ time: 10, frame: frameAt(), phase: NOBODY })
   replay.play()
   return replay
@@ -199,4 +199,17 @@ describe('the substitution card', () => {
     play(replay, SUBSTITUTION_SHOW_MS + 1000)
     expect(distinctCards(replay)).toBe(1)
   })
+
+  it('counts only the rows that name someone: substitutions of roster ids alone stay where every card sits', () => {
+    // As the widget names them: a number above 99 is a roster id, and names no one.
+    const replay = ready({ substitutionName: (_team, n) => (n === null || n > 99 ? null : `#${n}`) })
+    record(replay, [sub('a', 0, 91001, 91018), sub('b', 0, 91002, 91019), sub('c', 0, 91003, 91020)])
+    replay.animate(600, true)
+    expect(shown(replay)?.substitution).toMatchObject({ rows: [], rowsShown: 0 })
+    record(replay, [sub('d', 0, 4, 14)])
+    replay.animate(600, true)
+    expect(shown(replay)?.substitution?.rows.map((r) => r.out)).toEqual(['#4'])
+    expect(shown(replay)?.substitution?.rowsShown).toBe(1)
+  })
 })
+
