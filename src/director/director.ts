@@ -142,9 +142,10 @@
  */
 import { sameTrail, type BallTrail } from '../analysis/ballTrail.js'
 import { samePhase, type TeamId, type TeamPhase } from '../analysis/teamPhase.js'
-import { LABEL_CARDS, isLabelCardKey, isPlayerCardKey, labelCardRecord, playerCardColor, type LabelCardKey } from '../model/labelCards.js'
+import { LABEL_CARDS, isLabelCardKey, isPlayerCardKey, isSubstitutionKey, labelCardRecord, playerCardColor, type LabelCardKey } from '../model/labelCards.js'
 import { cardLabels, type CardLabel } from '../analysis/cardLabels.js'
-import { CardQueue } from './cardQueue.js'
+import { substitutionLabels, type SubstitutionLabel } from '../analysis/substitutionLabels.js'
+import { CardQueue, type QueuedLabel } from './cardQueue.js'
 import type { ReplayLayers, ReplayMoment } from '../model/replayLayers.js'
 import type { Frame, TrackerRecord } from '../model/types.js'
 import { planGoal } from '../analysis/goalSequence.js'
@@ -157,8 +158,8 @@ import { MIN_ZOOM } from './camera.js'
 import { Corner } from './corner.js'
 import { Goal } from './goal.js'
 import { GoalZoom } from './goalZoom.js'
-import { LabelCard } from './labelCard.js'
-import { LABEL_CARD_SHOW_MS, type LabelCardPlayer } from '../render/labelCard.js'
+import { LabelCard, type CardAbout, type SubstitutionOnCard } from './labelCard.js'
+import { SUBSTITUTION_MAX_ROWS, type LabelCardPlayer } from '../render/labelCard.js'
 import { PlayerLoss, type PlayerLossState } from './playerLoss.js'
 import type { Moment, MomentContext, MomentMemory, ShownReplay } from './moment.js'
 import { ThrowIn } from './throwIn.js'
@@ -253,6 +254,17 @@ export interface MomentAvailability extends Record<LabelCardKey, boolean> {
 
 /** The reference's refs as the surface mounts: the clock at 0, paused, nothing on screen. */
 const NOTHING_SEEN: ShownReplay = { time: 0, playing: false, record: null, phase: null, trail: null }
+
+/**
+ * The player cards and substitutions a human gave on `frame`, in the order its labels come: each
+ * action read on its own, as the two kinds are read apart.
+ */
+function queuedLabelsOf(frame: Frame): QueuedLabel[] {
+  return (frame.state?.actions ?? []).flatMap((action) => {
+    const one: Frame = { teams: [], state: { actions: [action] } }
+    return [...cardLabels(one), ...substitutionLabels(one)]
+  })
+}
 
 const freshMemory = (): MomentMemory => ({
   cornerLabelAt: null,
@@ -429,9 +441,14 @@ export class Director {
       const card = this.labelCards.find((c) => c.key === moment)!
       const strength = this.labelCardStrength(card.small)
       this.stopSequences()
-      // By hand there is a team, but no player to name.
-      const player = isPlayerCardKey(moment) ? { team: this.options.teamName(team), player: null, color: playerCardColor(moment) } : undefined
-      card.start(now, frame, true, strength, player)
+      // By hand there is a team, but no player to name, nor any substitution to list.
+      const teamName = this.options.teamName(team)
+      const about: CardAbout = isPlayerCardKey(moment)
+        ? { player: { team: teamName, player: null, color: playerCardColor(moment) } }
+        : isSubstitutionKey(moment)
+          ? { substitution: { team, teamName, rows: [] } }
+          : {}
+      card.start(now, frame, true, strength, about)
       this.request(card)
     } else {
       this.stopSequences()
@@ -481,7 +498,9 @@ export class Director {
     if (before.corner && !layers.corner) this.stopMoment(this.corner)
     if (before.throwInBanner && !layers.throwInBanner) this.stopMoment(this.throwIn)
     for (const card of this.labelCards) if (before[card.key] && !layers[card.key]) this.stopMoment(card)
-    for (const card of this.labelCards) if (isPlayerCardKey(card.key) && !layers[card.key]) this.cardQueue.drop(card.key)
+    for (const card of this.labelCards) {
+      if ((isPlayerCardKey(card.key) || isSubstitutionKey(card.key)) && !layers[card.key]) this.cardQueue.drop(card.key)
+    }
     if (before.ringFades && !layers.ringFades) this.rings.settle(this.shown.record?.frame ?? null)
     if (before.goalZoom && !layers.goalZoom) this.dropGoalZoom()
     this.paint()
@@ -616,8 +635,8 @@ export class Director {
         this.request(this.corner)
       }
       for (const card of this.labelCards) {
-        // The player cards play from their queue, below.
-        if (isPlayerCardKey(card.key)) continue
+        // The player cards and substitutions play from their queue, below.
+        if (isPlayerCardKey(card.key) || isSubstitutionKey(card.key)) continue
         // A small card does not go over a centre one.
         const blocked = this.goal.active || this.corner.active || (card.small && this.centreCardHoldsBack())
         if (card.detect(frame, time, blocked)) {
@@ -736,31 +755,41 @@ export class Director {
   private stopLabelCards(letFade = false): void {
     for (const card of this.labelCards) {
       if (letFade && !card.holdsBack) continue
-      // A player card cut short before it has stayed its time is not a card played: it goes first again.
-      const label = card.playing
-      if (label && card.holdsBack && card.shownMs < LABEL_CARD_SHOW_MS) this.cardQueue.putBack(label)
+      // A card cut short before it has stayed its time is not a card played: it goes first again, with its rows.
+      if (card.cutShort) {
+        // Back to the head in their order: the last first, as each goes in front of the one before.
+        const labels = card.playedFrom
+        for (let i = labels.length - 1; i >= 0; i--) this.cardQueue.putBack(labels[i]!)
+      }
       this.stopMoment(card)
     }
   }
 
   /**
-   * The player cards on `frame`, into their queue, and the first waiting card played if nothing
-   * holds it back: a goal, a corner, or a centre card on screen, fading out included, so one card
-   * goes before the next comes in. A card's label sits on one record, so a card waits its turn
-   * rather than being missed (cardQueue.ts). Landed on by a seek, or seen while paused, a label is
+   * The player cards and substitutions on `frame`, into their queue, and the first waiting played
+   * if nothing holds it back: a goal, a corner, or a centre card on screen, fading out included,
+   * so one card goes before the next comes in. A label sits on one record, so it waits its turn
+   * rather than being missed (cardQueue.ts). A substitution for the team of the substitution card
+   * up joins its list instead, while there is room; one taken from the queue takes the team's
+   * substitutions waiting straight after it. Landed on by a seek, or seen while paused, a label is
    * under way, and is not played.
    */
   private queueCards(frame: Frame, time: number): void {
     const playing = this.shown.playing && this.lastStepWasPlayback
-    for (const label of cardLabels(frame)) {
-      if (!playing) this.cardQueue.skip(label, time)
-      else if (this.layers[label.key]) this.cardQueue.add(label, time)
+    const subCard = this.labelCards.find((card) => isSubstitutionKey(card.key))!
+    for (const label of queuedLabelsOf(frame)) {
+      if (!playing) {
+        this.cardQueue.skip(label, time)
+        continue
+      }
+      if (!this.layers[label.key] || !this.cardQueue.seen(label, time)) continue
+      if (label.key === 'substitution' && subCard.canJoin(label.team)) subCard.join(this.substitutionOnCard(label))
+      else this.cardQueue.push(label)
     }
     const centreCardUp = this.labelCards.some((card) => !card.small && card.active)
     if (!playing || this.goal.active || this.corner.active || centreCardUp) return
     const label = this.cardQueue.take()
-    // Substitutions wait here too, but play as their own card (playSubstitutions).
-    if (!label || label.key === 'substitution') return
+    if (!label) return
     const card = this.labelCards.find((c) => c.key === label.key)!
     // As any centre card does: it takes over from the one fading out, and play is stopped for it.
     const strength = this.labelCardStrength(false)
@@ -768,8 +797,26 @@ export class Director {
     this.stopMoment(this.attack)
     this.stopMoment(this.playerLoss)
     this.stopLabelCards()
-    card.start(time, frame, false, strength, this.cardPlayer(label), label)
+    if (label.key === 'substitution') {
+      const rows = [label, ...this.cardQueue.takeSubstitutions(label.team, SUBSTITUTION_MAX_ROWS - 1)]
+      const teamName = label.team === null ? null : this.options.teamName(label.team)
+      card.start(time, frame, false, strength, {
+        labels: rows,
+        substitution: { team: label.team, teamName, rows: rows.map((row) => this.substitutionOnCard(row)) },
+      })
+    } else {
+      card.start(time, frame, false, strength, { player: this.cardPlayer(label), labels: [label] })
+    }
     this.request(card)
+  }
+
+  /** A substitution as its card lists it: who went off and who came on, in the words drawn. */
+  private substitutionOnCard(label: SubstitutionLabel): SubstitutionOnCard {
+    return {
+      label,
+      out: this.options.substitutionName(label.team, label.from),
+      in: this.options.substitutionName(label.team, label.to),
+    }
   }
 
   /** Who `label`'s card is for, in the words drawn. */

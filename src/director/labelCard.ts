@@ -48,8 +48,36 @@ import {
   isLabelCardFrame,
   type LabelCardIndicator,
   type LabelCardPlayer,
+  type LabelCardSubstitution,
+  SUBSTITUTION_LIFT_MS,
+  SUBSTITUTION_MAX_ROWS,
+  SUBSTITUTION_ROW_IN_MS,
+  SUBSTITUTION_SHOW_MS,
 } from '../render/labelCard.js'
-import type { CardLabel } from '../analysis/cardLabels.js'
+import type { SubstitutionLabel } from '../analysis/substitutionLabels.js'
+import type { TeamId } from '../analysis/teamPhase.js'
+import type { QueuedLabel } from './cardQueue.js'
+
+/** A substitution on the card, as drawn: its label, and the two players' words, null for one not named. */
+export interface SubstitutionOnCard {
+  label: SubstitutionLabel
+  out: string | null
+  in: string | null
+}
+
+/** Who a card is about, and the labels it was played from, to queue again if it is cut short. */
+export interface CardAbout {
+  /** For a player card: who it is for, as drawn. */
+  player?: LabelCardPlayer
+  labels?: QueuedLabel[]
+  /** For the substitution card: its team, its name as drawn, and its rows so far. */
+  substitution?: { team: TeamId | null; teamName: string | null; rows: SubstitutionOnCard[] }
+}
+
+/** A row on a substitution card showing, and when it joined, in ms from the card's start. */
+interface Row extends SubstitutionOnCard {
+  joinedMs: number
+}
 import type { LabelRun, Moment, MomentContext, MomentStep } from './moment.js'
 
 interface Showing {
@@ -71,8 +99,19 @@ interface Showing {
   byHand: boolean
   /** For a player card: who it is for, as drawn. */
   player: LabelCardPlayer | undefined
-  /** For a player card played from its label: that label, to queue again if it is cut short. */
-  label: CardLabel | null
+  /** The labels it was played from, to queue again if it is cut short: none for one played by hand. */
+  labels: QueuedLabel[]
+  /** For the substitution card: its team and rows, and how it is gliding to its height. */
+  substitution: {
+    team: TeamId | null
+    teamName: string | null
+    rows: Row[]
+    /** When the last row joined, in ms from the start: what its time runs from. */
+    lastJoinMs: number
+    /** The rows it was sized for as it started gliding, and when. */
+    glideFrom: number
+    glideStartMs: number
+  } | null
 }
 
 export class LabelCard implements Moment {
@@ -107,14 +146,35 @@ export class LabelCard implements Moment {
     return this.showing?.idle ?? false
   }
 
-  /** The label a player card showing was played from: null for any other, or one played by hand. */
-  get playing(): CardLabel | null {
-    return this.showing?.label ?? null
+  /** The labels the card showing was played from, in order: none for one played by hand, or none showing. */
+  get playedFrom(): QueuedLabel[] {
+    return this.showing?.labels ?? []
   }
 
-  /** How long it has been showing, in ms: 0 when it is not. */
-  get shownMs(): number {
-    return this.showing?.elapsedMs ?? 0
+  /** Up, and not yet shown its time since it started or its last row joined: cut short, it is not a card played. */
+  get cutShort(): boolean {
+    const card = this.showing
+    if (!card || !this.holdsBack) return false
+    const sub = card.substitution
+    return sub ? card.elapsedMs - sub.lastJoinMs < SUBSTITUTION_SHOW_MS : card.elapsedMs < LABEL_CARD_SHOW_MS
+  }
+
+  /** Whether a substitution for `team` can join the card: a substitution card up for that team, not full. */
+  canJoin(team: TeamId | null): boolean {
+    const sub = this.showing?.substitution
+    return !!sub && this.holdsBack && !this.showing!.byHand && sub.team === team && sub.rows.length < SUBSTITUTION_MAX_ROWS
+  }
+
+  /** Add `row` to the substitution card up: it fades in, the card glides to fit it, and its time starts again. */
+  join(row: SubstitutionOnCard): void {
+    const card = this.showing
+    const sub = card?.substitution
+    if (!card || !sub) return
+    sub.glideFrom = this.rowsShown(card)
+    sub.glideStartMs = card.elapsedMs
+    sub.rows.push({ ...row, joinedMs: card.elapsedMs })
+    sub.lastJoinMs = card.elapsedMs
+    card.labels.push(row.label)
   }
 
   /** Showing, and not on its way out: what holds back an attack or a throw-in. */
@@ -179,17 +239,10 @@ export class LabelCard implements Moment {
    * Show it, on `frame`; `byHand` for LABEL_CARD_DEMO_MS whatever the label
    * does, unless it stays until the next label. Taking over from another card,
    * `fromIntensity` is how strongly that was drawn: it fades in the rest of the
-   * way from there, and stays its full time. A player card has `player`, who
-   * it is for, and the `label` it was played from, if not by hand.
+   * way from there, and stays its full time. `about` says who a player card or
+   * the substitution card is about, and the labels it was played from.
    */
-  start(
-    now: number,
-    frame: Frame,
-    byHand = false,
-    fromIntensity = 0,
-    player?: LabelCardPlayer,
-    label: CardLabel | null = null,
-  ): void {
+  start(now: number, frame: Frame, byHand = false, fromIntensity = 0, about: CardAbout = {}): void {
     const run = this.run
     run.seenAt = now
     run.shown = true
@@ -203,8 +256,18 @@ export class LabelCard implements Moment {
       idle: false,
       labelsSeen: new Map(humanLabelNames(frame).map((name) => [name, now])),
       byHand,
-      player,
-      label,
+      player: about.player,
+      labels: [...(about.labels ?? [])],
+      substitution: about.substitution
+        ? {
+            team: about.substitution.team,
+            teamName: about.substitution.teamName,
+            rows: about.substitution.rows.map((row) => ({ ...row, joinedMs: 0 })),
+            lastJoinMs: 0,
+            glideFrom: about.substitution.rows.length,
+            glideStartMs: 0,
+          }
+        : null,
     }
   }
 
@@ -242,11 +305,39 @@ export class LabelCard implements Moment {
   value(): LabelCardIndicator | undefined {
     const card = this.showing
     if (!card) return undefined
-    return { key: this.key, intensity: this.intensity(card), ...(card.player ? { player: card.player } : {}) }
+    return {
+      key: this.key,
+      intensity: this.intensity(card),
+      ...(card.player ? { player: card.player } : {}),
+      ...(card.substitution ? { substitution: this.substitution(card) } : {}),
+    }
   }
 
   reset(): void {
     this.showing = null
+  }
+
+  /** The substitution card's team and rows as drawn now: each row fading in from when it joined, the card gliding to fit them. */
+  private substitution(card: Showing): LabelCardSubstitution {
+    const sub = card.substitution!
+    const still = this.ctx.reducedMotion()
+    return {
+      team: sub.teamName,
+      rows: sub.rows.map((row) => ({
+        out: row.out,
+        in: row.in,
+        intensity: still || row.joinedMs === 0 ? 1 : Math.min(1, (card.elapsedMs - row.joinedMs) / SUBSTITUTION_ROW_IN_MS),
+      })),
+      rowsShown: still ? sub.rows.length : this.rowsShown(card),
+    }
+  }
+
+  /** How many rows the card is sized for now, gliding from where it was to its rows, easing out. */
+  private rowsShown(card: Showing): number {
+    const sub = card.substitution!
+    const k = Math.min(1, Math.max(0, (card.elapsedMs - sub.glideStartMs) / SUBSTITUTION_LIFT_MS))
+    const eased = 1 - (1 - k) ** 3
+    return sub.glideFrom + (sub.rows.length - sub.glideFrom) * eased
   }
 
   /** Whether it is time to go: at once under reduced motion, or else with room left to fade out when played by hand. */
@@ -254,6 +345,7 @@ export class LabelCard implements Moment {
     if (this.until === 'nextLabel') return card.leaveAsked
     if (this.until === 'time') return card.elapsedMs >= SMALL_CARD_SHOW_MS
     if (card.byHand) return card.elapsedMs >= LABEL_CARD_DEMO_MS - (still ? 0 : LABEL_CARD_OUT_MS)
+    if (card.substitution) return card.elapsedMs - card.substitution.lastJoinMs >= SUBSTITUTION_SHOW_MS
     return card.elapsedMs >= LABEL_CARD_SHOW_MS && !labelOn
   }
 
