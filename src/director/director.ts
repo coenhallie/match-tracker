@@ -226,6 +226,8 @@ export interface DirectorOptions {
   reducedMotion: () => boolean
   teamName: (team: TeamId) => string
   teamColor: (team: TeamId) => string
+  /** A carded player's name, or shirt number, as the moments write it. */
+  playerName: (team: TeamId, number: number) => string
   /**
    * Cover the records the pipeline marks invalid with the attack over a player loss
    * (playerLoss.ts). Live mode only: replay data has no such records, and replay must
@@ -327,6 +329,7 @@ export class Director {
       reducedMotion: () => this.options.reducedMotion(),
       teamName: (team) => this.options.teamName(team),
       teamColor: (team) => this.options.teamColor(team),
+      playerName: (team, number) => this.options.playerName(team, number),
       showCamera: (camera) => this.showCamera(camera),
     }
     this.goal = new Goal(this.context)

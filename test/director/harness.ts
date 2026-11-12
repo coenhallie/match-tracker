@@ -73,6 +73,7 @@ export class FakeReplay {
       layers: this.layers,
       reducedMotion: () => this.reducedMotion,
       teamName: (team) => (team === 0 ? 'Red' : 'Blue'),
+      playerName: (_team, number) => `#${number}`,
       teamColor: (team) => (team === 0 ? '#e51a1a' : '#184fe7'),
       ...options,
     })

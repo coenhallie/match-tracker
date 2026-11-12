@@ -178,6 +178,7 @@ function replay(golden: GoldenFile) {
     layers: { ...golden.layers, goalZoom: false, ballShadow: false },
     reducedMotion: () => golden.reducedMotion,
     teamName: (team) => golden.teamNames[team],
+    playerName: (_team, number) => `#${number}`,
     teamColor: (team) => (team === 0 ? PERSON_COLORS.home : PERSON_COLORS.away).fill,
   })
   const { records } = golden

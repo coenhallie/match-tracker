@@ -219,6 +219,7 @@ describe('Director', () => {
         layers: { ...DEFAULT_REPLAY_LAYERS, goalZoom: false },
         reducedMotion: () => false,
         teamName: () => '',
+        playerName: (_team, number) => `#${number}`,
         teamColor: () => '',
       })
       director.update(input(10, frameWith(10, 0), false), VIEW)

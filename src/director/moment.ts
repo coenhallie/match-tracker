@@ -76,6 +76,8 @@ export interface MomentContext {
   /** Asked afresh at every use, as the reference queries the media query each time. */
   reducedMotion(): boolean
   teamName(team: TeamId): string
+  /** A carded player's name, or shirt number (DirectorOptions.playerName). */
+  playerName(team: TeamId, number: number): string
   teamColor(team: TeamId): string
   /** `showCamera`: put the user's view on `camera`. The view reaches the renderer at the next flush. */
   showCamera(camera: Camera): void

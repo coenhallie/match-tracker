@@ -4,7 +4,7 @@
  */
 import type { TeamId } from '../analysis/teamPhase.js'
 import type { DirectorOptions } from '../director/director.js'
-import { resolveText, type TrackerLocale, type TrackerText, type TrackerTextOverrides } from '../i18n/text.js'
+import { formatText, resolveText, type TrackerLocale, type TrackerText, type TrackerTextOverrides } from '../i18n/text.js'
 import { labelCardRecord, labelCardTextRecord } from '../model/labelCards.js'
 import {
   DEFAULT_REPLAY_LAYERS,
@@ -21,6 +21,11 @@ export interface TeamOptions {
   name?: string
   /** The team's fill colour, on its players, its attack's shade and its phase label. */
   color?: string
+  /**
+   * The team's players' names, by shirt number, for the cards: `{ 9: 'Name' }`. A player with
+   * no name here is shown by the number ("#9"; the moments' `playerNumber` text).
+   */
+  players?: Record<number, string>
 }
 
 export interface MatchTrackerOptions {
@@ -108,6 +113,8 @@ export interface Resolved {
   colors: Record<PersonRole, PersonColors>
   teamName: (team: TeamId) => string
   teamColor: (team: TeamId) => string
+  /** A carded player's name, or shirt number, as the moments write it. */
+  playerName: (team: TeamId, number: number) => string
   formatAction: (actionType: string) => string
   aiLabels: boolean
 }
@@ -126,12 +133,15 @@ export function resolveOptions(options: MutableOptions): Resolved {
   if (away?.color) colors.away.fill = away.color
   const names: Record<TeamId, string> = { 0: home?.name || text.red, 1: away?.name || text.blue }
   const fills: Record<TeamId, string> = { 0: colors.home.fill, 1: colors.away.fill }
+  const players: Record<TeamId, Record<number, string> | undefined> = { 0: home?.players, 1: away?.players }
   return {
     text,
     momentText,
     colors,
     teamName: (team) => names[team],
     teamColor: (team) => fills[team],
+    playerName: (team, number) =>
+      players[team]?.[number] || formatText(momentText.playerNumber, { number: String(number) }),
     formatAction: options.formatAction ?? DEFAULT_THEME.formatAction,
     aiLabels: options.aiLabels ?? DEFAULT_THEME.aiLabels,
   }
@@ -174,7 +184,7 @@ export function prefersReducedMotion(): () => boolean {
 
 /** The director's options for `resolved`, the layers aside, asking `reducedMotion` (prefersReducedMotion). */
 export function directorOptions(resolved: Resolved, reducedMotion: () => boolean): Omit<DirectorOptions, 'layers'> {
-  return { reducedMotion, teamName: resolved.teamName, teamColor: resolved.teamColor }
+  return { reducedMotion, teamName: resolved.teamName, teamColor: resolved.teamColor, playerName: resolved.playerName }
 }
 
 function localStorageOrNull(): Storage | null {

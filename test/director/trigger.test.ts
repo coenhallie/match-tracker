@@ -124,6 +124,7 @@ describe('playing moments by hand', () => {
         layers: { ...DEFAULT_REPLAY_LAYERS, goalZoom: false },
         reducedMotion: () => false,
         teamName: () => 'Red',
+        playerName: (_team, number) => `#${number}`,
         teamColor: () => '#e51a1a',
       })
       const input = { nowMs: 1000, time: 0, playing: false, playback: false, record: null, phase: null, trail: null }

@@ -327,6 +327,7 @@ describe('goal sequence', () => {
         layers: { ...DEFAULT_REPLAY_LAYERS, goalZoom: false },
         reducedMotion: () => false,
         teamName: () => 'Red',
+        playerName: (_team, number) => `#${number}`,
         teamColor: () => '#e51a1a',
       })
       const record = { t: 10, frameCount: 1, frame: goalFrame(['other']) }
