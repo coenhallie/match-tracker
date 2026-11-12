@@ -72,6 +72,8 @@ export const DEFAULT_THEME: Readonly<RenderTheme> = Object.freeze({
     foul: 'FOUL',
     shotOnGoal: 'SHOT!',
     headerOnGoal: 'HEADER!',
+    yellowCard: 'YELLOW CARD',
+    redCard: 'RED CARD',
   }),
   fonts: Object.freeze({ label: familyList(LABEL_FAMILY), title: familyList(TITLE_FAMILY) }),
   icons: Object.freeze({ corner: null, ...iconCardRecord(() => null) }),

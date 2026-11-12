@@ -91,11 +91,13 @@ const TEXT_MAX_LINES = Math.floor((CARD_HEIGHT_PX - TEXT_TOP_PX) / TEXT_LINE_PX)
  * Where each card's icon goes in its slot, in design pixels from the slot's
  * top left corner, as its design places it. The VAR check's eye: inset 19.92%
  * from the top and 7.81% each side. The goal disallowed's struck-through goal:
- * centred, its 149.5 px inset 14.06% all round.
+ * centred, its 149.5 px inset 14.06% all round. The player cards' hand and card: the whole slot.
  */
 const LABEL_CARD_ICON_BOXES: Record<IconCardKey, CardBox> = {
   varCheck: { left: 16.25, top: 41.436, width: 175.5, height: 94.25 },
   goalDisallowed: { left: 29.25, top: 29.25, width: 149.5, height: 149.5 },
+  yellowCard: { left: 0, top: 0, width: 208, height: 208 },
+  redCard: { left: 0, top: 0, width: 208, height: 208 },
 }
 
 const TITLE_BASELINE_PX = PADDING_Y_PX + interBaselinePx(TITLE_PX, TITLE_LINE_PX)

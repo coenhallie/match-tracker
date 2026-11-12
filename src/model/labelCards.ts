@@ -44,6 +44,12 @@ export const LABEL_CARDS = [
   // A shot or a header on goal is what the zoom near goal is there for: it stays in.
   { key: 'shotOnGoal', labels: ['shot on goal'], size: 'small', below: 'nothing', until: 'time', makesWay: false },
   { key: 'headerOnGoal', labels: ['header on goal'], size: 'small', below: 'nothing', until: 'time', makesWay: false },
+  /**
+   * The player cards: the team and the player under the band, from the label (cardLabels.ts in analysis). The
+   * labelling tool sends "Player yellow card" and "Player red card". Each plays in turn (cardQueue.ts in director).
+   */
+  { key: 'yellowCard', labels: ['player yellow card', 'yellow card'], size: 'centre', below: 'icon', until: 'labelOff', makesWay: true, player: { color: '#EAB308' } },
+  { key: 'redCard', labels: ['player red card', 'red card'], size: 'centre', below: 'icon', until: 'labelOff', makesWay: true, player: { color: '#EF4444' } },
 ] as const satisfies ReadonlyArray<{
   key: string
   labels: readonly string[]
@@ -58,6 +64,8 @@ export const LABEL_CARDS = [
   until: 'time' | 'labelOff' | 'nextLabel'
   /** Whether the zoom near goal eases out to the whole pitch while it shows. */
   makesWay: boolean
+  /** A card about a player: the team and the player under the band, with a small card in `color` (and the icon's card). */
+  player?: { color: string }
 }>
 
 type Card = (typeof LABEL_CARDS)[number]
@@ -72,10 +80,27 @@ export type LabelCardTextKey = `${TextCardKey}Text`
 
 const keysOf = <K extends LabelCardKey>(cards: readonly Card[]): readonly K[] => cards.map((card) => card.key as K)
 
+/** The cards about a player. */
+export type PlayerCardKey = Extract<Card, { player: { color: string } }>['key']
+
 /** Every card's key, in LABEL_CARDS order. */
 export const LABEL_CARD_KEYS: readonly LabelCardKey[] = keysOf(LABEL_CARDS)
 export const ICON_CARD_KEYS: readonly IconCardKey[] = keysOf(LABEL_CARDS.filter((card) => card.below === 'icon'))
 export const TEXT_CARD_KEYS: readonly TextCardKey[] = keysOf(LABEL_CARDS.filter((card) => card.below === 'text'))
+
+/** The cards about a player, in LABEL_CARDS order. */
+export const PLAYER_CARD_KEYS: readonly PlayerCardKey[] = keysOf(LABEL_CARDS.filter((card) => 'player' in card))
+
+/** Whether `key` names a card about a player. */
+export function isPlayerCardKey(key: string): key is PlayerCardKey {
+  return (PLAYER_CARD_KEYS as readonly string[]).includes(key)
+}
+
+/** The colour of the card under `key`, on its icon and its small card. */
+export const playerCardColor = (key: PlayerCardKey): string => {
+  const card = labelCard(key)
+  return 'player' in card ? card.player.color : ''
+}
 
 /** Whether `key` names a label card. */
 export function isLabelCardKey(key: string): key is LabelCardKey {

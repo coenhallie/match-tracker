@@ -44,6 +44,8 @@ const NOTHING: MomentAvailability = {
   foul: false,
   shotOnGoal: false,
   headerOnGoal: false,
+  yellowCard: false,
+  redCard: false,
 }
 
 beforeEach(() => {

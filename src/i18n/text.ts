@@ -25,6 +25,8 @@ export interface TrackerText extends Record<LabelCardKey | LabelCardTextKey, str
   flashback: string
   /** The flashback timer, with `{time}` for how long ago the moment was, as m:ss. */
   flashbackAgo: string
+  /** A carded player with no name given, with `{number}` for the shirt number. */
+  playerNumber: string
   /** The debug line for a flashback, with `{kind}` for the moment (its own word: `goal`, `corner`, `shotOnGoal` or `attack`) and `{ago}` for how long ago it was. */
   flashbackDebug: string
   /** A team's state in the phase row above the pitch. */

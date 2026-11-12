@@ -459,6 +459,8 @@ describe('the Vue component over the pitch', () => {
       foul: false,
       shotOnGoal: false,
       headerOnGoal: false,
+      yellowCard: false,
+      redCard: false,
     })
   })
 })

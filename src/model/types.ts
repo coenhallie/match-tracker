@@ -71,6 +71,10 @@ export interface FrameAction {
   action_origin?: 'ai' | 'human' | string
   /** The label's own id, which the live stream gives a human's label. */
   uuid?: string
+  /** On a human's label about a team or a player, as a card is: the team's team_id. */
+  team_id?: number
+  /** On a human's label about a player, as a card is: the player's shirt number. */
+  player_number?: number
 }
 
 /** Frame-level metadata carried inside `frame_data`. */

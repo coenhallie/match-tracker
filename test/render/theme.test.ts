@@ -96,8 +96,10 @@ describe('DEFAULT_THEME', () => {
       foul: 'FOUL',
       shotOnGoal: 'SHOT!',
       headerOnGoal: 'HEADER!',
+      yellowCard: 'YELLOW CARD',
+      redCard: 'RED CARD',
     })
-    expect(DEFAULT_THEME.icons).toEqual({ corner: null, varCheck: null, goalDisallowed: null })
+    expect(DEFAULT_THEME.icons).toEqual({ corner: null, varCheck: null, goalDisallowed: null, yellowCard: null, redCard: null })
     expect(DEFAULT_THEME.formatAction('EventType.FREE_KICK')).toBe('EventType.FREE_KICK')
     expect(DEFAULT_THEME.aiLabels).toBe(false)
   })
@@ -160,7 +162,7 @@ describe('a custom theme', () => {
   })
 
   it("writes the theme's words on the cards and the attack label", () => {
-    const theme = custom({ text: { goal: '进球', corner: '角球', throwIn: '界外球', attack: '进攻', flashback: '回放', flashbackAgo: '{time}前', varCheck: 'VAR 检查', goalDisallowed: '进球无效', halfTime: '中场休息', halfTimeText: '比赛暂停中。', secondHalf: '下半场', secondHalfText: '比赛已重新开始。', fullTime: '全场结束', fullTimeText: '本场比赛已结束。', foul: '犯规', shotOnGoal: '射门！', headerOnGoal: '头球！' } })
+    const theme = custom({ text: { goal: '进球', corner: '角球', throwIn: '界外球', attack: '进攻', flashback: '回放', flashbackAgo: '{time}前', varCheck: 'VAR 检查', goalDisallowed: '进球无效', halfTime: '中场休息', halfTimeText: '比赛暂停中。', secondHalf: '下半场', secondHalfText: '比赛已重新开始。', fullTime: '全场结束', fullTimeText: '本场比赛已结束。', foul: '犯规', shotOnGoal: '射门！', headerOnGoal: '头球！', yellowCard: '黄牌', redCard: '红牌' } })
     const words = texts(render(theme, frame(), EVERY_MOMENT)).map((o) => o.args[0])
     expect(words).toEqual(expect.arrayContaining(['进球', '角球', '界外球', '进攻', 'VAR 检查', '犯规']))
     expect(words).not.toContain('GOAL')
@@ -210,7 +212,7 @@ describe('a custom theme', () => {
   it("draws the theme's icons on the cards, unless the layer brings its own", () => {
     const fromTheme = { from: 'theme' } as unknown as CanvasImageSource
     const fromLayer = { from: 'layer' } as unknown as CanvasImageSource
-    const theme = custom({ icons: { corner: fromTheme, varCheck: null, goalDisallowed: null } })
+    const theme = custom({ icons: { corner: fromTheme, varCheck: null, goalDisallowed: null, yellowCard: null, redCard: null } })
     const images = (ops: Op[]) => ops.filter((o) => o.op === 'drawImage').map((o) => o.args[0])
     const corner = { intensity: 1, playersFade: 0, ballFade: 0, corner: null, sections: [] }
     const themed = images(

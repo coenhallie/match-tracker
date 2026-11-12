@@ -44,7 +44,9 @@ describe('loadIcons', () => {
     expect(icons.corner).toBe(images[0])
     expect(icons.varCheck).toBe(images[1])
     expect(icons.goalDisallowed).toBe(images[2])
-    expect(images).toHaveLength(3)
+    expect(icons.yellowCard).toBe(images[3])
+    expect(icons.redCard).toBe(images[4])
+    expect(images).toHaveLength(5)
     for (const image of images) expect(image.src).toMatch(/^data:image\/svg\+xml,/)
     expect(svgOf(images[0]!.src)).toContain('<g id="corner">')
     expect(svgOf(images[1]!.src)).toContain('viewBox="0 0 175.5 94.25"')
@@ -52,6 +54,17 @@ describe('loadIcons', () => {
     // The goal-net icon is drawn only by the parity test's reference card, so it is not loaded.
     expect(icons).not.toHaveProperty('goal')
     expect(images.some((image) => svgOf(image.src).includes('shot_on_goal'))).toBe(false)
+  })
+
+  it('loads one hand-and-card icon per card, filled in its colour', async () => {
+    const { loadIcons } = await import('../../src/assets/icons')
+    const icons = await loadIcons()
+    const yellow = svgOf((icons.yellowCard as unknown as { src: string }).src)
+    const red = svgOf((icons.redCard as unknown as { src: string }).src)
+    for (const svg of [yellow, red]) expect(svg).toContain('viewBox="0 0 208 208"')
+    expect(yellow).toContain('fill="#EAB308"')
+    expect(red).toContain('fill="#EF4444"')
+    expect(yellow.replace('#EAB308', '#EF4444')).toBe(red)
   })
 
   it('draws the corner icon in the box the card gives its icon', async () => {
@@ -64,18 +77,18 @@ describe('loadIcons', () => {
     const { loadIcons } = await import('../../src/assets/icons')
     const [a, b] = await Promise.all([loadIcons(), loadIcons()])
     expect(a).toBe(b)
-    expect(images).toHaveLength(3)
+    expect(images).toHaveLength(5)
   })
 
   it('gives null for an icon that fails to load', async () => {
     failing = true
     const { loadIcons } = await import('../../src/assets/icons')
-    expect(await loadIcons()).toEqual({ corner: null, varCheck: null, goalDisallowed: null })
+    expect(await loadIcons()).toEqual({ corner: null, varCheck: null, goalDisallowed: null, yellowCard: null, redCard: null })
   })
 
   it('gives null for every icon where there is no Image', async () => {
     vi.stubGlobal('Image', undefined)
     const { loadIcons } = await import('../../src/assets/icons')
-    expect(await loadIcons()).toEqual({ corner: null, varCheck: null, goalDisallowed: null })
+    expect(await loadIcons()).toEqual({ corner: null, varCheck: null, goalDisallowed: null, yellowCard: null, redCard: null })
   })
 })
