@@ -597,7 +597,7 @@ A listener that throws is reported (`reportError`) and does not stop the widget.
 ```
 
 - **Fonts.** The canvas and the HUD use Montserrat (400, 600, 700) and Inter
-  (600, italic 900). They come in the package as Latin woff2 files, registered under
+  (600, 900, italic 900). They come in the package as Latin woff2 files, registered under
   private names (`"MatchTracker Montserrat"` and `"MatchTracker Inter"`), so
   they never clash with the page's fonts. Each is followed by
   `"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif`,

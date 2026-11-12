@@ -59,11 +59,19 @@ describe('ensureFonts', () => {
     expect(added.map(describeFace).sort()).toEqual([
       'MatchTracker Inter italic 900',
       'MatchTracker Inter normal 600',
+      'MatchTracker Inter normal 900',
       'MatchTracker Montserrat normal 400',
       'MatchTracker Montserrat normal 600',
       'MatchTracker Montserrat normal 700',
     ])
-    expect(faces).toHaveLength(5)
+    expect(faces).toHaveLength(6)
+  })
+
+  it("registers Inter Black upright beside the italic, for the cards' team names", async () => {
+    const { ensureFonts } = await import('../../src/assets/fonts')
+    await ensureFonts()
+    const black = added.find((f) => describeFace(f) === 'MatchTracker Inter normal 900')
+    expect(black?.source).toMatch(/inter-latin-900-normal\.woff2/)
   })
 
   it('loads each face from its own woff2 file, not from inside the script', async () => {
@@ -81,7 +89,7 @@ describe('ensureFonts', () => {
     failing.add('MatchTracker Montserrat normal 600')
     const { ensureFonts } = await import('../../src/assets/fonts')
     await expect(ensureFonts()).resolves.toBeUndefined()
-    expect(added).toHaveLength(5)
+    expect(added).toHaveLength(6)
   })
 
   it('counts each face as it loads, and none that fails, so text is measured again in it', async () => {
@@ -89,7 +97,7 @@ describe('ensureFonts', () => {
     const { ensureFonts, fontGeneration } = await import('../../src/assets/fonts')
     expect(fontGeneration()).toBe(0)
     await ensureFonts()
-    expect(fontGeneration()).toBe(4)
+    expect(fontGeneration()).toBe(5)
   })
 
   it('resolves at once where the page has no FontFace API', async () => {

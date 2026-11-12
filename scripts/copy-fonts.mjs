@@ -24,7 +24,7 @@ const FONTS = [
   },
   {
     pkg: '@fontsource/inter',
-    files: ['inter-latin-900-italic.woff2', 'inter-latin-600-normal.woff2'],
+    files: ['inter-latin-900-italic.woff2', 'inter-latin-900-normal.woff2', 'inter-latin-600-normal.woff2'],
     licence: 'Inter-OFL.txt',
   },
 ]
