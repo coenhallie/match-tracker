@@ -24,6 +24,8 @@ follow [Semantic Versioning](https://semver.org/).
 - The moment, layer and `trigger` key `substitution`, in `MomentAvailability`
   and `ReplayLayers` too: a TypeScript literal of either type now needs it.
 - The text key `substitution`.
+- The package bundles one more font file, Inter Regular
+  (`inter-latin-400-normal.woff2`), beside the others.
 
 ## [0.13.0] - 2026-11-12
 

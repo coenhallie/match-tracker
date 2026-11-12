@@ -175,7 +175,8 @@ const PLAYER_SHADOW = 'rgba(0, 0, 0, 0.25)'
  * The substitution card's rows (Figma "Game Animation Visualizer", viewport/eventSubstitution), in
  * design pixels: each 72 below the one before (a 64 px line and 8 between), the first where the
  * player cards' player is. Two 56 px badges either side of the pitch's middle, 24 apart; the player
- * going off right-aligned 24 before the first, the one coming on left-aligned 24 after the second.
+ * going off right-aligned 24 before the first, the one coming on left-aligned 24 after the second,
+ * both in Inter Regular, lighter than the player cards' player (measured against the frames).
  * Measured from the design's frames. The card rises so the last row's baseline is at most
  * SUBSTITUTION_BELOW_TOUCHLINE_PX below the bottom touchline, as the 5-row frame has it.
  */
@@ -317,7 +318,7 @@ function drawSubstitutionLines(
 ): void {
   setLineShadow(ctx, u)
   drawTeamLine(ctx, sub.team, cx, foot, u, family)
-  const nameFont = (px: number) => `600 ${px}px ${family}`
+  const nameFont = (px: number) => `400 ${px}px ${family}`
   const inner = (BADGE_GAP_PX / 2) * u
   const nameEdge = (BADGE_GAP_PX / 2 + BADGE_PX + NAME_GAP_PX) * u
   const maxName = FRAME_W / 2 - PADDING_X_PX * u - nameEdge

@@ -507,7 +507,8 @@ describe('the substitution card', () => {
       expect(out.textAlign).toBe('right')
       expect(out.args[1]).toBeCloseTo(CX - (12 + 56 + 24) * u, 6)
       expect(out.args[2]).toBeCloseTo(baseline, 6)
-      expect(out.font).toContain(`600 ${40 * u}px`)
+      // The design's names are lighter than the player cards': Inter Regular, measured against its frames.
+      expect(out.font).toContain(`400 ${40 * u}px`)
       const inn = text(ops, on!)[0]!
       expect(inn.textAlign).toBe('left')
       expect(inn.args[1]).toBeCloseTo(CX + (12 + 56 + 24) * u, 6)
@@ -548,7 +549,7 @@ describe('the substitution card', () => {
     const long = 'Bartholomew-Maximilian '.repeat(8).trim()
     const ops = drawSubs({ team: 'A', rows: [row(long, long)], rowsShown: 1 })
     const limit = FRAME_W / 2 - 190 * u
-    const names = ops.filter((o) => o.op === 'fillText' && o.font.startsWith('600 '))
+    const names = ops.filter((o) => o.op === 'fillText' && o.font.startsWith('400 '))
     expect(names).toHaveLength(2)
     for (const name of names) {
       const px = Number(/([\d.]+)px/.exec(name.font)![1])

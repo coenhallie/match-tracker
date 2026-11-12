@@ -48,6 +48,12 @@ const FACES: ReadonlyArray<{ family: string; url: URL; weight: string; style: st
   },
   {
     family: TITLE_FAMILY,
+    url: new URL('./fonts/inter-latin-400-normal.woff2?no-inline', import.meta.url),
+    weight: '400',
+    style: 'normal',
+  },
+  {
+    family: TITLE_FAMILY,
     url: new URL('./fonts/inter-latin-600-normal.woff2?no-inline', import.meta.url),
     weight: '600',
     style: 'normal',
