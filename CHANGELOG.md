@@ -6,6 +6,10 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-12
+
+Substitutions, a team's listed together on one card.
+
 ### What you see
 
 - **Substitutions.** A human's substitution label (`substitute`, as the
