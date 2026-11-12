@@ -47,7 +47,9 @@ import {
   SMALL_CARD_SHOW_MS,
   isLabelCardFrame,
   type LabelCardIndicator,
+  type LabelCardPlayer,
 } from '../render/labelCard.js'
+import type { CardLabel } from '../analysis/cardLabels.js'
 import type { LabelRun, Moment, MomentContext, MomentStep } from './moment.js'
 
 interface Showing {
@@ -67,6 +69,10 @@ interface Showing {
   labelsSeen: Map<string, number>
   /** Played by hand: on screen for LABEL_CARD_DEMO_MS, whatever the label does. */
   byHand: boolean
+  /** For a player card: who it is for, as drawn. */
+  player: LabelCardPlayer | undefined
+  /** For a player card played from its label: that label, to queue again if it is cut short. */
+  label: CardLabel | null
 }
 
 export class LabelCard implements Moment {
@@ -99,6 +105,16 @@ export class LabelCard implements Moment {
 
   get idle(): boolean {
     return this.showing?.idle ?? false
+  }
+
+  /** The label a player card showing was played from: null for any other, or one played by hand. */
+  get playing(): CardLabel | null {
+    return this.showing?.label ?? null
+  }
+
+  /** How long it has been showing, in ms: 0 when it is not. */
+  get shownMs(): number {
+    return this.showing?.elapsedMs ?? 0
   }
 
   /** Showing, and not on its way out: what holds back an attack or a throw-in. */
@@ -163,9 +179,17 @@ export class LabelCard implements Moment {
    * Show it, on `frame`; `byHand` for LABEL_CARD_DEMO_MS whatever the label
    * does, unless it stays until the next label. Taking over from another card,
    * `fromIntensity` is how strongly that was drawn: it fades in the rest of the
-   * way from there, and stays its full time.
+   * way from there, and stays its full time. A player card has `player`, who
+   * it is for, and the `label` it was played from, if not by hand.
    */
-  start(now: number, frame: Frame, byHand = false, fromIntensity = 0): void {
+  start(
+    now: number,
+    frame: Frame,
+    byHand = false,
+    fromIntensity = 0,
+    player?: LabelCardPlayer,
+    label: CardLabel | null = null,
+  ): void {
     const run = this.run
     run.seenAt = now
     run.shown = true
@@ -179,6 +203,8 @@ export class LabelCard implements Moment {
       idle: false,
       labelsSeen: new Map(humanLabelNames(frame).map((name) => [name, now])),
       byHand,
+      player,
+      label,
     }
   }
 
@@ -216,7 +242,7 @@ export class LabelCard implements Moment {
   value(): LabelCardIndicator | undefined {
     const card = this.showing
     if (!card) return undefined
-    return { key: this.key, intensity: this.intensity(card) }
+    return { key: this.key, intensity: this.intensity(card), ...(card.player ? { player: card.player } : {}) }
   }
 
   reset(): void {

@@ -142,7 +142,9 @@
  */
 import { sameTrail, type BallTrail } from '../analysis/ballTrail.js'
 import { samePhase, type TeamId, type TeamPhase } from '../analysis/teamPhase.js'
-import { LABEL_CARDS, isLabelCardKey, labelCardRecord, type LabelCardKey } from '../model/labelCards.js'
+import { LABEL_CARDS, isLabelCardKey, isPlayerCardKey, labelCardRecord, playerCardColor, type LabelCardKey } from '../model/labelCards.js'
+import { cardLabels, type CardLabel } from '../analysis/cardLabels.js'
+import { CardQueue } from './cardQueue.js'
 import type { ReplayLayers, ReplayMoment } from '../model/replayLayers.js'
 import type { Frame, TrackerRecord } from '../model/types.js'
 import { planGoal } from '../analysis/goalSequence.js'
@@ -156,6 +158,7 @@ import { Corner } from './corner.js'
 import { Goal } from './goal.js'
 import { GoalZoom } from './goalZoom.js'
 import { LabelCard } from './labelCard.js'
+import { LABEL_CARD_SHOW_MS, type LabelCardPlayer } from '../render/labelCard.js'
 import { PlayerLoss, type PlayerLossState } from './playerLoss.js'
 import type { Moment, MomentContext, MomentMemory, ShownReplay } from './moment.js'
 import { ThrowIn } from './throwIn.js'
@@ -283,6 +286,8 @@ export class Director {
   private readonly corner: Corner
   private readonly throwIn: ThrowIn
   private readonly labelCards: readonly LabelCard[]
+  /** The player cards waiting to play, in turn (cardQueue.ts). */
+  private readonly cardQueue = new CardQueue()
   private readonly playerLoss: PlayerLoss
   private readonly goalZoom = new GoalZoom()
   /** Whether the user has the view, so the zoom near goal leaves it where they put it. */
@@ -421,7 +426,9 @@ export class Director {
       const card = this.labelCards.find((c) => c.key === moment)!
       const strength = this.labelCardStrength(card.small)
       this.stopSequences()
-      card.start(now, frame, true, strength)
+      // By hand there is a team, but no player to name.
+      const player = isPlayerCardKey(moment) ? { team: this.options.teamName(team), player: null, color: playerCardColor(moment) } : undefined
+      card.start(now, frame, true, strength, player)
       this.request(card)
     } else {
       this.stopSequences()
@@ -471,6 +478,7 @@ export class Director {
     if (before.corner && !layers.corner) this.stopMoment(this.corner)
     if (before.throwInBanner && !layers.throwInBanner) this.stopMoment(this.throwIn)
     for (const card of this.labelCards) if (before[card.key] && !layers[card.key]) this.stopMoment(card)
+    for (const card of this.labelCards) if (isPlayerCardKey(card.key) && !layers[card.key]) this.cardQueue.drop(card.key)
     if (before.ringFades && !layers.ringFades) this.rings.settle(this.shown.record?.frame ?? null)
     if (before.goalZoom && !layers.goalZoom) this.dropGoalZoom()
     this.paint()
@@ -503,6 +511,7 @@ export class Director {
     }
     this.requests = []
     this.due = []
+    this.cardQueue.clear()
     this.goalZoom.reset()
     this.rings.clear()
     this.roll.reset()
@@ -567,6 +576,7 @@ export class Director {
     this.memory.cornerLabelAt = null
     this.memory.throwInLabelAt = null
     this.memory.labelCards = freshMemory().labelCards
+    this.cardQueue.clear()
     this.memory.lastBall = null
     this.memory.playMovedAt = this.shown.time
     this.playerLoss.forget()
@@ -603,6 +613,8 @@ export class Director {
         this.request(this.corner)
       }
       for (const card of this.labelCards) {
+        // The player cards play from their queue, below.
+        if (isPlayerCardKey(card.key)) continue
         // A small card does not go over a centre one.
         const blocked = this.goal.active || this.corner.active || (card.small && this.centreCardHoldsBack())
         if (card.detect(frame, time, blocked)) {
@@ -622,6 +634,7 @@ export class Director {
           this.request(card)
         }
       }
+      this.queueCards(frame, time)
       const setPiece = this.goal.active || this.corner.active || this.centreCardHoldsBack()
       if (this.throwIn.detect(frame, time, setPiece)) {
         // In the same place as a small card, which it takes over from.
@@ -716,7 +729,48 @@ export class Director {
 
   /** End the label cards at once; with `letFade`, one already fading out finishes doing so. */
   private stopLabelCards(letFade = false): void {
-    for (const card of this.labelCards) if (!letFade || card.holdsBack) this.stopMoment(card)
+    for (const card of this.labelCards) {
+      if (letFade && !card.holdsBack) continue
+      // A player card cut short before it has stayed its time is not a card played: it goes first again.
+      const label = card.playing
+      if (label && card.holdsBack && card.shownMs < LABEL_CARD_SHOW_MS) this.cardQueue.putBack(label)
+      this.stopMoment(card)
+    }
+  }
+
+  /**
+   * The player cards on `frame`, into their queue, and the first waiting card played if nothing
+   * holds it back: a goal, a corner or a centre card up. A card's label sits on one record, so a
+   * card waits its turn rather than being missed (cardQueue.ts). Landed on by a seek, a label is
+   * under way, and is not played.
+   */
+  private queueCards(frame: Frame, time: number): void {
+    for (const label of cardLabels(frame)) {
+      if (!this.lastStepWasPlayback) this.cardQueue.skip(label, time)
+      else if (this.layers[label.key]) this.cardQueue.add(label, time)
+    }
+    if (!this.lastStepWasPlayback || this.goal.active || this.corner.active || this.centreCardHoldsBack()) return
+    const label = this.cardQueue.take()
+    if (!label) return
+    const card = this.labelCards.find((c) => c.key === label.key)!
+    // As any centre card does: it takes over from the one fading out, and play is stopped for it.
+    const strength = this.labelCardStrength(false)
+    this.stopMoment(this.throwIn)
+    this.stopMoment(this.attack)
+    this.stopMoment(this.playerLoss)
+    this.stopLabelCards()
+    card.start(time, frame, false, strength, this.cardPlayer(label), label)
+    this.request(card)
+  }
+
+  /** Who `label`'s card is for, in the words drawn. */
+  private cardPlayer(label: CardLabel): LabelCardPlayer {
+    const { team, number } = label
+    return {
+      team: team === null ? null : this.options.teamName(team),
+      player: team === null || number === null ? null : this.options.playerName(team, number),
+      color: playerCardColor(label.key),
+    }
   }
 
   private stopSmallCards(): void {
