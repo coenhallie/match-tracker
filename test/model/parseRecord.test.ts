@@ -158,3 +158,68 @@ describe('parseRecord rejects', () => {
     }
   })
 })
+
+describe("a player label's name", () => {
+  /**
+   * A record with one human label on it, as the live stream sends it since 2026-11-12: the entry in
+   * `state.actions` carries no name, and `raw_data.labels.human_label.items` carries the labelling
+   * tool's `player_name`.
+   */
+  function labelled(items: Record<string, unknown>, label: Record<string, unknown> = {}, entry: Record<string, unknown> = {}) {
+    const card = { action_type: 'Player yellow card', action_origin: 'human', uuid: 'u1', team_id: 1, player_number: 7, player_id: 23 }
+    return {
+      match: {
+        ...frame(225090, 100),
+        state: { actions: [{ action_type: 'EventType.BALL_IN_PLAY', action_origin: 'ai' }, { ...card, ...entry }] },
+      },
+      raw_data: {
+        labels: {
+          human_label: {
+            uuid: 'u1',
+            frame_match: 'current',
+            action_name: 'Player yellow card',
+            obj: 'player',
+            items: { team_id: 1, player_name: 'Lando Fring', team_name: 'Team Away', player: 23, number: 7, ...items },
+            ...label,
+          },
+        },
+      },
+    }
+  }
+  const entry = (message: unknown) => parseRecord(message)!.frame.state!.actions![1]!
+
+  it("puts the label's player name on its entry in state.actions", () => {
+    expect(entry(labelled({})).player_name).toBe('Lando Fring')
+    expect(entry(JSON.stringify(JSON.stringify(labelled({})))).player_name).toBe('Lando Fring')
+  })
+
+  it('leaves the entry its own name, when the stream gives it one', () => {
+    expect(entry(labelled({}, {}, { player_name: 'Han Fett' })).player_name).toBe('Han Fett')
+  })
+
+  it('takes the label’s name over an entry’s name that is no name', () => {
+    expect(entry(labelled({}, {}, { player_name: 'None' })).player_name).toBe('Lando Fring')
+  })
+
+  it('takes no name that is not one', () => {
+    for (const player_name of [null, undefined, '', '  ', 'None', 'null', 7, {}]) {
+      expect(entry(labelled({ player_name })).player_name).toBeUndefined()
+    }
+    expect(entry(labelled({ player_name: '  Lando Fring ' })).player_name).toBe('Lando Fring')
+  })
+
+  it('takes no name from a label about no one player, or about another entry', () => {
+    expect(entry(labelled({}, { obj: 'subst' })).player_name).toBeUndefined()
+    expect(entry(labelled({}, { obj: 'game' })).player_name).toBeUndefined()
+    expect(entry(labelled({}, { uuid: 'u2' })).player_name).toBeUndefined()
+    expect(entry(labelled({}, {}, { uuid: undefined })).player_name).toBeUndefined()
+    const { raw_data: _, ...bare } = labelled({})
+    expect(entry(bare).player_name).toBeUndefined()
+  })
+
+  it('does not change the message it was given', () => {
+    const message = labelled({})
+    parseRecord(message)
+    expect('player_name' in message.match.state.actions[1]!).toBe(false)
+  })
+})

@@ -230,8 +230,8 @@ export interface DirectorOptions {
   reducedMotion: () => boolean
   teamName: (team: TeamId) => string
   teamColor: (team: TeamId) => string
-  /** A carded player's name, or shirt number, as the moments write it. */
-  playerName: (team: TeamId, number: number) => string
+  /** A carded player's name, or shirt number, as the moments write it, given the name its label gave if any. */
+  playerName: (team: TeamId, number: number, labelName?: string | null) => string
   /** A substituted player's name, or shirt number, or null for a roster id with no name. */
   substitutionName: (team: TeamId | null, number: number | null) => string | null
   /**
@@ -348,7 +348,7 @@ export class Director {
       reducedMotion: () => this.options.reducedMotion(),
       teamName: (team) => this.options.teamName(team),
       teamColor: (team) => this.options.teamColor(team),
-      playerName: (team, number) => this.options.playerName(team, number),
+      playerName: (team, number, labelName) => this.options.playerName(team, number, labelName),
       substitutionName: (team, number) => this.options.substitutionName(team, number),
       showCamera: (camera) => this.showCamera(camera),
     }
@@ -824,7 +824,7 @@ export class Director {
     const { team, number } = label
     return {
       team: team === null ? null : this.options.teamName(team),
-      player: team === null || number === null ? null : this.options.playerName(team, number),
+      player: team === null || number === null ? label.name : this.options.playerName(team, number, label.name),
       color: playerCardColor(label.key),
     }
   }

@@ -9,11 +9,18 @@ const card = (over: Record<string, unknown>): FrameAction =>
 describe('who a card is for', () => {
   it('reads the card, its uuid, its team and its shirt number', () => {
     expect(cardLabels(frame(card({ uuid: 'u1', team_id: 0, player_number: 3 })))).toEqual([
-      { key: 'redCard', uuid: 'u1', team: 0, number: 3 },
+      { key: 'redCard', uuid: 'u1', team: 0, number: 3, name: null },
     ])
     expect(cardLabels(frame(card({ action_type: 'Player yellow card', uuid: 'u2', team_id: 1, player_number: 0 })))).toEqual([
-      { key: 'yellowCard', uuid: 'u2', team: 1, number: 0 },
+      { key: 'yellowCard', uuid: 'u2', team: 1, number: 0, name: null },
     ])
+  })
+
+  it("reads the player's name, when the label has one", () => {
+    expect(cardLabels(frame(card({ team_id: 1, player_number: 7, player_name: 'Lando Fring' })))[0]!.name).toBe('Lando Fring')
+    for (const player_name of [undefined, null, '', ' ', 'None', 7]) {
+      expect(cardLabels(frame(card({ team_id: 1, player_number: 7, player_name })))[0]!.name).toBeNull()
+    }
   })
 
   it('leaves out what the label does not say plainly', () => {

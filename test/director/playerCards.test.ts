@@ -173,6 +173,21 @@ describe('a player card', () => {
     expect(card(noNumber)?.player).toEqual({ team: 'Red', player: null, color: '#EF4444' })
   })
 
+  it("names the player from the label's name, with no team or no number", () => {
+    const noTeam = ready()
+    record(noTeam, [{ ...cardLabel('red', 'u1', undefined, 3), player_name: 'Han Fett' }])
+    noTeam.animate(100, true)
+    expect(card(noTeam)?.player).toEqual({ team: null, player: 'Han Fett', color: '#EF4444' })
+    const noNumber = ready()
+    record(noNumber, [{ ...cardLabel('red', 'u2', 0, -1), player_name: 'Han Fett' }])
+    noNumber.animate(100, true)
+    expect(card(noNumber)?.player).toEqual({ team: 'Red', player: 'Han Fett', color: '#EF4444' })
+    const named = ready()
+    record(named, [{ ...cardLabel('red', 'u3', 0, 2), player_name: 'Han Fett' }])
+    named.animate(100, true)
+    expect(card(named)?.player).toEqual({ team: 'Red', player: 'Han Fett', color: '#EF4444' })
+  })
+
   it('fades one card out before the next fades in', () => {
     const replay = ready()
     record(replay, [cardLabel('yellow', 'u1', 1, 4), cardLabel('yellow', 'u2', 1, 7)])

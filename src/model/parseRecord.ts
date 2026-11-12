@@ -52,7 +52,7 @@ export function parseRecord(message: unknown): TrackerRecord | null {
   const candidate = isRecord(value.match) ? value.match : value
   if (!Array.isArray(candidate.teams)) return null
 
-  const frame = normalizeFrame(candidate)
+  const frame = withLabelName(normalizeFrame(candidate), value.raw_data)
 
   const meta: unknown = Array.isArray(frame.frame_data) ? frame.frame_data[0] : undefined
   // Not finite (JSON reads 1e999 as Infinity): such a record can never be told apart from the next.
@@ -71,6 +71,35 @@ export function parseRecord(message: unknown): TrackerRecord | null {
   const validity = readValidity(value.raw_data)
   if (validity) record.validity = validity
   return record
+}
+
+/**
+ * A player's name, trimmed, or null for none. The labelling tool sends `null` for a player it has
+ * no name for, and its backend has written Python's `None` for one.
+ */
+export function plainName(name: unknown): string | null {
+  if (typeof name !== 'string') return null
+  const trimmed = name.trim()
+  return trimmed === '' || trimmed === 'None' || trimmed === 'null' ? null : trimmed
+}
+
+/**
+ * `frame`, with the player's name from the record's human label on the label's own entry in
+ * `state.actions`, the entry with its `uuid`. Since 2026-11-12 the labelling tool's `player_name`
+ * reaches the stream only in `raw_data.labels.human_label.items`, and `raw_data` is dropped once
+ * the record is read. The name is taken only from a label about one player (`obj: 'player'`, as a
+ * card is): a substitution is about two, and its one `player_name` names neither. A name the entry
+ * has of its own comes first. The entry is copied, never changed.
+ */
+function withLabelName(frame: Frame, raw: unknown): Frame {
+  const label = isRecord(raw) && isRecord(raw.labels) ? raw.labels.human_label : undefined
+  if (!isRecord(label) || label.obj !== 'player' || typeof label.uuid !== 'string' || !isRecord(label.items)) return frame
+  const name = plainName(label.items.player_name)
+  const actions = frame.state?.actions
+  const at = actions?.findIndex((action) => action.uuid === label.uuid) ?? -1
+  if (name === null || !actions || at < 0 || plainName(actions[at]!.player_name) !== null) return frame
+  const named = actions.map((action, i) => (i === at ? { ...action, player_name: name } : action))
+  return { ...frame, state: { ...frame.state, actions: named } }
 }
 
 /** A countdown in seconds: a finite number, 0 or more. */

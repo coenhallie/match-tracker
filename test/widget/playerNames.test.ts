@@ -13,6 +13,13 @@ describe("a carded player's name", () => {
     expect(playerName(1, 9)).toBe('#9')
   })
 
+  it("takes the label's name for a number the host does not name", () => {
+    const { playerName } = resolveOptions({ teams: { home: { players: { 9: 'Name' } } } })
+    expect(playerName(0, 7, 'Lando Fring')).toBe('Lando Fring')
+    expect(playerName(0, 9, 'Lando Fring')).toBe('Name')
+    expect(playerName(0, 7, null)).toBe('#7')
+  })
+
   it('writes the number in the moments’ language', () => {
     expect(resolveOptions({ momentLocale: 'zh' }).playerName(0, 7)).toBe('7号')
     expect(resolveOptions({ locale: 'zh-CN' }).playerName(1, 10)).toBe('10号')

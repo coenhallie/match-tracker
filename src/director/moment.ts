@@ -77,7 +77,7 @@ export interface MomentContext {
   reducedMotion(): boolean
   teamName(team: TeamId): string
   /** A carded player's name, or shirt number (DirectorOptions.playerName). */
-  playerName(team: TeamId, number: number): string
+  playerName(team: TeamId, number: number, labelName?: string | null): string
   /** A substituted player's name, or shirt number, or null (DirectorOptions.substitutionName). */
   substitutionName(team: TeamId | null, number: number | null): string | null
   teamColor(team: TeamId): string

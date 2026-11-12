@@ -6,6 +6,17 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### What you see
+
+- **A carded player's name from the label.** A yellow or red card now names the
+  player as the labeller did, where `teams.*.players` does not name the shirt
+  number: the live stream sends the name in the label's `raw_data`
+  (`human_label.items.player_name`), and the widget now reads it there. The
+  host's `players` still comes first, and a label with no name (`null`, or
+  `None` as the stream sends for a substitution) still shows the number.
+  Substitutions are unchanged: their label's one `player_name` names neither
+  player.
+
 ## [0.14.0] - 2026-11-12
 
 Substitutions, a team's listed together on one card.

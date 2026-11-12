@@ -116,8 +116,11 @@ export interface Resolved {
   colors: Record<PersonRole, PersonColors>
   teamName: (team: TeamId) => string
   teamColor: (team: TeamId) => string
-  /** A carded player's name, or shirt number, as the moments write it. */
-  playerName: (team: TeamId, number: number) => string
+  /**
+   * A carded player's name, or shirt number, as the moments write it: the host's name for the number
+   * first, then the name the label gave (`labelName`), then the number.
+   */
+  playerName: (team: TeamId, number: number, labelName?: string | null) => string
   /**
    * A substituted player's name, or shirt number, or null: the substitution's players are roster ids,
    * so one above 99, not a shirt number, is shown only if the host names it.
@@ -148,8 +151,8 @@ export function resolveOptions(options: MutableOptions): Resolved {
     colors,
     teamName: (team) => names[team],
     teamColor: (team) => fills[team],
-    playerName: (team, number) =>
-      players[team]?.[number] || formatText(momentText.playerNumber, { number: String(number) }),
+    playerName: (team, number, labelName) =>
+      players[team]?.[number] || labelName || formatText(momentText.playerNumber, { number: String(number) }),
     substitutionName: (team, number) => {
       if (number === null) return null
       const name = team === null ? undefined : players[team]?.[number]

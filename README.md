@@ -261,7 +261,7 @@ Also exported:
 | `locale` | `'en' \| 'zh'`, or a language tag | `'en'` | The built-in text. A tag is read by its language: `'zh-CN'`, `'zh-TW'` and `'zh-Hans'` are `'zh'`, `'en-GB'` is `'en'`. Anything else is English. |
 | `momentLocale` | `'en' \| 'zh'`, or a language tag | `locale` | The language of the words the moments write on the canvas: the cards' titles and texts, and the word under the team's name in the attack's label. Read as `locale` is. For keeping them in one language while the HUD follows `locale`, for example English until a translation is approved. `text` overrides them as it does the rest. Can be changed with `setOptions`. |
 | `text` | `TrackerTextOverrides` | | Any string, in place of the locale's. In `layers`, any `label` or `hint` of any layer: what you leave out stays the locale's. |
-| `teams` | `{ home?: { name?, color?, players? }, away?: { name?, color?, players? } }` | | Team 0 is home and team 1 is away. A name defaults to the localised "Red" and "Blue". A `color` is the team's fill, on its players, its attack and its label. `players` names the team's players by shirt number, `{ 9: 'Name' }`, for the cards and the substitutions; a player with no name is shown by the number ("#9"). |
+| `teams` | `{ home?: { name?, color?, players? }, away?: { name?, color?, players? } }` | | Team 0 is home and team 1 is away. A name defaults to the localised "Red" and "Blue". A `color` is the team's fill, on its players, its attack and its label. `players` names the team's players by shirt number, `{ 9: 'Name' }`, for the cards and the substitutions; a carded player with no name here is shown by the name the labeller gave, if any, and otherwise, as a substituted player is, by the number ("#9"). |
 | `colors` | `Partial<Record<PersonRole, Partial<PersonColors>>>` | video-annotation's | `fill`, `outline` and `text` per role: `home`, `away`, `goalkeeper`, `official`, `unknown`. A team's `color` wins over `fill` here. |
 | `layers` | `Partial<ReplayLayers>` | all on | The layers shown until the viewer chooses in the menu. |
 | `layersMenu` | `boolean` | `true` | `false` takes the layers button and menu out. The layers are then the defaults over `layers`, and nothing is read from or written to `layersStorageKey`. Can be changed with `setOptions`. |
@@ -379,8 +379,10 @@ across the middle of the pitch, as the VAR check's, on a human's card label
 (the labelling tool's "Player yellow card" and "Player red card"; the
 `yellowCard` and `redCard` layers, on by default). Under the band, the team's
 name, and a small card in the card's colour before the player: named from the
-`teams` option's `players`, or by shirt number. The live stream gives the team
-and the number with the label; a label without them shows no team, or no
+`teams` option's `players`, else by the name the labeller gave, else by shirt
+number. The live stream gives the team and the number with the label, and the
+labeller's player name in the label's `raw_data` (`human_label.items.player_name`);
+a label without a team shows no team, and one without a number or a name no
 player.
 - It fades in, stays at least 2 s and fades out as the VAR check does, with
   everyone on the pitch and the ball faded out.

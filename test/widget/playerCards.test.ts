@@ -30,6 +30,26 @@ function carded(i: number, kind: 'yellow' | 'red', uuid: string, team = 0, numbe
   return JSON.stringify(parsed)
 }
 
+/**
+ * `carded`, with the player's name where the live stream has sent it since 2026-11-12: only in the
+ * label's own copy, `raw_data.labels.human_label.items`, and not in `state.actions`.
+ */
+function named(i: number, kind: 'yellow' | 'red', uuid: string, name: string | null, team = 0, number = 3): string {
+  const parsed = JSON.parse(carded(i, kind, uuid, team, number)) as Record<string, unknown>
+  parsed.raw_data = {
+    labels: {
+      human_label: {
+        uuid,
+        frame_match: 'current',
+        action_name: `Player ${kind} card`,
+        obj: 'player',
+        items: { team_id: team, player_name: name, team_name: 'Team Home', player: 23, number },
+      },
+    },
+  }
+  return JSON.stringify(parsed)
+}
+
 /** Live play, up to a frame before the card. */
 function playing(tracker: MatchTracker, from = 0, to = 5) {
   for (let i = from; i < to; i++) {
@@ -95,6 +115,35 @@ describe('a player card through the widget', () => {
     tracker.push(carded(8, 'red', 'u2'))
     frames(200)
     expect(written(host)).toEqual(expect.arrayContaining(['RED CARD', 'Ajax', 'New']))
+  })
+
+  it("names the player from the label's name, when the host does not name the number", () => {
+    const { host, tracker } = mount({ teams: { home: { name: 'Ajax' } } })
+    playing(tracker)
+    written(host)
+    tracker.push(named(5, 'yellow', 'u1', 'Lando Fring'))
+    frames(200)
+    expect(written(host)).toEqual(expect.arrayContaining(['YELLOW CARD', 'Ajax', 'Lando Fring']))
+  })
+
+  it("names the player as the host does over the label's name", () => {
+    const { host, tracker } = mount({ teams: { home: { players: { 3: 'Name' } } } })
+    playing(tracker)
+    written(host)
+    tracker.push(named(5, 'red', 'u1', 'Lando Fring'))
+    frames(200)
+    const texts = written(host)
+    expect(texts).toEqual(expect.arrayContaining(['RED CARD', 'Name']))
+    expect(texts).not.toContain('Lando Fring')
+  })
+
+  it('writes the number for a label with no name, as the stream sends a substitution', () => {
+    const { host, tracker } = mount()
+    playing(tracker)
+    written(host)
+    tracker.push(named(5, 'red', 'u1', 'None'))
+    frames(200)
+    expect(written(host)).toEqual(expect.arrayContaining(['RED CARD', '#3']))
   })
 
   it('switches the yellow card off in the layers menu', () => {
