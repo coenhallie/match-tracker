@@ -1,6 +1,6 @@
 # The substitution card
 
-Status: design, 2026-11-12. Not built.
+Status: design, approved 2026-11-12. Not built.
 
 ## Why
 
