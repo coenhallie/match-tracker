@@ -3,7 +3,7 @@ import { GOAL_SEQUENCE_MS, goalCamera, planGoal } from '../../src/analysis/goalS
 import { blendCamera, takesCamera } from '../../src/director/camera'
 import { Director, type DirectorInput, type DirectorView } from '../../src/director/director'
 import { Goal } from '../../src/director/goal'
-import { DEFAULT_REPLAY_LAYERS } from '../../src/model/replayLayers'
+import { DEFAULT_REPLAY_LAYERS, type ReplayLayers } from '../../src/model/replayLayers'
 import type { Frame } from '../../src/model/types'
 import { viewFromCamera } from '../../src/render/viewTransform'
 import { FakeReplay, VIEW } from './harness'
@@ -23,8 +23,8 @@ const goalFrame = (labels: string[], ball: { x: number; y: number } | null = { x
   }) as Frame
 
 /** Mounted the way load() leaves it, then playing at 10 s (reference :735-746). */
-function playing(): FakeReplay {
-  const replay = new FakeReplay()
+function playing(layers: Partial<ReplayLayers> = {}): FakeReplay {
+  const replay = new FakeReplay(layers)
   replay.set({ time: 10, frame: goalFrame(['other']), playing: true })
   return replay
 }
@@ -52,16 +52,19 @@ describe('goal sequence', () => {
     expect(lastOverlay(replay)).toBeDefined()
   })
 
-  it('plays when playback runs into a penalty scored label', () => {
-    const replay = playing()
+  // With the penalty's layer on, a penalty scored plays the penalty's kick instead (penalty.test.ts);
+  // with it off, it is a goal's label, as it was before the penalty.
+  it('plays when playback runs into a penalty scored label, with the penalty layer off', () => {
+    const replay = playing({ penalty: false })
     tick(replay, goalFrame(['Penalty scored']))
     replay.animate(1200)
     expect(lastOverlay(replay)).toBeDefined()
   })
 
   // The label usually stays on for many frames, and an analyst may give both: still one goal.
-  it('plays once for a penalty scored followed by a goal label', () => {
-    const replay = playing()
+  // The penalty layer off, as above.
+  it('plays once for a penalty scored followed by a goal label, with the penalty layer off', () => {
+    const replay = playing({ penalty: false })
     tick(replay, goalFrame(['Penalty scored']))
     replay.animate(1200)
     expect(lastOverlay(replay)).toBeDefined()

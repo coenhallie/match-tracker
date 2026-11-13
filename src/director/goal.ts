@@ -19,10 +19,11 @@
  *
  * ## The scorer
  *
- * The labelling tool labels a goal twice: "Goal" (or "Penalty scored"), which
- * names the team, and a few seconds later "Player scored", which names the
- * player (scorerLabel.ts). The scorer and their team are written under the
- * goal's banner (goalBanner.ts). The reference has no scorer.
+ * The labelling tool labels a goal twice: "Goal" (or "Penalty scored", with the
+ * penalty's layer off: on, the penalty plays it, penalty.ts), which names the
+ * team, and a few seconds later "Player scored", which names the player
+ * (scorerLabel.ts). The scorer and their team are written under the goal's
+ * banner (goalBanner.ts). The reference has no scorer.
  *
  * Live, a goal label waits up to `scorerWaitS` of the clock for its scorer, and
  * plays then, with them; with none by then, it plays without. The shot is
@@ -134,7 +135,9 @@ export class Goal implements Moment {
    * calls `start`.
    */
   detect(frame: Frame, time: number): GoalStart | null {
-    const labelled = isGoalFrame(frame)
+    // A penalty scored is the penalty's to play while its layer is on (penalty.ts), and no goal's.
+    const penaltyIsGoal = !this.ctx.layers().penalty
+    const labelled = isGoalFrame(frame, penaltyIsGoal)
     const scorer = scorerLabel(frame)
     const newGoal = labelled && !this.labelSeen
     const newScorer = scorer !== null && !this.scorerSeen
@@ -142,7 +145,7 @@ export class Goal implements Moment {
     this.scorerSeen = scorer !== null
     if (!this.ctx.layers().goal || !this.ctx.playback()) return null
     if (newGoal && !this.goal && !this.pending) {
-      const team = goalLabelTeam(frame)
+      const team = goalLabelTeam(frame, penaltyIsGoal)
       if (newScorer) return { frame, team, scorer }
       if (this.scorerWaitS <= 0) return { frame, team, scorer: null }
       this.pending = { frame, team, at: time }

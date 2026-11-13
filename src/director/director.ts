@@ -3,7 +3,7 @@
  * PipelineOutputSurface.vue (video-annotation 6f14d1f) with no framework
  * under it. Given what is on screen, the playback clock and whether play is
  * running, it decides what is drawn over the data: the moments (goal, attack,
- * corner, free kick, throw-in, and the attack over a player loss), the rings and the
+ * corner, free kick, throw-in, the penalty, and the attack over a player loss), the rings and the
  * "received" covers, how the ball is turned, and where the view is while a
  * goal moves it. The reference's free kick is not shown: the free kick is the
  * widget's own (freeKick.ts). It owns no DOM and no
@@ -27,7 +27,8 @@
  *  4. The frame watcher (`:1268-1309`, flush post). When the record, phase,
  *     time or trail changed and there is a record: on a new record, label
  *     detection (in the reference's order: goal, throw-in, attack, with the
- *     corner, which the reference does not have, after the goal, where the
+ *     penalty, which the reference does not have, straight after the goal, the
+ *     corner, which it does not have either, after that, where the
  *     reference's free kick was, then the widget's own free kick, and the
  *     attack over a player loss, which it does not have either, last);
  *     then the rings and covers move on by `dt = time - previous time` on a
@@ -118,7 +119,7 @@
  * ## The moments
  *
  * Each moment is a module of its own (`goal.ts`, `attack.ts`, `corner.ts`,
- * `throwIn.ts`, `labelCard.ts`, `playerLoss.ts`) behind the narrow interface in
+ * `throwIn.ts`, `labelCard.ts`, `playerLoss.ts`, `penalty.ts`) behind the narrow interface in
  * moment.ts, reading and acting through the `MomentContext` the director
  * lends it. The director holds one
  * of each, one `LabelCard` per card in LABEL_CARDS, and does what crosses between them: which takes over from which,
@@ -161,6 +162,7 @@ import { FreeKick } from './freeKick.js'
 import { Goal } from './goal.js'
 import { GoalZoom } from './goalZoom.js'
 import { LabelCard, type CardAbout, type SubstitutionOnCard } from './labelCard.js'
+import { Penalty, type PenaltyPhase } from './penalty.js'
 import { SUBSTITUTION_MAX_ROWS, type LabelCardPlayer } from '../render/labelCard.js'
 import { PlayerLoss, type PlayerLossState } from './playerLoss.js'
 import { teamWords, type Moment, type MomentContext, type MomentMemory, type ShownReplay } from './moment.js'
@@ -315,6 +317,7 @@ export class Director {
   /** The player cards waiting to play, in turn (cardQueue.ts). */
   private readonly cardQueue = new CardQueue()
   private readonly playerLoss: PlayerLoss
+  private readonly penalty: Penalty
   private readonly goalZoom = new GoalZoom()
   /** Whether the user has the view, so the zoom near goal leaves it where they put it. */
   private userHasView = false
@@ -371,11 +374,17 @@ export class Director {
     this.throwIn = new ThrowIn(this.context)
     this.labelCards = LABEL_CARDS.map((card) => new LabelCard(this.context, card))
     this.playerLoss = new PlayerLoss(this.context, options.coverInvalidFrames)
+    this.penalty = new Penalty(this.context, true)
   }
 
   /** Whether a goal's label is waiting for its scorer's (goal.ts, "The scorer"): it plays when they come, or the wait is over. */
   get goalWaiting(): boolean {
     return this.goal.waiting
+  }
+
+  /** Where the penalty showing is (penalty.ts): its card, waiting for the kick, the kick, holding or leaving; null for none. */
+  get penaltyPhase(): PenaltyPhase | null {
+    return this.penalty.phase
   }
 
   /** The user's view: their zoom and pan, or where a sequence has put them, and the width drawn at. */
@@ -560,7 +569,7 @@ export class Director {
    */
   reset(): void {
     this.goal.stop()
-    for (const moment of [this.goal, this.attack, this.playerLoss, this.corner, this.freeKick, this.throwIn, ...this.labelCards]) {
+    for (const moment of [this.goal, this.attack, this.playerLoss, this.corner, this.freeKick, this.throwIn, this.penalty, ...this.labelCards]) {
       moment.reset()
     }
     this.requests = []
@@ -660,6 +669,11 @@ export class Director {
         this.stopMoment(this.throwIn)
         this.stopLabelCards(true)
         if (this.goal.start(goal.frame, goal)) this.request(this.goal)
+      }
+      // A penalty's labels start it, or move it on: one request for its frames, however often they do.
+      if (this.penalty.detect(frame, time)) {
+        this.cancel(this.penalty)
+        this.request(this.penalty)
       }
       // A set piece takes over from an attack, the attack over a player loss, a throw-in, a label
       // card and the other set piece: the latest of a corner and a free kick shows.
@@ -795,6 +809,7 @@ export class Director {
     this.stopMoment(this.corner)
     this.stopMoment(this.freeKick)
     this.stopMoment(this.throwIn)
+    this.stopMoment(this.penalty)
     for (const card of this.labelCards) if (!keepStaying || !card.staysOn) this.stopMoment(card)
     // A pause, a press, a seek or a moment by hand: the cards waiting go with the one showing.
     this.cardQueue.clear()
@@ -1046,6 +1061,7 @@ export class Director {
       labelCard: this.labelCards.find((card) => !card.small && card.active)?.value(),
       smallLabelCard: this.labelCards.find((card) => card.small && card.active)?.value(),
       goalBanner: this.goal.banner(),
+      penalty: this.penalty.value(),
       rings: {
         nearby: this.layers.nearbyRings ? new Map(this.rings.nearby) : new Map(),
         possession: new Map(this.rings.possession),
@@ -1062,7 +1078,7 @@ export class Director {
 
   /** True while any moment or fade needs another tick: `animating` of the next output. */
   get animating(): boolean {
-    const moments: Moment[] = [this.goal, this.attack, this.playerLoss, this.corner, this.freeKick, this.throwIn, ...this.labelCards]
+    const moments: Moment[] = [this.goal, this.attack, this.playerLoss, this.corner, this.freeKick, this.throwIn, this.penalty, ...this.labelCards]
     return moments.some((m) => m.active && !m.idle) || this.rings.fading() || this.goalZoom.moving
   }
 

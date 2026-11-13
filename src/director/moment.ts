@@ -1,6 +1,6 @@
 /**
  * The seam between the director and its moments (goal.ts, attack.ts,
- * corner.ts, throwIn.ts, labelCard.ts, playerLoss.ts): what a moment is to the director,
+ * corner.ts, throwIn.ts, labelCard.ts, playerLoss.ts, penalty.ts): what a moment is to the director,
  * and what the director lends each moment to read and act through. See "The
  * moments" in director.ts.
  */

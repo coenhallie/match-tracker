@@ -193,6 +193,25 @@ describe('the scorer under the goal', () => {
     expect(replay.last()?.goal).toBeUndefined()
   })
 
+  // A penalty scored is the penalty's to play (penalty.test.ts): no goal waits for its scorer. With the
+  // penalty's layer off it is a goal's label again, and waits as any goal does.
+  it('waits for a scorer after a penalty scored only with the penalty layer off', () => {
+    const on = playing()
+    on.step(frame([human('Penalty scored', { team_id: 1 })]))
+    expect(on.director.goalWaiting).toBe(false)
+    on.step(frame([scored()]))
+    on.animate(1200)
+    expect(on.last()?.goal).toBeUndefined()
+
+    const off = new FakeReplay({ penalty: false }, { scorerWaitS: WAIT_S })
+    off.set({ time: 10, frame: frame(), playing: true })
+    off.step(frame([human('Penalty scored', { team_id: 1 })]))
+    expect(off.director.goalWaiting).toBe(true)
+    off.step(frame([scored()]))
+    off.animate(1200)
+    expect(banner(off)?.scorer).toEqual({ player: 'Skyler Fring', team: 'Blue', intensity: 1 })
+  })
+
   describe('how long a goal with its scorer lasts', () => {
     /** A goal with its scorer known from the start, and the zoom near goal off, so the goal moves the view. */
     function scoredGoal(): FakeReplay {
