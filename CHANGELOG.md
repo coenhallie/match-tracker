@@ -6,9 +6,21 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-The goal names its scorer.
+The goal names its scorer, and every label names its team on production too.
 
 ### What you see
+
+- **Labels name their team on production.** The cards, the substitutions, the
+  corner, the free kick and the goal disallowed showed no team on production:
+  its labels give the team's id in its backend as `team_id` (807 for
+  Australia), where staging gives the side (0 or 1). The side is now the
+  label's `is_home` on a label that names a team, else its `team_id` when that
+  is 0 or 1, so a substitution joins its team's card and a card's player is
+  looked up in that team's roster as on staging.
+- **A label's team name** is the host's for its side (`teams`), else the
+  labelling tool's name on the label (`team_name`, "Australia"), else "Red" or
+  "Blue". On staging, without names from the host, that is the labelling tool's
+  "Team Home" or "Team Away" where it was "Red" or "Blue".
 
 - **The scorer under the goal.** The labelling tool labels a goal and then, a
   few seconds later, its scorer (`Player scored`). Once the scorer is known, the

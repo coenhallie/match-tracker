@@ -1,7 +1,6 @@
 import type { Frame } from '../model/types.js'
 import { frameHasAction } from './actionLabels.js'
-import { labelTeam } from './cardLabels.js'
-import type { TeamId } from './teamPhase.js'
+import { labelTeam, type LabelTeam } from './cardLabels.js'
 
 /**
  * The free kick's labels, by their bare names (actionName). The labelling tool sends "Freekick"
@@ -15,7 +14,7 @@ export function isFreeKickFrame(frame: Frame): boolean {
   return FREE_KICK_LABELS.some((name) => frameHasAction(frame, name))
 }
 
-/** The team a human's free kick label on `frame` gives (`team_id`), or null when none does. */
-export function freeKickTeam(frame: Frame): TeamId | null {
+/** The team a human's free kick label on `frame` gives (labelTeam). */
+export function freeKickTeam(frame: Frame): LabelTeam {
   return labelTeam(frame, FREE_KICK_LABELS)
 }

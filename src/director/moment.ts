@@ -5,6 +5,7 @@
  * moments" in director.ts.
  */
 import type { BallTrail } from '../analysis/ballTrail.js'
+import type { LabelTeam } from '../analysis/cardLabels.js'
 import type { Spin } from '../analysis/football.js'
 import type { TeamId, TeamPhase } from '../analysis/teamPhase.js'
 import type { LabelCardKey } from '../model/labelCards.js'
@@ -77,7 +78,8 @@ export interface MomentContext {
   view(): PipelineView
   /** Asked afresh at every use, as the reference queries the media query each time. */
   reducedMotion(): boolean
-  teamName(team: TeamId): string
+  /** A team's name (DirectorOptions.teamName), given the name its label gave if any. */
+  teamName(team: TeamId, labelName?: string | null): string
   /** A carded player's name, or shirt number (DirectorOptions.playerName). */
   playerName(team: TeamId, number: number, labelName?: string | null): string
   /** A substituted player's name, or shirt number, or null (DirectorOptions.substitutionName). */
@@ -85,4 +87,13 @@ export interface MomentContext {
   teamColor(team: TeamId): string
   /** `showCamera`: put the user's view on `camera`. The view reaches the renderer at the next flush. */
   showCamera(camera: Camera): void
+}
+
+/**
+ * The team a label gives (teamOfLabel), in the words drawn: for its side, the host's name, else the
+ * label's, else the side's colour (DirectorOptions.teamName); with no side, the label's name alone;
+ * null when it gives neither.
+ */
+export function teamWords(ctx: Pick<MomentContext, 'teamName'>, label: LabelTeam): string | null {
+  return label.team === null ? label.teamName : ctx.teamName(label.team, label.teamName)
 }

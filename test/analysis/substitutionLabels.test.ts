@@ -9,7 +9,7 @@ const sub = (over: Record<string, unknown>): FrameAction =>
 describe('who a substitution is for', () => {
   it('reads the team, the player going off and the one coming on', () => {
     expect(substitutionLabels(frame(sub({ uuid: 'u', team_id: 0, from: 1, to: 16 })))).toEqual([
-      { key: 'substitution', uuid: 'u', team: 0, from: 1, to: 16, fromName: null, toName: null },
+      { key: 'substitution', uuid: 'u', team: 0, teamName: null, from: 1, to: 16, fromName: null, toName: null },
     ])
   })
 

@@ -83,8 +83,21 @@ export function plainName(name: unknown): string | null {
   return trimmed === '' || trimmed === 'None' || trimmed === 'null' ? null : trimmed
 }
 
+/**
+ * Whether a label is the home team's, from its `is_home`: true for 1, `true` or "home", false for 0,
+ * `false` or "away", null for anything else. The labelling tool writes 1 or 0 on a label about a
+ * player, and the word on a game label (staging, 2026-11-13).
+ */
+export function isHome(value: unknown): boolean | null {
+  if (value === 1 || value === true) return true
+  if (value === 0 || value === false) return false
+  if (typeof value !== 'string') return null
+  const word = value.trim().toLowerCase()
+  return word === 'home' ? true : word === 'away' ? false : null
+}
+
 /** A name a human label gives, by the field of its entry in `state.actions` it goes on. */
-type NameField = 'player_name' | 'player_name_out'
+type NameField = 'player_name' | 'player_name_out' | 'team_name'
 
 /**
  * The names each kind of human label (its `obj`) gives: a label about one player, as a card is, names
@@ -97,10 +110,11 @@ const LABEL_NAMES = new Map<unknown, readonly NameField[]>([
 ])
 
 /**
- * `frame`, with the players' names from the record's human label on the label's own entry in
- * `state.actions`, the entry with its `uuid`. Since 2026-11-12 the labelling tool's names reach the
- * stream only in `raw_data.labels.human_label.items`, and `raw_data` is dropped once the record is
- * read. A name the entry has of its own comes first. The entry is copied, never changed.
+ * `frame`, with the players' names, the team's name and its side (`is_home`) from the record's
+ * human label on the label's own entry in `state.actions`, the entry with its `uuid`. Since
+ * 2026-11-12 the labelling tool's names reach the stream only in `raw_data.labels.human_label.items`,
+ * and `raw_data` is dropped once the record is read. Every kind of label gives its team's. What the
+ * entry has of its own comes first. The entry is copied, never changed.
  */
 function withLabelNames(frame: Frame, raw: unknown): Frame {
   const label = isRecord(raw) && isRecord(raw.labels) ? raw.labels.human_label : undefined
@@ -111,11 +125,13 @@ function withLabelNames(frame: Frame, raw: unknown): Frame {
   const at = actions?.findIndex((action) => action.uuid === label.uuid) ?? -1
   if (!actions || at < 0) return frame
   const entry = actions[at]!
-  const names: Partial<Record<NameField, string>> = {}
-  for (const field of fields) {
+  const names: Partial<Record<NameField, string>> & { is_home?: number | string | boolean } = {}
+  for (const field of [...fields, 'team_name' as const]) {
     const name = plainName(items[field])
     if (name !== null && plainName(entry[field]) === null) names[field] = name
   }
+  const home = items.is_home
+  if (isHome(home) !== null && isHome(entry.is_home) === null) names.is_home = home as number | string | boolean
   if (Object.keys(names).length === 0) return frame
   const named = actions.map((action, i) => (i === at ? { ...action, ...names } : action))
   return { ...frame, state: { ...frame.state, actions: named } }

@@ -144,7 +144,7 @@
 import { sameTrail, type BallTrail } from '../analysis/ballTrail.js'
 import { samePhase, type TeamId, type TeamPhase } from '../analysis/teamPhase.js'
 import { LABEL_CARDS, isLabelCardKey, isPlayerCardKey, isSubstitutionKey, isTeamCardKey, labelCard, labelCardRecord, playerCardColor, type LabelCardKey } from '../model/labelCards.js'
-import { cardLabels, labelTeam, type CardLabel } from '../analysis/cardLabels.js'
+import { NO_TEAM, cardLabels, labelTeam, type CardLabel } from '../analysis/cardLabels.js'
 import { substitutionLabels, type SubstitutionLabel } from '../analysis/substitutionLabels.js'
 import { CardQueue, type QueuedLabel } from './cardQueue.js'
 import type { ReplayLayers, ReplayMoment } from '../model/replayLayers.js'
@@ -163,7 +163,7 @@ import { GoalZoom } from './goalZoom.js'
 import { LabelCard, type CardAbout, type SubstitutionOnCard } from './labelCard.js'
 import { SUBSTITUTION_MAX_ROWS, type LabelCardPlayer } from '../render/labelCard.js'
 import { PlayerLoss, type PlayerLossState } from './playerLoss.js'
-import type { Moment, MomentContext, MomentMemory, ShownReplay } from './moment.js'
+import { teamWords, type Moment, type MomentContext, type MomentMemory, type ShownReplay } from './moment.js'
 import { ThrowIn } from './throwIn.js'
 import { Rings } from './rings.js'
 import type { Camera } from '../model/pitch.js'
@@ -230,7 +230,8 @@ export interface DirectorOptions {
   layers: ReplayLayers
   /** Asked afresh at every use, as the reference queries the media query each time. */
   reducedMotion: () => boolean
-  teamName: (team: TeamId) => string
+  /** A team's name as the moments write it: the host's, else the name its label gave if any, else its colour. */
+  teamName: (team: TeamId, labelName?: string | null) => string
   teamColor: (team: TeamId) => string
   /** A carded player's name, or shirt number, as the moments write it, given the name its label gave if any. */
   playerName: (team: TeamId, number: number, labelName?: string | null) => string
@@ -357,7 +358,7 @@ export class Director {
       spin: () => this.roll.spin,
       view: () => this.view,
       reducedMotion: () => this.options.reducedMotion(),
-      teamName: (team) => this.options.teamName(team),
+      teamName: (team, labelName) => this.options.teamName(team, labelName),
       teamColor: (team) => this.options.teamColor(team),
       playerName: (team, number, labelName) => this.options.playerName(team, number, labelName),
       substitutionName: (team, number, labelName) => this.options.substitutionName(team, number, labelName),
@@ -469,12 +470,13 @@ export class Director {
       // By hand there is a team, but no player to name, nor any substitution to list. A card about a team
       // names the one its label on screen gives, if there is one.
       const teamName = this.options.teamName(team)
+      const labelled = isTeamCardKey(moment) ? labelTeam(frame, labelCard(moment).labels) : NO_TEAM
       const about: CardAbout = isPlayerCardKey(moment)
         ? { player: { team: teamName, player: null, color: playerCardColor(moment) } }
         : isSubstitutionKey(moment)
           ? { substitution: { team, teamName, rows: [] } }
           : isTeamCardKey(moment)
-            ? { team: this.options.teamName(this.labelTeamOf(moment, frame) ?? team) }
+            ? { team: teamWords(this.context, labelled.team === null && labelled.teamName === null ? { team, teamName: null } : labelled) ?? teamName }
             : {}
       card.start(now, frame, true, strength, about)
       this.request(card)
@@ -689,8 +691,8 @@ export class Director {
             this.stopMoment(this.playerLoss)
             this.stopLabelCards()
           }
-          const team = isTeamCardKey(card.key) ? this.labelTeamOf(card.key, frame) : null
-          card.start(time, frame, false, strength, team === null ? {} : { team: this.options.teamName(team) })
+          const team = isTeamCardKey(card.key) ? teamWords(this.context, labelTeam(frame, labelCard(card.key).labels)) : null
+          card.start(time, frame, false, strength, team === null ? {} : { team })
           this.request(card)
         }
       }
@@ -855,7 +857,7 @@ export class Director {
     this.stopLabelCards()
     if (label.key === 'substitution') {
       const rows = [label, ...this.cardQueue.takeSubstitutions(label.team, SUBSTITUTION_MAX_ROWS - 1)]
-      const teamName = label.team === null ? null : this.options.teamName(label.team)
+      const teamName = teamWords(this.context, label)
       card.start(time, frame, false, strength, {
         labels: rows,
         substitution: { team: label.team, teamName, rows: rows.map((row) => this.substitutionOnCard(row)) },
@@ -864,11 +866,6 @@ export class Director {
       card.start(time, frame, false, strength, { player: this.cardPlayer(label), labels: [label] })
     }
     this.request(card)
-  }
-
-  /** The team the label of the card under `key` gives on `frame`, or null when it gives none. */
-  private labelTeamOf(key: LabelCardKey, frame: Frame): TeamId | null {
-    return labelTeam(frame, labelCard(key).labels)
   }
 
   /** A substitution as its card lists it: who went off and who came on, in the words drawn. */
@@ -884,7 +881,7 @@ export class Director {
   private cardPlayer(label: CardLabel): LabelCardPlayer {
     const { team, number } = label
     return {
-      team: team === null ? null : this.options.teamName(team),
+      team: teamWords(this.context, label),
       player: team === null || number === null ? label.name : this.options.playerName(team, number, label.name),
       color: playerCardColor(label.key),
     }

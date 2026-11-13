@@ -1,8 +1,7 @@
 import type { Frame } from '../model/types.js'
 import { actionName, isHumanLabel } from './actionLabels.js'
-import { plainTeam } from './cardLabels.js'
+import { teamOfLabel, type LabelTeam } from './cardLabels.js'
 import type { ShownRecord } from './secondHalf.js'
-import type { TeamId } from './teamPhase.js'
 
 /**
  * A corner of the pitch, by the signs of its x and y in pitch metres: x -1 the
@@ -36,14 +35,10 @@ export function isCornerFrame(frame: Frame): boolean {
 }
 
 /** A corner as a human labelled it: the corner its label names, and the team taking it. */
-export interface CornerLabel {
+/** The team taking it is the label's (teamOfLabel): the labelling tool sends it since 2026-11, the exports do not. */
+export interface CornerLabel extends LabelTeam {
   /** Where the corner is on the pitch as shown, or null when the label names none. */
   side: CornerSide | null
-  /**
-   * The team taking it, from the label's `team_id`, as the labelling tool sends it since 2026-11:
-   * 0 or 1, or null for a label without one (the exports', and older labels).
-   */
-  team: TeamId | null
 }
 
 /**
@@ -64,9 +59,9 @@ export function cornerLabel(record: ShownRecord): CornerLabel | null {
     const name = actionName(action.action_type)
     if (!CORNER_LABELS.has(name)) continue
     const side = CORNER_LABELS.get(name) ?? null
-    const team = plainTeam(action.team_id)
-    if (side) return { side: record.turned ? { x: side.x === 1 ? -1 : 1, y: side.y === 1 ? -1 : 1 } : side, team }
-    first ??= { side: null, team }
+    const team = teamOfLabel(action)
+    if (side) return { side: record.turned ? { x: side.x === 1 ? -1 : 1, y: side.y === 1 ? -1 : 1 } : side, ...team }
+    first ??= { side: null, ...team }
   }
   return first
 }

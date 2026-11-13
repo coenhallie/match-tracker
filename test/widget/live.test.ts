@@ -452,6 +452,16 @@ describe('live input', () => {
     expect(unnamed.teamName(1)).toBe('Navy')
   })
 
+  it("names a label's team after the host's name, else the label's, else its colour", () => {
+    mount({ teams: { home: { name: 'Ajax' } } })
+    const named = control.options.at(-1)!
+    // The host's name goes first; the label's (team_name, as the labelling tool has it) comes next.
+    expect(named.teamName(0, 'Ajax Amsterdam')).toBe('Ajax')
+    expect(named.teamName(1, 'Australia')).toBe('Australia')
+    expect(named.teamName(1, null)).toBe('Blue')
+    expect(named.teamName(1, '')).toBe('Blue')
+  })
+
   it('asks for reduced motion afresh every time', () => {
     mount()
     const options = control.options.at(-1)!

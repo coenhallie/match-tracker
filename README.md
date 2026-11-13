@@ -299,12 +299,32 @@ touchline. Where the ball is plays no part. A corner label that names no corner
 (`Corner`, `Corner kick`, `EventType.CORNER_KICK`) shows the card alone, as does
 a corner played with `trigger` unless the frame on screen carries a label that
 names one. Under the card, the name of the team taking it, when its label gives
-the team (`team_id`), as the labelling tool's do: by its name in the `teams`
-option, else "Red" or "Blue". The exports' labels give none, and show no team.
+the team (see [A label's team](#a-labels-team)). The exports' labels give none,
+and show no team.
 Played with `trigger('corner', team)`, it names the team the label on screen
 gives, else `team`.
 A free kick's label is the labelling tool's `Freekick`, or `Free kick` written in
 any of the ways above (`FREE_KICK`, `EventType.FREE_KICK`).
+
+#### A label's team
+
+The cards, the substitutions, the corner, the free kick, the goal disallowed and
+the goal's scorer name the team their label gives, as the labelling tool sends
+it with each label since 2026-11.
+
+- **Its side**, home or away, is the label's `is_home` (`1` or `0` on a label
+  about a player, `"home"` or `"away"` on a game label), on a label that names a
+  team (a `team_id` or a `team_name`); else its `team_id` when that is `0` (home)
+  or `1` (away). Staging's `team_id` is the side; production's is the team's id
+  in its backend, which says none, so there the side is `is_home`'s. A label that
+  names no team has no side, whatever its `is_home` says: production writes `0`
+  on its `Kick off`. The side groups a team's substitutions on one card, pairs a
+  scorer with their goal, and looks the player up in the `teams` option.
+- **Its name** is the host's for that side, in the `teams` option, else the
+  label's own (`team_name`, the labelling tool's name for the team), else "Red"
+  or "Blue". A label with a name and no side shows its name.
+- The stream sends `is_home` and `team_name` only in the label's `raw_data`
+  (`human_label.items`), and the widget reads them from there.
 
 #### The scorer
 
@@ -314,8 +334,8 @@ row, which gives the player (`team_id`, `player_number` and, in the label's
 `raw_data`, `player_name`). Once the scorer is known, the goal names them under
 its banner, in a band across the foot of the pitch: the scorer's icon and name,
 and their team's name under it. The scorer's name is their name in the `teams`
-option's `players`, else the label's, else their shirt number; the team is its
-name in the `teams` option, else "Red" or "Blue". The band comes and goes with
+option's `players`, else the label's, else their shirt number; the team is named
+as for every label (see [A label's team](#a-labels-team)). The band comes and goes with
 the "GOAL" banner. video-annotation has no scorer.
 
 - **Live, a goal waits for its scorer**, up to 6 s of the stream's clock, and
@@ -342,9 +362,8 @@ in the middle of that half, with the team taking it under the card.
   the middle of the pitch, with nothing shaded.
 - The half without the ball is shaded in the pitch's dark green, up to the
   halfway line, and the card sits in the middle of that half.
-- The team is the one its label gives (`team_id`), as the labelling tool's do, by
-  its name in the `teams` option, else "Red" or "Blue". A label without one shows
-  no team.
+- The team is the one its label gives (see [A label's team](#a-labels-team)). A
+  label without one shows no team.
 - Everyone on the pitch, the ball and its trail fade out as it fades in, as for a
   corner, and back as it goes.
 - It is held as the corner is: it fades in over 0.4 s, stays for at least 2 s and
@@ -381,9 +400,8 @@ written `second half`, `Start second half` or in any of the ways above
   check before it, with no gap in the band. On a frame with both labels, the
   goal disallowed plays.
 - The goal disallowed names the team under the band, as the corner does, when
-  its label gives the team (`team_id`), as the labelling tool's do: by its name
-  in the `teams` option, else "Red" or "Blue". A label without a team shows the
-  card alone. Played with `trigger('goalDisallowed', team)`, it names the team
+  its label gives the team (see [A label's team](#a-labels-team)). A label
+  without a team shows the card alone. Played with `trigger('goalDisallowed', team)`, it names the team
   the label on screen gives, else `team`.
 
 #### Half time and full time

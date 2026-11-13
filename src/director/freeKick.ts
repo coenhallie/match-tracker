@@ -24,7 +24,7 @@ import type { FreeKickBanner } from '../render/freeKick.js'
 import { shownBall } from './ballRoll.js'
 import { clockIntensity, startClock, stepClock, type SetPieceClock } from './setPiece.js'
 import { BALL_MEMORY_S } from './throwIn.js'
-import type { Moment, MomentContext, MomentStep } from './moment.js'
+import { teamWords, type Moment, type MomentContext, type MomentStep } from './moment.js'
 
 interface Showing extends SetPieceClock {
   ball: FreeKickBanner['ball']
@@ -68,11 +68,13 @@ export class FreeKick implements Moment {
     const here = shownBall(record.frame, undefined)
     const { lastBall } = this.ctx.memory()
     const recent = lastBall && now - lastBall.at <= BALL_MEMORY_S ? { x: lastBall.x, y: lastBall.y } : null
-    const taking = freeKickTeam(record.frame) ?? (byHand ? team : null)
+    const label = freeKickTeam(record.frame)
+    const said = label.team !== null || label.teamName !== null
+    const taking = said ? label : { team: byHand ? team : null, teamName: null }
     this.freeKick = {
       ...startClock(byHand),
       ball: here ? { x: here.x, y: here.y } : recent,
-      team: taking === null ? null : this.ctx.teamName(taking),
+      team: teamWords(this.ctx, taking),
     }
   }
 

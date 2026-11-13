@@ -238,3 +238,55 @@ describe("a player label's name", () => {
     expect('player_name' in message.match.state.actions[1]!).toBe(false)
   })
 })
+
+describe("a label's team", () => {
+  /**
+   * A record with one human label, as production sent it on 2026-11-13: the entry's `team_id` is the
+   * team's id in the backend (807, Australia), not the side, and `raw_data.labels.human_label.items`
+   * says the side (`is_home`) and the team's name (`team_name`).
+   */
+  function labelled(items: Record<string, unknown>, label: Record<string, unknown> = {}, entry: Record<string, unknown> = {}) {
+    const card = { action_type: 'Player red card', action_origin: 'human', uuid: 'u1', team_id: 807, player_number: 4, player_id: 118678 }
+    return {
+      match: { ...frame(225090, 100), state: { actions: [{ ...card, ...entry }] } },
+      raw_data: {
+        labels: {
+          human_label: {
+            uuid: 'u1',
+            frame_match: 'current',
+            action_name: 'Player red card',
+            obj: 'player',
+            items: { is_home: 0, team_id: 807, player_name: 'Jacob Italiano', team_name: 'Australia', player: 118678, number: 4, ...items },
+            ...label,
+          },
+        },
+      },
+    }
+  }
+  const entry = (message: unknown) => parseRecord(message)!.frame.state!.actions![0]!
+
+  it("puts the label's team name and side on its entry, for every kind of label", () => {
+    for (const label of [{}, { obj: 'subst', action_name: 'substitute' }, { obj: 'game', action_name: 'Goal' }]) {
+      const read = entry(labelled({}, label))
+      expect({ label, team_name: read.team_name, is_home: read.is_home }).toEqual({ label, team_name: 'Australia', is_home: 0 })
+    }
+    // A game label's side, as staging sends it: a word.
+    expect(entry(labelled({ is_home: 'home', team_name: 'Team Home' }, { obj: 'game' })).is_home).toBe('home')
+  })
+
+  it('leaves the entry its own, when the stream gives it one', () => {
+    const own = entry(labelled({}, {}, { team_name: 'Socceroos', is_home: 1 }))
+    expect(own.team_name).toBe('Socceroos')
+    expect(own.is_home).toBe(1)
+  })
+
+  it('takes no name or side that is not one', () => {
+    for (const team_name of [null, undefined, '', ' ', 'None', 7]) {
+      expect(entry(labelled({ team_name })).team_name).toBeUndefined()
+    }
+    for (const is_home of [null, undefined, 2, -1, 'yes', '', {}]) {
+      expect(entry(labelled({ is_home })).is_home).toBeUndefined()
+    }
+    expect(entry(labelled({}, { uuid: 'u2' })).team_name).toBeUndefined()
+  })
+})

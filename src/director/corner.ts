@@ -31,7 +31,7 @@ import type { TeamId } from '../analysis/teamPhase.js'
 import { CORNER_REARM_S, cornerSections, type CornerBanner } from '../render/corner.js'
 import { playMoved } from '../analysis/stoppage.js'
 import { clockIntensity, startClock, stepClock, type SetPieceClock } from './setPiece.js'
-import type { Moment, MomentContext, MomentStep } from './moment.js'
+import { teamWords, type Moment, type MomentContext, type MomentStep } from './moment.js'
 
 interface Showing extends SetPieceClock {
   corner: CornerBanner['corner']
@@ -79,11 +79,12 @@ export class Corner implements Moment {
    */
   start(record: TrackerRecord, byHand = false, team: TeamId | null = null): void {
     const label = cornerLabel(record)
-    const taking = label?.team ?? (byHand ? team : null)
+    const said = label !== null && (label.team !== null || label.teamName !== null)
+    const taking = said ? label : { team: byHand ? team : null, teamName: null }
     this.corner = {
       ...startClock(byHand),
       corner: label?.side ?? null,
-      team: taking === null ? null : this.ctx.teamName(taking),
+      team: teamWords(this.ctx, taking),
     }
   }
 

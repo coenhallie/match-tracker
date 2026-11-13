@@ -71,8 +71,19 @@ export interface FrameAction {
   action_origin?: 'ai' | 'human' | string
   /** The label's own id, which the live stream gives a human's label. */
   uuid?: string
-  /** On a human's label about a team or a player, as a card is: the team's team_id. */
+  /**
+   * On a human's label about a team or a player, as a card is: the team. Staging sends the side, 0
+   * home or 1 away; production, the team's id in its backend (807), which says no side.
+   */
   team_id?: number
+  /**
+   * On a human's label about a team or a player: whether it is the home team's, as the labelling
+   * tool says it, 1 or 0 on a label about a player, "home" or "away" on a game label (isHome). The
+   * stream sends it in the label's `raw_data`, and parseRecord puts it here.
+   */
+  is_home?: number | string | boolean
+  /** On a human's label about a team or a player: the team's name, as the labelling tool has it (as `is_home`). */
+  team_name?: string
   /** On a human's label about a player, as a card is: the player's shirt number. */
   player_number?: number
   /**

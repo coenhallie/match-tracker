@@ -35,13 +35,13 @@
  */
 import { GOAL_SEQUENCE_MS, goalCamera, goalCameraWeight, goalLabelTeam, goalStateAt, isGoalFrame, planGoal, type GoalPlan, type GoalState } from '../analysis/goalSequence.js'
 import { scorerLabel, type ScorerLabel } from '../analysis/scorerLabel.js'
-import type { TeamId } from '../analysis/teamPhase.js'
+import { NO_TEAM, type LabelTeam } from '../analysis/cardLabels.js'
 import type { Frame } from '../model/types.js'
 import { goalBannerIntensity, goalBannerSlide, type GoalBanner, type GoalScorer } from '../render/goalBanner.js'
 import type { GoalOverlay } from '../render/renderer.js'
 import { cameraFromView } from '../render/viewTransform.js'
 import { blendCamera } from './camera.js'
-import type { Moment, MomentContext, MomentStep } from './moment.js'
+import { teamWords, type Moment, type MomentContext, type MomentStep } from './moment.js'
 import type { Camera } from '../model/pitch.js'
 
 /**
@@ -62,26 +62,26 @@ export const GOAL_SCORER_IN_MS = 400
 /** What a goal starts from: the record its shot is planned on, its team, and its scorer, if known. */
 export interface GoalStart {
   frame: Frame
-  team: TeamId | null
+  team: LabelTeam
   scorer: ScorerLabel | null
 }
 
 /** A goal's label, waiting for its scorer since `at` on the clock. */
 interface Waiting {
   frame: Frame
-  team: TeamId | null
+  team: LabelTeam
   at: number
 }
 
 const clamp01 = (k: number) => Math.min(1, Math.max(0, k))
 
-/** Whether `scorer` can be the scorer of a goal by `team`: unless both name a team, and not the same one. */
-const scorerOf = (team: TeamId | null, scorer: ScorerLabel) => team === null || scorer.team === null || team === scorer.team
+/** Whether `scorer` can be the scorer of a goal by `team`: unless both give a side, and not the same one. */
+const scorerOf = ({ team }: LabelTeam, scorer: ScorerLabel) => team === null || scorer.team === null || team === scorer.team
 
 interface Running {
   plan: GoalPlan
   /** The team its label gave, if any. */
-  team: TeamId | null
+  team: LabelTeam
   /** Who scored, in the words drawn, once known. */
   scorer: GoalScorer | null
   /** When the scorer came, in ms into the sequence, for one who came while it played; null for one known from the start. */
@@ -174,7 +174,7 @@ export class Goal implements Moment {
   start(frame: Frame, from: Partial<Omit<GoalStart, 'frame'>> = {}): boolean {
     const plan = planGoal(frame)
     if (!plan) return false
-    const team = from.team ?? null
+    const team = from.team ?? NO_TEAM
     this.pending = null
     this.goal = {
       plan,
@@ -282,17 +282,17 @@ export class Goal implements Moment {
     if (this.goalLabelAt !== null && Math.abs(time - this.goalLabelAt) <= SCORER_AFTER_GOAL_S) return null
     // Their goal, as if labelled: the same scorer labelled again soon after plays nothing.
     this.goalLabelAt = time
-    return { frame, team: scorer.team, scorer }
+    return { frame, team: { team: scorer.team, teamName: scorer.teamName }, scorer }
   }
 
   /**
-   * The scorer in the words drawn: their team's name, and their name or shirt number, as a carded
-   * player's (DirectorOptions.playerName). Of the goal's team when their label names none.
+   * The scorer in the words drawn: their team's name (teamWords), and their name or shirt number, as a
+   * carded player's (DirectorOptions.playerName). Of the goal's team when their label says none.
    */
-  private named(scorer: ScorerLabel, goalTeam: TeamId | null): GoalScorer {
-    const team = scorer.team ?? goalTeam
+  private named(scorer: ScorerLabel, goalTeam: LabelTeam): GoalScorer {
+    const team = scorer.team ?? goalTeam.team
     return {
-      team: team === null ? null : this.ctx.teamName(team),
+      team: teamWords(this.ctx, { team, teamName: scorer.teamName ?? goalTeam.teamName }),
       player: team === null || scorer.number === null ? scorer.name : this.ctx.playerName(team, scorer.number, scorer.name),
     }
   }

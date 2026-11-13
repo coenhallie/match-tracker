@@ -4,6 +4,7 @@ import { gunzipSync } from 'node:zlib'
 import { describe, it, expect } from 'vitest'
 import { scorerLabel } from '../../src/analysis/scorerLabel'
 import { goalLabelTeam } from '../../src/analysis/goalSequence'
+import { NO_TEAM } from '../../src/analysis/cardLabels'
 import { parseRecord } from '../../src/model/parseRecord'
 import type { Frame, FrameAction } from '../../src/model/types'
 
@@ -16,6 +17,7 @@ describe('who scored', () => {
     expect(scorerLabel(frame(scored({ uuid: 'u1', team_id: 1, player_number: 3, player_name: 'Skyler Fring' })))).toEqual({
       uuid: 'u1',
       team: 1,
+      teamName: null,
       number: 3,
       name: 'Skyler Fring',
     })
@@ -37,15 +39,16 @@ describe('who scored', () => {
     expect(scorerLabel(frame(scored({ team_id: 2, player_number: -1, player_name: 'None' })))).toEqual({
       uuid: null,
       team: null,
+      teamName: null,
       number: null,
       name: null,
     })
   })
 
   it("reads a goal's team from its label", () => {
-    expect(goalLabelTeam(frame({ action_type: 'Goal', action_origin: 'human', team_id: 1 } as FrameAction))).toBe(1)
-    expect(goalLabelTeam(frame({ action_type: 'Penalty scored', action_origin: 'human', team_id: 0 } as FrameAction))).toBe(0)
-    expect(goalLabelTeam(frame({ action_type: 'Goal', action_origin: 'human' } as FrameAction))).toBeNull()
+    expect(goalLabelTeam(frame({ action_type: 'Goal', action_origin: 'human', team_id: 1 } as FrameAction))).toEqual({ team: 1, teamName: null })
+    expect(goalLabelTeam(frame({ action_type: 'Penalty scored', action_origin: 'human', team_id: 0 } as FrameAction))).toEqual({ team: 0, teamName: null })
+    expect(goalLabelTeam(frame({ action_type: 'Goal', action_origin: 'human' } as FrameAction))).toEqual({ team: null, teamName: null })
   })
 
   it('reads the goals and their scorers off records from the staging stream', () => {
@@ -57,10 +60,11 @@ describe('who scored', () => {
       .split('\n')
       .map((line) => parseRecord(JSON.parse(line))!)
     expect(records.map((r) => [r.frameCount, goalLabelTeam(r.frame), scorerLabel(r.frame)])).toEqual([
-      [220941, 1, null],
-      [221062, null, { uuid: '3c41ef96-3e90-44e1-b767-89165521f23c', team: 1, number: 3, name: 'Skyler Fring' }],
-      [221207, 0, null],
-      [221268, null, { uuid: expect.any(String), team: 0, number: 2, name: 'Jimmy Fett' }],
+      // Staging's teams have no names: the labelling tool's placeholders.
+      [220941, { team: 1, teamName: 'Team Away' }, null],
+      [221062, NO_TEAM, { uuid: '3c41ef96-3e90-44e1-b767-89165521f23c', team: 1, teamName: 'Team Away', number: 3, name: 'Skyler Fring' }],
+      [221207, { team: 0, teamName: 'Team Home' }, null],
+      [221268, NO_TEAM, { uuid: expect.any(String), team: 0, teamName: 'Team Home', number: 2, name: 'Jimmy Fett' }],
     ])
   })
 })

@@ -4,9 +4,9 @@ import type { CardLabel } from '../../src/analysis/cardLabels'
 import type { SubstitutionLabel } from '../../src/analysis/substitutionLabels'
 import type { QueuedLabel } from '../../src/director/cardQueue'
 
-const red = (uuid: string | null, number = 3): CardLabel => ({ key: 'redCard', uuid, team: 0, number, name: null })
-const yellow = (uuid: string | null, number = 4): CardLabel => ({ key: 'yellowCard', uuid, team: 1, number, name: null })
-const sub = (uuid: string | null, team: 0 | 1 = 0, from = 1, to = 16): SubstitutionLabel => ({ key: 'substitution', uuid, team, from, to, fromName: null, toName: null })
+const red = (uuid: string | null, number = 3): CardLabel => ({ key: 'redCard', uuid, team: 0, teamName: null, number, name: null })
+const yellow = (uuid: string | null, number = 4): CardLabel => ({ key: 'yellowCard', uuid, team: 1, teamName: null, number, name: null })
+const sub = (uuid: string | null, team: 0 | 1 = 0, from = 1, to = 16): SubstitutionLabel => ({ key: 'substitution', uuid, team, teamName: null, from, to, fromName: null, toName: null })
 const drain = (queue: CardQueue) => {
   const out: QueuedLabel[] = []
   for (let label = queue.take(); label; label = queue.take()) out.push(label)

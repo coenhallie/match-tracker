@@ -1,8 +1,7 @@
 import { plainName } from '../model/parseRecord.js'
 import type { Frame } from '../model/types.js'
 import { actionName, isHumanLabel } from './actionLabels.js'
-import { plainNumber, plainTeam, plainUuid } from './cardLabels.js'
-import type { TeamId } from './teamPhase.js'
+import { plainNumber, plainUuid, teamOfLabel, type LabelTeam } from './cardLabels.js'
 
 /**
  * The scorer's label, by its bare name (actionName). In the labelling tool a goal is two labels:
@@ -14,13 +13,12 @@ import type { TeamId } from './teamPhase.js'
 export const SCORER_LABELS = ['player scored'] as const
 
 /**
- * Who scored, as the scorer's label says it: its `uuid`, the team (`team_id`), the shirt number
+ * Who scored, as the scorer's label says it: its `uuid`, the team (teamOfLabel), the shirt number
  * (`player_number`) and the player's name (`player_name`, which parseRecord moves there from the
  * label's `raw_data`). Anything the label does not say plainly is null, as for a card (cardLabels.ts).
  */
-export interface ScorerLabel {
+export interface ScorerLabel extends LabelTeam {
   uuid: string | null
-  team: TeamId | null
   number: number | null
   name: string | null
 }
@@ -33,7 +31,7 @@ export function scorerLabel(frame: Frame): ScorerLabel | null {
   if (!action) return null
   return {
     uuid: plainUuid(action.uuid),
-    team: plainTeam(action.team_id),
+    ...teamOfLabel(action),
     number: plainNumber(action.player_number),
     name: plainName(action.player_name),
   }

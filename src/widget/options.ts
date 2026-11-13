@@ -114,7 +114,11 @@ export interface Resolved {
   /** The words the moments write on the canvas, in `momentLocale`. */
   momentText: TrackerText
   colors: Record<PersonRole, PersonColors>
-  teamName: (team: TeamId) => string
+  /**
+   * A team's name: the host's (`teams`), else the name its label gave if any (the labelling tool's
+   * `team_name`), else its colour.
+   */
+  teamName: (team: TeamId, labelName?: string | null) => string
   teamColor: (team: TeamId) => string
   /**
    * A carded player's name, or shirt number, as the moments write it: the host's name for the number
@@ -143,14 +147,15 @@ export function resolveOptions(options: MutableOptions): Resolved {
   const { home, away } = options.teams ?? {}
   if (home?.color) colors.home.fill = home.color
   if (away?.color) colors.away.fill = away.color
-  const names: Record<TeamId, string> = { 0: home?.name || text.red, 1: away?.name || text.blue }
+  const hostNames: Record<TeamId, string | undefined> = { 0: home?.name, 1: away?.name }
+  const colourNames: Record<TeamId, string> = { 0: text.red, 1: text.blue }
   const fills: Record<TeamId, string> = { 0: colors.home.fill, 1: colors.away.fill }
   const players: Record<TeamId, Record<number, string> | undefined> = { 0: home?.players, 1: away?.players }
   return {
     text,
     momentText,
     colors,
-    teamName: (team) => names[team],
+    teamName: (team, labelName) => hostNames[team] || labelName || colourNames[team],
     teamColor: (team) => fills[team],
     playerName: (team, number, labelName) =>
       players[team]?.[number] || labelName || formatText(momentText.playerNumber, { number: String(number) }),
