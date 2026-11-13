@@ -2,6 +2,7 @@ import { build2DTransform, FRAME_H, FRAME_W, NET_DEPTH_METRES, resolvePitchDimen
 import type { Frame, PitchDimensions } from '../model/types.js'
 import { frameHasAction } from './actionLabels.js'
 import { labelTeam, type LabelTeam } from './cardLabels.js'
+import { PENALTY_SCORED_LABELS } from './penaltyLabels.js'
 
 /**
  * The goal sequence: when the pipeline labels a frame GOAL, the replay shows a
@@ -82,35 +83,25 @@ const dist = (a: Point, b: Point) => Math.hypot(b.x - a.x, b.y - a.y)
 const easeOutQuad = (u: number) => 1 - (1 - u) * (1 - u)
 const easeOutCubic = (u: number) => 1 - (1 - u) ** 3
 
-/**
- * The names a goal's label goes by, bare (actionName). A penalty scored is a
- * goal: the labelling tool's "Penalty scored" button sends "Penalty scored",
- * and other exports write it "PENALTY_SCORED", "PenaltyScored" or "Penalty
- * goal". "Penalty" alone is a penalty given, not yet a goal, so it is not here.
- */
-const GOAL_LABELS = [
-  'goal',
-  'penalty scored',
-  'penaltyscored',
-  'penalty goal',
-  'penaltygoal',
-  'penalty kick scored',
-  'penalty kick goal',
-  'scored penalty',
-]
+/** The names a goal's label goes by, bare (actionName). A penalty scored is another's (penaltyLabels.ts). */
+const GOAL_LABELS = ['goal']
+
+const goalNames = (penaltyIsGoal: boolean): readonly string[] => (penaltyIsGoal ? [...GOAL_LABELS, ...PENALTY_SCORED_LABELS] : GOAL_LABELS)
 
 /**
- * Whether the pipeline labelled this frame a goal, a penalty scored among them,
- * however the export writes it ("GOAL", "EventType.GOAL", "Penalty scored"; see
- * actionName). Matched whole, so a goal kick (a restart, and common) never counts.
+ * Whether the pipeline labelled this frame a goal, however the export writes it ("GOAL", "EventType.GOAL";
+ * see actionName). A penalty scored is a goal too, as the labelling tool's "Penalty scored" is one from the
+ * spot ("PENALTY_SCORED", "PenaltyScored", "Penalty goal"), unless `penaltyIsGoal` is false: the penalty
+ * layer plays it then. "Penalty" alone is a penalty given, not yet a goal. Matched whole, so a goal kick
+ * (a restart, and common) never counts.
  */
-export function isGoalFrame(frame: Frame): boolean {
-  return GOAL_LABELS.some((name) => frameHasAction(frame, name))
+export function isGoalFrame(frame: Frame, penaltyIsGoal = true): boolean {
+  return goalNames(penaltyIsGoal).some((name) => frameHasAction(frame, name))
 }
 
 /** The team a human's goal label on `frame` gives (labelTeam): the labelling tool sends it since 2026-11. */
-export function goalLabelTeam(frame: Frame): LabelTeam {
-  return labelTeam(frame, GOAL_LABELS)
+export function goalLabelTeam(frame: Frame, penaltyIsGoal = true): LabelTeam {
+  return labelTeam(frame, goalNames(penaltyIsGoal))
 }
 
 /**

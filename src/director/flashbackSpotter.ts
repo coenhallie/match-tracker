@@ -2,6 +2,7 @@ import { frameHasAction } from '../analysis/actionLabels.js'
 import { isCornerFrame } from '../analysis/cornerLabel.js'
 import { HISTORY_S } from '../analysis/derive.js'
 import { isGoalFrame } from '../analysis/goalSequence.js'
+import { penaltyLabels } from '../analysis/penaltyLabels.js'
 import type { TeamPhase } from '../analysis/teamPhase.js'
 import { KIND_RANK, type FlashbackKind, type SpottedMoment } from '../model/flashback.js'
 import type { TrackerRecord } from '../model/types.js'
@@ -32,7 +33,7 @@ function labelKinds(record: TrackerRecord): FlashbackKind[] {
   const kinds: FlashbackKind[] = []
   if (isGoalFrame(frame)) kinds.push('goal')
   if (isCornerFrame(frame)) kinds.push('corner')
-  if (frameHasAction(frame, 'shot on goal') || frameHasAction(frame, 'header on goal')) kinds.push('shot')
+  if (frameHasAction(frame, 'shot on goal') || frameHasAction(frame, 'header on goal') || penaltyLabels(frame).result?.kind === 'missed') kinds.push('shot')
   return kinds
 }
 

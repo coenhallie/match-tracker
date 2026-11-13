@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isGoalFrame, planGoal, goalStateAt, goalCamera, goalCameraWeight, GOAL_SEQUENCE_MS } from '../../src/analysis/goalSequence'
+import { goalLabelTeam, isGoalFrame, planGoal, goalStateAt, goalCamera, goalCameraWeight, GOAL_SEQUENCE_MS } from '../../src/analysis/goalSequence'
 import type { Frame } from '../../src/model/types'
 import { build2DTransform, FRAME_H, FRAME_W, NET_DEPTH_METRES, worldToPx } from '../../src/model/pitch'
 
@@ -60,6 +60,20 @@ describe('isGoalFrame', () => {
     ]
     // Listed by name, so a failure says which.
     expect(labels.filter((label) => !isGoalFrame(frame({ actions: [label] })))).toEqual([])
+  })
+
+  it('counts a penalty scored as a goal only when asked', () => {
+    const scored = ['Penalty scored', 'PENALTY_SCORED', 'EventType.PENALTY_SCORED', 'PenaltyScored', 'Penalty goal', 'Penalty kick scored', 'Penalty kick goal', 'Scored penalty']
+    expect(scored.filter((label) => isGoalFrame(frame({ actions: [label] }), false))).toEqual([])
+    expect(scored.filter((label) => !isGoalFrame(frame({ actions: [label] }), true))).toEqual([])
+    expect(isGoalFrame(frame({ actions: ['Goal'] }), false)).toBe(true)
+    expect(isGoalFrame(frame({ actions: ['Penalty scored', 'Goal'] }), false)).toBe(true)
+  })
+
+  it('gives the goal label team without a penalty scored when asked', () => {
+    const f = { teams: [], state: { actions: [{ action_type: 'Penalty scored', action_origin: 'human', team_id: 1 }] } } as unknown as Frame
+    expect(goalLabelTeam(f)).toEqual({ team: 1, teamName: null })
+    expect(goalLabelTeam(f, false)).toEqual({ team: null, teamName: null })
   })
 
   // A penalty given is not yet a goal, and one missed or saved never is.

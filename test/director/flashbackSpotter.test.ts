@@ -68,6 +68,15 @@ describe('FlashbackSpotter', () => {
     expect(run(records)).toEqual([])
   })
 
+  it('spots a penalty missed as a shot, and a penalty scored as a goal', () => {
+    const records = [record(1, undefined, ['Penalty missed']), record(40, undefined, ['Penalty scored'])]
+    expect(run(records).map((s) => s.kind)).toEqual(['shot', 'goal'])
+  })
+
+  it('spots nothing for a penalty given', () => {
+    expect(run([record(1, undefined, ['Penalty'])])).toEqual([])
+  })
+
   it('spots a corner, a shot on goal and a header on goal', () => {
     const records = [record(1, undefined, ['corner']), record(20, undefined, ['shot on goal']), record(40, undefined, ['header on goal'])]
     expect(run(records).map((s) => s.kind)).toEqual(['corner', 'shot', 'shot'])
