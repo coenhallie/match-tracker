@@ -105,15 +105,23 @@ const BALL_CIRCLE_AT_PX = 45
 const KICK_TURN_DEG = 540
 
 /**
- * Each kick: the curve's control point and end, where a miss carries on to and its size there, and
- * `trailFrom`, where on the curve the trail's far end is once the ball has reached the curve's end:
- * the curve's point nearest the far end of Figma's Line 1 (scored 136:3377, its end at (401.5, 726.7),
- * 4 px off the curve; missed 136:3456, its end at (372, 712), 42 px off, as Figma's line bends more
- * than the ball's curve). The trail keeps that stretch of the curve, 1 - trailFrom, behind the ball.
+ * Each kick: a cubic curve from the spot, its two control points and its end at Figma's ball, fitted
+ * so that its last stretch runs along Figma's Line 1 (scored 136:3377, missed 136:3456), bending as it
+ * does: within 1.8 design px of it for the score and 2.6 for the miss, the ball leaving the spot within
+ * 30 and 45 degrees of straight up. `trailFrom` is where on the curve the trail's far end is once the
+ * ball has reached the curve's end: the curve's point nearest the far end of Line 1, so the trail
+ * keeps that stretch of the curve, 1 - trailFrom, behind the ball. A miss carries on to `on.at`,
+ * straight on from the curve's end, and is `on.size` across there.
  */
-const KICKS: Record<PenaltyResult, { control: Point; end: Point; trailFrom: number; on?: { at: Point; size: number } }> = {
-  scored: { control: { x: 400, y: 470 }, end: { x: 566, y: 380 }, trailFrom: 0.157 },
-  missed: { control: { x: 430, y: 420 }, end: { x: 610, y: 228 }, trailFrom: 0.147, on: { at: { x: 640, y: 150 }, size: 54 } },
+const KICKS: Record<PenaltyResult, { c1: Point; c2: Point; end: Point; trailFrom: number; on?: { at: Point; size: number } }> = {
+  scored: { c1: { x: 331.8, y: 713.4 }, c2: { x: 514.4, y: 680 }, end: { x: 566, y: 380 }, trailFrom: 0.34 },
+  missed: {
+    c1: { x: 239.5, y: 672.5 },
+    c2: { x: 575.6, y: 701.2 },
+    end: { x: 610, y: 228 },
+    trailFrom: 0.325,
+    on: { at: { x: 616, y: 145 }, size: 54 },
+  },
 }
 /** The ball's shadow on the goal line at the kick's end, either way (136:3176, 136:3438). */
 const LINE_SHADOW: Ellipse = { x: 560, y: 551, w: 63, h: 25 }
@@ -219,16 +227,17 @@ const lerpEllipse = (a: Ellipse, b: Ellipse, k: number): Ellipse => ({
   w: lerp(a.w, b.w, k),
   h: lerp(a.h, b.h, k),
 })
-/** The point `k` along the quadratic curve from `a` through control `c` to `b`. */
-const onCurve = (a: Point, c: Point, b: Point, k: number): Point => ({
-  x: (1 - k) ** 2 * a.x + 2 * (1 - k) * k * c.x + k ** 2 * b.x,
-  y: (1 - k) ** 2 * a.y + 2 * (1 - k) * k * c.y + k ** 2 * b.y,
-})
-/** The control point of the stretch of that curve from `j` to `k`: itself a quadratic. */
-const controlBetween = (a: Point, c: Point, b: Point, j: number, k: number): Point => ({
-  x: (1 - j) * (1 - k) * a.x + ((1 - j) * k + j * (1 - k)) * c.x + j * k * b.x,
-  y: (1 - j) * (1 - k) * a.y + ((1 - j) * k + j * (1 - k)) * c.y + j * k * b.y,
-})
+/**
+ * The kick's curve's blossom at (`a`, `b`, `c`): de Casteljau's steps from the spot, each at its own
+ * parameter. At (k, k, k) it is the point `k` along the curve; the stretch from `j` to `k` is itself a
+ * cubic, from (j, j, j) through (j, j, k) and (j, k, k) to (k, k, k).
+ */
+function blossom(kick: { c1: Point; c2: Point; end: Point }, a: number, b: number, c: number): Point {
+  const at = (p: Point, q: Point, k: number): Point => ({ x: lerp(p.x, q.x, k), y: lerp(p.y, q.y, k) })
+  const [p0, p1, p2] = [at(SPOT, kick.c1, a), at(kick.c1, kick.c2, a), at(kick.c2, kick.end, a)]
+  const [q0, q1] = [at(p0, p1, b), at(p1, p2, b)]
+  return at(q0, q1, c)
+}
 
 /** Where everything that moves in the scene is (PenaltyPose), in design pixels. */
 export function penaltyPose(p: PenaltyIndicator): PenaltyPose {
@@ -247,7 +256,7 @@ export function penaltyPose(p: PenaltyIndicator): PenaltyPose {
   }
   const kick = KICKS[p.result]
   const e = easeOutCubic(clamp01(p.kick))
-  let ball = { ...onCurve(SPOT, kick.control, kick.end, e), size: lerp(SPINNER_PX, KICKED_PX, e), turnDeg: KICK_TURN_DEG * e, alpha: 1 }
+  let ball = { ...blossom(kick, e, e, e), size: lerp(SPINNER_PX, KICKED_PX, e), turnDeg: KICK_TURN_DEG * e, alpha: 1 }
   let ballShadow = lerpEllipse(SPOT_SHADOW, LINE_SHADOW, e)
   if (kick.on && p.kick >= 1) {
     const m = clamp01(p.afterKickMs / PENALTY_MISS_ON_MS)
@@ -348,11 +357,11 @@ function drawScene(ctx: CanvasRenderingContext2D, t: Transform2D, p: PenaltyIndi
 
   const { trail, ball } = pose
   if (p.result !== null && trail.alpha > 0 && trail.to > trail.from) {
-    // The stretch of the kick's curve behind the ball, one quadratic, then on to a missed ball carrying on.
+    // The stretch of the kick's curve behind the ball, one cubic, then on to a missed ball carrying on.
     const kick = KICKS[p.result]
-    const tail = onCurve(SPOT, kick.control, kick.end, trail.from)
-    const control = controlBetween(SPOT, kick.control, kick.end, trail.from, trail.to)
-    const head = onCurve(SPOT, kick.control, kick.end, trail.to)
+    const { from: j, to: k } = trail
+    const tail = blossom(kick, j, j, j)
+    const [c1, c2, head] = [blossom(kick, j, j, k), blossom(kick, j, k, k), blossom(kick, k, k, k)]
     const fade = ctx.createLinearGradient(X(ball.x), Y(ball.y), X(tail.x), Y(tail.y))
     fade.addColorStop(0, TRAIL_HEAD)
     fade.addColorStop(1, TRAIL_TAIL)
@@ -362,7 +371,7 @@ function drawScene(ctx: CanvasRenderingContext2D, t: Transform2D, p: PenaltyIndi
     ctx.lineCap = 'butt'
     ctx.beginPath()
     ctx.moveTo(X(tail.x), Y(tail.y))
-    ctx.quadraticCurveTo(X(control.x), Y(control.y), X(head.x), Y(head.y))
+    ctx.bezierCurveTo(X(c1.x), Y(c1.y), X(c2.x), Y(c2.y), X(head.x), Y(head.y))
     if (ball.x !== head.x || ball.y !== head.y) ctx.lineTo(X(ball.x), Y(ball.y))
     ctx.stroke()
     ctx.globalAlpha = alpha

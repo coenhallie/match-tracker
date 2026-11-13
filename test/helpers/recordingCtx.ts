@@ -56,6 +56,9 @@ export function recordingCtx() {
     quadraticCurveTo(...args: unknown[]) {
       ctx.snap('quadraticCurveTo', args)
     },
+    bezierCurveTo(...args: unknown[]) {
+      ctx.snap('bezierCurveTo', args)
+    },
     arcTo(...args: unknown[]) {
       ctx.snap('arcTo', args)
     },

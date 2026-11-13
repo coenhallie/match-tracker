@@ -27,6 +27,39 @@ const [CX, CY] = worldToPx(0, 0, T)
 /** A design point, in frame units. */
 const D = (x: number, y: number): [number, number] => [CX + (x - 800) * u, CY + (y - 550) * u]
 
+type Pt = readonly [number, number]
+const cubicAt = (p0: Pt, p1: Pt, p2: Pt, p3: Pt, k: number): [number, number] => {
+  const at = (i: 0 | 1) => (1 - k) ** 3 * p0[i] + 3 * (1 - k) ** 2 * k * p1[i] + 3 * (1 - k) * k ** 2 * p2[i] + k ** 3 * p3[i]
+  return [at(0), at(1)]
+}
+/** The kicks' curves, cubics from the spot fitted to Figma's Line 1, in design pixels. */
+const CURVES = {
+  scored: { c1: [331.8, 713.4], c2: [514.4, 680], end: [566, 380], trailFrom: 0.34 },
+  missed: { c1: [239.5, 672.5], c2: [575.6, 701.2], end: [610, 228], trailFrom: 0.325 },
+} as const
+/** The point `k` along a kick's curve, in design pixels. */
+const flight = (result: 'scored' | 'missed', k: number) => {
+  const c = CURVES[result]
+  return cubicAt([402, 835], c.c1, c.c2, c.end, k)
+}
+/**
+ * Figma's Line 1 in each frame (scored 136:3377, missed 136:3456), as its scene exports it, in design
+ * pixels: a cubic from near the ball (its first control point on it) to its far end.
+ */
+const LINE_1 = {
+  scored: { near: [563.466, 402.733], c2: [536.5, 558], far: [401.466, 726.733] },
+  missed: { near: [610, 236], c2: [617.664, 487.749], far: [372, 712] },
+} as const
+const lineAt = (result: 'scored' | 'missed', k: number) => {
+  const l = LINE_1[result]
+  return cubicAt(l.near, l.near, l.c2, l.far, k)
+}
+/** A linear gradient as the recording context writes it: its two ends and its stops. */
+const gradientOf = (style: string) => {
+  const [, x0, y0, x1, y1, stops] = /^gradient\(([^,]+),([^-]+)->([^,]+),([^|]+)\|(.*)\)$/.exec(style)!
+  return { from: [Number(x0), Number(y0)], to: [Number(x1), Number(y1)], stops }
+}
+
 const indicator = (over: Partial<PenaltyIndicator> = {}): PenaltyIndicator => ({
   card: 0,
   scene: 1,
@@ -116,19 +149,19 @@ describe('the penalty pose', () => {
     expect(pose.keeperShadow.w).toBeCloseTo(178, 6)
     expect(pose.keeperShadow.h).toBeCloseTo(37, 6)
     // The trail keeps the stretch of the curve behind the ball that Figma's Line 1 covers.
-    expect(pose.trail).toEqual({ from: 0.157, to: 1, alpha: 1 })
+    expect(pose.trail).toEqual({ from: 0.34, to: 1, alpha: 1 })
   })
 
-  it('kicks along the curve through the control point, easing out, shrinking and turning', () => {
+  it('kicks along the curve fitted to Figma’s Line 1, easing out, shrinking and turning', () => {
     const pose = penaltyPose(indicator({ result: 'scored', kick: 0.5 }))
     const e = 1 - 0.5 ** 3
-    const along = (a: number, b: number, c: number) => (1 - e) ** 2 * a + 2 * (1 - e) * e * b + e ** 2 * c
-    expect(pose.ball.x).toBeCloseTo(along(402, 400, 566), 6)
-    expect(pose.ball.y).toBeCloseTo(along(835, 470, 380), 6)
+    const [x, y] = flight('scored', e)
+    expect(pose.ball.x).toBeCloseTo(x, 6)
+    expect(pose.ball.y).toBeCloseTo(y, 6)
     expect(pose.ball.size).toBeCloseTo(128 + (74 - 128) * e, 6)
     expect(pose.ball.turnDeg).toBeCloseTo(540 * e, 6)
     expect(pose.trail.to).toBeCloseTo(e, 6)
-    expect(pose.trail.from).toBeCloseTo(e - 0.843, 6)
+    expect(pose.trail.from).toBeCloseTo(e - 0.66, 6)
     expect(pose.trail.alpha).toBe(1)
     expect(pose.ballShadow.x).toBeCloseTo(403 + (560 - 403) * e, 6)
     expect(pose.ballShadow.w).toBeCloseTo(126 + (63 - 126) * e, 6)
@@ -167,22 +200,42 @@ describe('the penalty pose', () => {
     expect(atEnd.ball.y).toBeCloseTo(228, 6)
     expect(atEnd.ball.size).toBeCloseTo(74, 6)
     expect(atEnd.ball.alpha).toBe(1)
+    // Straight on from the curve's end, the way it was going there, to (616, 145).
     const mid = penaltyPose(indicator({ result: 'missed', kick: 1, afterKickMs: 250 }))
-    expect(mid.ball.x).toBeCloseTo(625, 6)
-    expect(mid.ball.y).toBeCloseTo(189, 6)
+    expect(mid.ball.x).toBeCloseTo(613, 6)
+    expect(mid.ball.y).toBeCloseTo(186.5, 6)
     expect(mid.ball.size).toBeCloseTo(64, 6)
     expect(mid.ball.alpha).toBeCloseTo(0.5, 6)
     const out = penaltyPose(indicator({ result: 'missed', kick: 1, afterKickMs: 500 }))
-    expect(out.ball.x).toBeCloseTo(640, 6)
-    expect(out.ball.y).toBeCloseTo(150, 6)
+    expect(out.ball.x).toBeCloseTo(616, 6)
+    expect(out.ball.y).toBeCloseTo(145, 6)
     expect(out.ball.size).toBeCloseTo(54, 6)
     expect(out.ball.alpha).toBe(0)
     expect(penaltyPose(indicator({ result: 'missed', kick: 1, afterKickMs: 900 })).ball.alpha).toBe(0)
-    // The miss goes through its own control point, over the bar.
+    // The miss goes along its own curve, over the bar.
     const e = 1 - 0.5 ** 3
     const half = penaltyPose(indicator({ result: 'missed', kick: 0.5 }))
-    expect(half.ball.x).toBeCloseTo((1 - e) ** 2 * 402 + 2 * (1 - e) * e * 430 + e ** 2 * 610, 6)
-    expect(half.ball.y).toBeCloseTo((1 - e) ** 2 * 835 + 2 * (1 - e) * e * 420 + e ** 2 * 228, 6)
+    expect(half.ball.x).toBeCloseTo(flight('missed', e)[0], 6)
+    expect(half.ball.y).toBeCloseTo(flight('missed', e)[1], 6)
+  })
+
+  it('carries the missed ball on the way the curve was going at its end', () => {
+    const { c2, end } = CURVES.missed
+    const on = [616 - end[0], 145 - end[1]]
+    const tangent = [end[0] - c2[0], end[1] - c2[1]]
+    const angle = (v: number[]) => (Math.atan2(v[0]!, -v[1]!) * 180) / Math.PI
+    expect(Math.abs(angle(on) - angle(tangent))).toBeLessThan(0.5)
+  })
+
+  it('leaves the spot heading upwards, and rises all the way', () => {
+    for (const result of ['scored', 'missed'] as const) {
+      let last = penaltyPose(indicator({ result, kick: 0 })).ball.y
+      for (let kick = 0.01; kick <= 1; kick += 0.01) {
+        const { y } = penaltyPose(indicator({ result, kick })).ball
+        expect(y).toBeLessThanOrEqual(last)
+        last = y
+      }
+    }
   })
 
   it('does not carry a scored ball on', () => {
@@ -429,17 +482,11 @@ describe('drawing the penalty', () => {
     const out = draw({ result: 'missed', kick: 1, afterKickMs: 250 }).ops
     const ball = images(out, 'ball')[0]!
     const s = 64 / 74
-    expect(ball.args[1]).toBeCloseTo(D(625, 189)[0] - 45 * s * u, 6)
+    expect(ball.args[1]).toBeCloseTo(D(613, 186.5)[0] - 45 * s * u, 6)
     expect(ball.args[3]).toBeCloseTo(106 * s * u, 6)
     expect(ball.globalAlpha).toBeCloseTo(0.5, 6)
     expect(images(draw({ result: 'missed', kick: 1, afterKickMs: 500 }).ops, 'ball')).toHaveLength(0)
   })
-
-  /** The point `k` along a kick's curve, from the spot through `control` to `end`, in design pixels. */
-  const along = (control: [number, number], end: [number, number], k: number): [number, number] => [
-    (1 - k) ** 2 * 402 + 2 * (1 - k) * k * control[0] + k ** 2 * end[0],
-    (1 - k) ** 2 * 835 + 2 * (1 - k) * k * control[1] + k ** 2 * end[1],
-  ]
 
   it('draws the trail as Figma’s Line 1: 48 wide, square ended, white at the ball fading to clear grey along it', () => {
     const { ops, caps } = draw({ result: 'scored', kick: 1 })
@@ -448,28 +495,39 @@ describe('drawing the penalty', () => {
     expect(caps[0]).toBe('butt')
     expect(stroke.globalAlpha).toBe(1)
     // The fade runs from the ball to the trail's far end, not from the spot.
-    const [bx, by] = D(566, 380)
-    const [tx, ty] = D(...along([400, 470], [566, 380], 0.157))
-    expect(stroke.strokeStyle).toBe(`gradient(${bx},${by}->${tx},${ty}|0:rgba(255, 255, 255, 1),1:rgba(153, 153, 153, 0))`)
+    const fade = gradientOf(stroke.strokeStyle)
+    expect(fade.from).toEqual(D(566, 380).map((v) => expect.closeTo(v, 6)))
+    expect(fade.to).toEqual(D(...flight('scored', 0.34)).map((v) => expect.closeTo(v, 6)))
+    expect(fade.stops).toBe('0:rgba(255, 255, 255, 1),1:rgba(153, 153, 153, 0)')
     expect(draw().ops.some((o) => o.op === 'stroke')).toBe(false)
   })
 
-  it('covers the stretch of the curve behind the ball that Figma’s Line 1 does, at the kick’s end', () => {
-    for (const [result, control, end, figmaTail, within] of [
-      ['scored', [400, 470], [566, 380], [401.466, 726.733], 5],
-      // Figma's missed line bends further left than the ball's curve: its far end is level, 42 px over.
-      ['missed', [430, 420], [610, 228], [372, 712], 43],
-    ] as const) {
-      const { ops } = draw({ result, kick: 1 })
-      const from = ops.find((o) => o.op === 'moveTo' && ops.indexOf(o) > ops.findIndex((p) => p.op === 'ellipse'))!.args as number[]
-      const [fx, fy] = D(figmaTail[0], figmaTail[1])
-      expect(Math.hypot(from[0]! - fx, from[1]! - fy) / u).toBeLessThan(within)
-      // The curve from there to the ball, cut from the kick's own: one quadratic, ending on the ball.
-      const j = result === 'scored' ? 0.157 : 0.147
-      const c = [(1 - j) * control[0] + j * end[0], (1 - j) * control[1] + j * end[1]] as const
-      const curve = ops.find((o) => o.op === 'quadraticCurveTo')!.args as number[]
-      expect(curve).toEqual([...D(c[0], c[1]), ...D(end[0], end[1])].map((v) => expect.closeTo(v, 6)))
-      expect(ops.some((o) => o.op === 'lineTo' && ops.indexOf(o) > ops.indexOf(ops.find((p) => p.op === 'quadraticCurveTo')!))).toBe(false)
+  /** The trail as drawn: the cubic from its moveTo through its bezierCurveTo, back in design pixels. */
+  function drawnTrail(ops: Op[]) {
+    const curve = ops.find((o) => o.op === 'bezierCurveTo')!
+    const start = ops.slice(0, ops.indexOf(curve)).findLast((o) => o.op === 'moveTo')!
+    const design = (x: number, y: number): Pt => [(x - CX) / u + 800, (y - CY) / u + 550]
+    const [a, b] = start.args as number[]
+    const [c, d, e, f, g, h] = curve.args as number[]
+    return { curve, points: [design(a!, b!), design(c!, d!), design(e!, f!), design(g!, h!)] as const }
+  }
+
+  it('lies along Figma’s Line 1 within 3 px, bending as it does, for both results', () => {
+    for (const result of ['scored', 'missed'] as const) {
+      const { points } = drawnTrail(draw({ result, kick: 1 }).ops)
+      const trail = Array.from({ length: 2001 }, (_, i) => cubicAt(...points, i / 2000))
+      const line = Array.from({ length: 2001 }, (_, i) => lineAt(result, i / 2000))
+      const nearest = (p: Pt, to: Pt[]) => Math.min(...to.map((q) => Math.hypot(p[0] - q[0], p[1] - q[1])))
+      // Every point of Line 1 is on the trail, to 3 px.
+      for (let i = 0; i <= 40; i++) expect(nearest(lineAt(result, i / 40), trail)).toBeLessThan(3)
+      // And the trail runs along Line 1 from its far end to where Line 1 stops near the ball; past
+      // that it goes on into the ball's middle, under the ball.
+      const near = LINE_1[result].near
+      const stop = trail.findIndex((p) => Math.hypot(p[0] - near[0], p[1] - near[1]) === nearest(near, trail))
+      for (let i = 0; i <= stop; i += 50) expect(nearest(trail[i]!, line)).toBeLessThan(3)
+      // Its far end is Line 1's.
+      expect(Math.hypot(points[0][0] - LINE_1[result].far[0], points[0][1] - LINE_1[result].far[1])).toBeLessThan(3)
+      expect(points[3]).toEqual(CURVES[result].end.map((v) => expect.closeTo(v, 6)))
     }
   })
 
@@ -481,21 +539,32 @@ describe('drawing the penalty', () => {
     const moveTo = draw({ result: 'scored', kick: 0.1 }).ops.filter((o) => o.op === 'moveTo').at(-1)!
     expect(moveTo.args).toEqual([sx, sy].map((v) => expect.closeTo(v, 6)))
     const late = penaltyPose(indicator({ result: 'scored', kick: 0.8 }))
-    expect(late.trail.to - late.trail.from).toBeCloseTo(0.843, 6)
+    expect(late.trail.to - late.trail.from).toBeCloseTo(0.66, 6)
+    // Cut from the kick's own curve: drawn mid-kick, it lies on the curve.
+    const { points } = drawnTrail(draw({ result: 'scored', kick: 0.8 }).ops)
+    for (const k of [0, 0.3, 0.7, 1]) {
+      const at = cubicAt(...points, k)
+      const whole = Array.from({ length: 4001 }, (_, i) => flight('scored', i / 4000))
+      expect(Math.min(...whole.map((q) => Math.hypot(at[0] - q[0], at[1] - q[1])))).toBeLessThan(0.2)
+    }
   })
 
   it('runs the miss’s trail on to the ball as it carries on, and fades it with the ball', () => {
     const { ops } = draw({ result: 'missed', kick: 1, afterKickMs: 250, scene: 0.8 })
     const stroke = ops.find((o) => o.op === 'stroke')!
     expect(stroke.globalAlpha).toBeCloseTo(0.8 * 0.5, 6)
-    const curve = ops.find((o) => o.op === 'quadraticCurveTo')!
+    const { curve } = drawnTrail(ops)
     const on = ops.slice(ops.indexOf(curve)).find((o) => o.op === 'lineTo')!
-    expect(on.args).toEqual(D(625, 189).map((v) => expect.closeTo(v, 6)))
+    expect(on.args).toEqual(D(613, 186.5).map((v) => expect.closeTo(v, 6)))
     // Its fade starts at the ball where it is now.
-    const [tx, ty] = D(...along([430, 420], [610, 228], 0.147))
-    expect(stroke.strokeStyle).toBe(`gradient(${D(625, 189)[0]},${D(625, 189)[1]}->${tx},${ty}|0:rgba(255, 255, 255, 1),1:rgba(153, 153, 153, 0))`)
+    const fade = gradientOf(stroke.strokeStyle)
+    expect(fade.from).toEqual(D(613, 186.5).map((v) => expect.closeTo(v, 6)))
+    expect(fade.to).toEqual(D(...flight('missed', 0.325)).map((v) => expect.closeTo(v, 6)))
     expect(penaltyPose(indicator({ result: 'missed', kick: 1, afterKickMs: 250 })).trail.alpha).toBeCloseTo(0.5, 6)
     expect(draw({ result: 'missed', kick: 1, afterKickMs: 500 }).ops.some((o) => o.op === 'stroke')).toBe(false)
+    // At the kick's end, before it carries on, the trail ends on the ball.
+    const atEnd = draw({ result: 'missed', kick: 1 }).ops
+    expect(atEnd.slice(atEnd.indexOf(drawnTrail(atEnd).curve)).some((o) => o.op === 'lineTo')).toBe(false)
   })
 
   it('writes “PENALTY..” on Figma’s band, the team under it, as Figma has them', () => {
