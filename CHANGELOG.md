@@ -6,6 +6,8 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.21.3] - 2026-11-13
+
 ### What you see
 
 - **A human's label goes before an attack and a replay.** A goal waiting for its
