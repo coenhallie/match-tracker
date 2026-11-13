@@ -21,6 +21,13 @@ export interface TrackerText extends Record<LabelCardKey | LabelCardTextKey, str
   freeKick: string
   /** The throw-in band's title. */
   throwIn: string
+  /** The penalty card's title and its layer's name, on screen "PENALTY". */
+  penalty: string
+  /** The banner while the kick waits, "PENALTY..". */
+  penaltyWaiting: string
+  /** The banner once it went in, and once it did not. */
+  penaltyScored: string
+  penaltyMissed: string
   /** The word under the team's name in the attack's label. */
   attack: string
   /** The flashback tab's title, on screen "REPLAY". */

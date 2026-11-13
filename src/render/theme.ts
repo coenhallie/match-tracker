@@ -14,7 +14,7 @@ export type PersonRole = 'home' | 'away' | 'goalkeeper' | 'official' | 'unknown'
 export interface RenderTheme {
   colors: Record<PersonRole, PersonColors>
   /** The event cards' titles, and the word under the team's name in the attack's label. */
-  text: { goal: string; corner: string; freeKick: string; throwIn: string; attack: string; flashback: string; flashbackAgo: string } & Record<LabelCardKey | LabelCardTextKey, string>
+  text: { goal: string; corner: string; freeKick: string; throwIn: string; penalty: string; penaltyWaiting: string; penaltyScored: string; penaltyMissed: string; attack: string; flashback: string; flashbackAgo: string } & Record<LabelCardKey | LabelCardTextKey, string>
   /**
    * Family lists, fallbacks included: `label` for the attack's label,
    * `title` for the event cards' titles.
@@ -30,6 +30,13 @@ export interface RenderTheme {
     scorer: CanvasImageSource | null
     /** On the throw-in's card (throwInCard.ts). */
     throwIn: CanvasImageSource | null
+    /** The penalty's card and scene (penalty.ts): its card icon, goal, keeper standing and diving, spinner ball and ball. */
+    penalty: CanvasImageSource | null
+    penaltyGoal: CanvasImageSource | null
+    penaltyKeeper: CanvasImageSource | null
+    penaltyKeeperDive: CanvasImageSource | null
+    penaltyBallSpin: CanvasImageSource | null
+    penaltyBall: CanvasImageSource | null
   } & Record<IconCardKey, CanvasImageSource | null>
   /** The bottom-left text for one of the frame's actions, from its `action_type`. */
   formatAction: (actionType: string) => string
@@ -68,6 +75,10 @@ export const DEFAULT_THEME: Readonly<RenderTheme> = Object.freeze({
     corner: 'CORNER',
     freeKick: 'FREE KICK',
     throwIn: 'THROW IN',
+    penalty: 'PENALTY',
+    penaltyWaiting: 'PENALTY..',
+    penaltyScored: 'SCORED!',
+    penaltyMissed: 'MISSED!',
     attack: 'Attack',
     flashback: 'REPLAY',
     flashbackAgo: '{time} AGO',
@@ -87,7 +98,7 @@ export const DEFAULT_THEME: Readonly<RenderTheme> = Object.freeze({
     substitution: 'SUBSTITUTION',
   }),
   fonts: Object.freeze({ label: familyList(LABEL_FAMILY), title: familyList(TITLE_FAMILY) }),
-  icons: Object.freeze({ corner: null, freeKick: null, substitutionOut: null, substitutionIn: null, scorer: null, throwIn: null, ...iconCardRecord(() => null) }),
+  icons: Object.freeze({ corner: null, freeKick: null, substitutionOut: null, substitutionIn: null, scorer: null, throwIn: null, penalty: null, penaltyGoal: null, penaltyKeeper: null, penaltyKeeperDive: null, penaltyBallSpin: null, penaltyBall: null, ...iconCardRecord(() => null) }),
   formatAction: (actionType: string) => actionType,
   aiLabels: false,
 })

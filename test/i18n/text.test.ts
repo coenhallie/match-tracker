@@ -112,7 +112,7 @@ describe('the built-in text', () => {
     })).toBe('Red attacking, Blue defending')
     // The corner is the widget's own: the reference has none. So is the throw-in's hint, as the widget's
     // throw-in fades in where the reference's slides in from the ball's half. And so is the zoom near goal.
-    const { corner, freeKickBanner, throwInBanner, playerLoss, flashback, goalZoom, ballShadow, varCheck, goalDisallowed, halfTime, secondHalf, fullTime, foul, shotOnGoal, headerOnGoal, yellowCard, redCard, substitution, ...referenceLayers } = en.layers
+    const { corner, freeKickBanner, throwInBanner, playerLoss, flashback, goalZoom, ballShadow, varCheck, goalDisallowed, halfTime, secondHalf, fullTime, foul, shotOnGoal, headerOnGoal, yellowCard, redCard, substitution, penalty, ...referenceLayers } = en.layers
     expect(en.substitution).toBe('SUBSTITUTION')
     expect(substitution).toEqual({ label: 'Substitution', hint: 'A banner across the middle of the pitch on a substitution label, listing the team\u2019s substitutions' })
     // The player cards are the widget's own too.
@@ -132,6 +132,7 @@ describe('the built-in text', () => {
       label: 'Free kick',
       hint: 'A banner, the ball\u2019s spot marked and the other half shaded, on a free kick label, held while play is stopped',
     })
+    expect(penalty.label).toBe('Penalty')
     expect(throwInBanner).toEqual({ label: 'Throw-in', hint: 'A banner along the bottom touchline on a throw-in label' })
     expect(goalZoom).toEqual({
       label: 'Zoom near goal',
@@ -194,6 +195,13 @@ describe('the built-in text', () => {
       farFade: { label: 'Fade distant players', hint: 'Players over 15 m from the ball drawn faint' },
       ringFades: { label: 'Smooth ring changes', hint: 'Rings fade in and out instead of snapping' },
     })
+  })
+
+  it("has the penalty's words, in English and Chinese", () => {
+    expect(en).toMatchObject({ penalty: 'PENALTY', penaltyWaiting: 'PENALTY..', penaltyScored: 'SCORED!', penaltyMissed: 'MISSED!' })
+    expect(zh).toMatchObject({ penalty: '点球', penaltyWaiting: '点球……', penaltyScored: '罚进了！', penaltyMissed: '罚丢了！' })
+    expect(en.layers.penalty).toEqual({ label: 'Penalty', hint: 'When a penalty is given, the kick and whether it went in' })
+    expect(zh.layers.penalty).toEqual({ label: '点球', hint: '判罚点球时，展示罚球过程及结果' })
   })
 
   it('has the Chinese for the words given', () => {

@@ -45,7 +45,7 @@ npm test           # vitest, against src
 npm run typecheck
 npm run lint       # oxlint --deny-warnings
 npm run build      # dist/, pruned declarations, scripts/check-dist.mjs, then test/dist
-npm run size       # fails over 60 kB gzipped for dist/index.js, or 2 kB for dist/banner.js
+npm run size       # fails over 65 kB gzipped for dist/index.js, or 2 kB for dist/banner.js
 ```
 
 ## Style

@@ -171,7 +171,7 @@ function replay(golden: GoldenFile) {
   const { ctx, ops } = recordingCtx()
   const canvas = { width: FRAME_W, height: FRAME_H, getContext: () => ctx } as unknown as HTMLCanvasElement
   // The parity theme: the reference's colours and English, its fonts, and no icons, as jsdom loads none.
-  const renderer = createRenderer(canvas, { ...DEFAULT_THEME, icons: { corner: null, freeKick: null, varCheck: null, goalDisallowed: null, yellowCard: null, redCard: null, substitution: null, substitutionOut: null, substitutionIn: null, scorer: null, throwIn: null } })
+  const renderer = createRenderer(canvas, { ...DEFAULT_THEME, icons: { corner: null, freeKick: null, varCheck: null, goalDisallowed: null, yellowCard: null, redCard: null, substitution: null, substitutionOut: null, substitutionIn: null, scorer: null, throwIn: null, penalty: null, penaltyGoal: null, penaltyKeeper: null, penaltyKeeperDive: null, penaltyBallSpin: null, penaltyBall: null } })
   const director = new Director({
     // The zoom near goal is the widget's own (CHANGELOG, "Zoom near goal"): the reference has none, so it is
     // off here, and the goal's camera is the reference's. So is the shadow under a high ball.

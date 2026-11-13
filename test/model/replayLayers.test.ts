@@ -35,6 +35,13 @@ describe('replay layers', () => {
     expect(REPLAY_LAYERS.find((l) => l.key === 'flashback')?.liveOnly).toBe(true)
   })
 
+  it('lists the penalty layer after the throw-in, on by default', () => {
+    const keys = REPLAY_LAYERS.map((l) => l.key)
+    expect(keys.indexOf('penalty')).toBe(keys.indexOf('throwInBanner') + 1)
+    expect(DEFAULT_REPLAY_LAYERS.penalty).toBe(true)
+    expect(REPLAY_LAYERS.find((l) => l.key === 'penalty')?.liveOnly).toBeUndefined()
+  })
+
   it('reads a stored flashback choice', () => {
     const storage = memoryStorage({ 'perspecto.replayLayers': JSON.stringify({ flashback: false }) })
     expect(readReplayLayers(storage)).toEqual({ ...DEFAULT_REPLAY_LAYERS, flashback: false })

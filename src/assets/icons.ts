@@ -165,6 +165,188 @@ const LABEL_CARD_ICONS: Record<IconCardKey, string> = {
   substitution: SUBSTITUTION_SVG,
 }
 
+/**
+ * The penalty's six pictures, as Figma exports them (file a1DQtbTjxZYWYKecizCHkf), less the frame
+ * Figma draws round each: the card's icon (63:1004), then the scene's goal (136:3140), keeper
+ * standing (136:2918) and diving (136:3192), the spinner ball (136:2913) and the ball (136:3191).
+ * Where they go is render/penalty.ts. The spinner's angular gradient, which Figma exports as HTML in
+ * a foreignObject that an image cannot be relied on to draw, is redrawn as 48 vector wedges of one shape turned about the centre, dark
+ * green (#0A3327) at the top to white round clockwise, inside the same 128 circle.
+ */
+const PENALTY_SVG = `<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g>
+<g>
+<g clip-path="url(#clip0_2_5)">
+<g>
+<mask id="mask0_2_5" style="mask-type:luminance" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">
+<g>
+<path d="M64 0H0V64H64V0Z" fill="white"/>
+</g>
+</mask>
+<g mask="url(#mask0_2_5)">
+<g>
+<path d="M10 31V10.25C10 9.56 10.56 9 11.25 9H52.75C53.44 9 54 9.56 54 10.25V31H56V10.25C56 8.46 54.54 7 52.75 7H11.25C9.46 7 8 8.46 8 10.25V31H10Z" fill="#E2E8F0"/>
+<path d="M15 29V14V13.6972L14.8321 13.4453L10.8321 7.44531L9.16797 8.55472L13 14.3028V29H15Z" fill="#E2E8F0"/>
+<path d="M49 29V14V13.6972L49.1679 13.4453L53.1679 7.44531L54.8321 8.55472L51 14.3028V29H49Z" fill="#E2E8F0"/>
+<path d="M21 8V29H19V8H21Z" fill="#E2E8F0"/>
+<path d="M27 8V29H25V8H27Z" fill="#E2E8F0"/>
+<path d="M33 8V29H31V8H33Z" fill="#E2E8F0"/>
+<path d="M39 8V29H37V8H39Z" fill="#E2E8F0"/>
+<path d="M45 8V29H43V8H45Z" fill="#E2E8F0"/>
+<path d="M12 24H52V26H12V24Z" fill="#E2E8F0"/>
+<path d="M12 18H52V20H12V18Z" fill="#E2E8F0"/>
+<path d="M13 12H51V14H13V12Z" fill="#E2E8F0"/>
+<path d="M32 55.5C34.485 55.5 36.5 53.485 36.5 51C36.5 48.515 34.485 46.5 32 46.5C29.515 46.5 27.5 48.515 27.5 51C27.5 53.485 29.515 55.5 32 55.5Z" fill="#E2E8F0"/>
+<path d="M36.3901 35.97L32.7801 32.53C32.7801 32.53 32.7601 32.51 32.7501 32.51C32.7401 32.5 32.7301 32.49 32.7101 32.47C32.7001 32.46 32.6801 32.45 32.6601 32.44C32.6501 32.43 32.6301 32.42 32.6201 32.41C32.6001 32.41 32.5901 32.39 32.5701 32.38C32.5601 32.38 32.5401 32.37 32.5301 32.36C32.5101 32.35 32.4901 32.34 32.4801 32.34C32.4701 32.33 32.4501 32.32 32.4401 32.32C32.4201 32.32 32.3901 32.31 32.3701 32.3C32.3501 32.3 32.3301 32.29 32.3001 32.28C32.2801 32.28 32.2601 32.27 32.2401 32.26C32.2301 32.26 32.2101 32.26 32.2001 32.26C32.1801 32.26 32.1601 32.26 32.1401 32.26C32.1301 32.26 32.1101 32.26 32.1001 32.26H32.0401C32.0401 32.26 32.0301 32.26 32.0201 32.26C32.0201 32.26 32.0001 32.26 31.9901 32.26H31.9301C31.9301 32.26 31.9001 32.26 31.8901 32.26C31.8701 32.26 31.8501 32.26 31.8301 32.26C31.8101 32.26 31.8001 32.26 31.7801 32.27C31.7601 32.27 31.7401 32.27 31.7301 32.28C31.7101 32.28 31.7001 32.28 31.6801 32.29C31.6601 32.29 31.6501 32.3 31.6301 32.31C31.6101 32.31 31.6001 32.32 31.5801 32.33C31.5601 32.33 31.5501 32.35 31.5301 32.35C31.5201 32.35 31.5001 32.36 31.4901 32.37C31.4701 32.37 31.4601 32.39 31.4401 32.39C31.4301 32.4 31.4101 32.41 31.4001 32.42C31.3901 32.42 31.3801 32.43 31.3701 32.44C31.3501 32.45 31.3301 32.46 31.3201 32.48L27.6801 35.49C27.2101 35.88 27.1401 36.57 27.5301 37.04C27.9201 37.51 28.6101 37.58 29.0801 37.19L30.9201 35.67V42.67C30.9201 43.28 31.4101 43.77 32.0201 43.77C32.6301 43.77 33.1201 43.28 33.1201 42.67V35.91L34.8601 37.57C35.3001 37.99 36.0001 37.97 36.4201 37.53C36.6201 37.32 36.7201 37.04 36.7201 36.77C36.7201 36.48 36.6101 36.19 36.3801 35.97H36.3901Z" fill="#FDE047"/>
+<path d="M31.7 29.1099C30.08 29.1099 28.77 27.7999 28.77 26.1799L27.94 20.9999H24.5C23.67 20.9999 23 20.3299 23 19.4999V18.4999C23 17.6699 23.67 16.9999 24.5 16.9999H29.14C28.59 16.3399 28.28 15.5099 28.28 14.6099C28.28 12.5599 29.95 10.8899 32 10.8899C34.05 10.8899 35.72 12.5599 35.72 14.6099C35.72 15.4999 35.41 16.3399 34.86 16.9999H39.5C40.33 16.9999 41 17.6699 41 18.4999V19.4999C41 20.3299 40.33 20.9999 39.5 20.9999H36.06L35.22 26.2599C35.22 27.7999 33.91 29.1099 32.3 29.1099H31.7Z" fill="#156C52"/>
+<path d="M32 11.3899C33.78 11.3899 35.22 12.8299 35.22 14.6099C35.22 15.7899 34.59 16.8099 33.65 17.3699C33.81 17.3899 33.97 17.4399 34.11 17.4899H39.49C40.04 17.4899 40.49 17.9399 40.49 18.4899V19.4899C40.49 20.0399 40.04 20.4899 39.49 20.4899H35.62L34.71 26.1699C34.71 27.5099 33.62 28.5999 32.28 28.5999H31.68C30.34 28.5999 29.25 27.5099 29.25 26.1699L28.34 20.4899H24.47C23.92 20.4899 23.47 20.0399 23.47 19.4899V18.4899C23.47 17.9399 23.92 17.4899 24.47 17.4899H29.85C30 17.4399 30.15 17.3899 30.31 17.3699C29.37 16.8099 28.74 15.7799 28.74 14.6099C28.74 12.8299 30.18 11.3899 31.96 11.3899M32 10.3899C29.67 10.3899 27.78 12.2799 27.78 14.6099C27.78 15.2699 27.94 15.9199 28.23 16.4999H24.5C23.4 16.4999 22.5 17.3999 22.5 18.4999V19.4999C22.5 20.5999 23.4 21.4999 24.5 21.4999H27.51L28.27 26.2699C28.32 28.1199 29.84 29.6099 31.7 29.6099H32.3C34.16 29.6099 35.68 28.1199 35.73 26.2699L36.49 21.4999H39.5C40.6 21.4999 41.5 20.5999 41.5 19.4999V18.4999C41.5 17.3999 40.6 16.4999 39.5 16.4999H35.77C36.06 15.9199 36.22 15.2799 36.22 14.6099C36.22 12.2799 34.33 10.3899 32 10.3899Z" fill="#E2E8F0"/>
+<path d="M34 18.25H30L30.8 15.75H33.2L34 18.25Z" fill="#156C52"/>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+<defs>
+<clipPath id="clip0_2_5">
+<rect width="64" height="64" fill="white"/>
+</clipPath>
+</defs>
+</svg>
+`
+
+const PENALTY_GOAL_SVG = `<svg width="484" height="242" viewBox="0 0 484 242" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g>
+<g>
+<g>
+<g>
+<path d="M20.1562 241.875V32.7539C20.1562 25.8 25.8 20.1562 32.7539 20.1562H450.996C457.95 20.1562 463.594 25.8 463.594 32.7539V241.875H483.75V32.7539C483.75 14.7141 469.036 0 450.996 0H32.7539C14.7141 0 0 14.7141 0 32.7539V241.875H20.1562Z" fill="#E2E8F0"/>
+<path d="M70.5476 221.718V70.5464V67.495L68.8549 64.9561L28.5424 4.4873L11.7715 15.668L50.3913 73.5979V221.718H70.5476Z" fill="#E2E8F0"/>
+<path d="M413.203 221.718V70.5464V67.495L414.896 64.9561L455.208 4.4873L471.979 15.668L433.359 73.5979V221.718H413.203Z" fill="#E2E8F0"/>
+<path d="M131.016 10.0781V221.719H110.859V10.0781H131.016Z" fill="#E2E8F0"/>
+<path d="M191.484 10.0781V221.719H171.328V10.0781H191.484Z" fill="#E2E8F0"/>
+<path d="M251.953 10.0781V221.719H231.797V10.0781H251.953Z" fill="#E2E8F0"/>
+<path d="M312.422 10.0781V221.719H292.266V10.0781H312.422Z" fill="#E2E8F0"/>
+<path d="M372.891 10.0781V221.719H352.734V10.0781H372.891Z" fill="#E2E8F0"/>
+<path d="M40.3125 171.328H443.438V191.484H40.3125V171.328Z" fill="#E2E8F0"/>
+<path d="M40.3125 110.859H443.438V131.016H40.3125V110.859Z" fill="#E2E8F0"/>
+<path d="M50.3906 50.3906H433.359V70.5469H50.3906V50.3906Z" fill="#E2E8F0"/>
+</g>
+</g>
+</g>
+</g>
+</svg>
+`
+
+const PENALTY_KEEPER_SVG = `<svg width="192" height="194" viewBox="0 0 192 194" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g>
+<g>
+<g>
+<g>
+<path d="M92.7189 188.662C76.3923 188.662 63.1897 175.46 63.1897 159.134L54.825 106.929H20.1562C11.7914 106.929 5.03906 100.177 5.03906 91.8117V81.7336C5.03906 73.3688 11.7914 66.6164 20.1562 66.6164H66.9189C61.3759 59.9649 58.2515 51.6 58.2515 42.5297C58.2515 21.8695 75.082 5.03906 95.7422 5.03906C116.402 5.03906 133.233 21.8695 133.233 42.5297C133.233 51.4992 130.108 59.9649 124.565 66.6164H171.328C179.693 66.6164 186.445 73.3688 186.445 81.7336V91.8117C186.445 100.177 179.693 106.929 171.328 106.929H136.659L128.194 159.94C128.194 175.46 114.991 188.662 98.7655 188.662H92.7189Z" fill="#156C52"/>
+<path d="M95.7422 10.0781C113.681 10.0781 128.194 24.5906 128.194 42.5297C128.194 54.4219 121.844 64.7015 112.371 70.3453C113.984 70.5468 115.596 71.0508 117.007 71.5547H171.227C176.77 71.5547 181.305 76.0899 181.305 81.6329V91.711C181.305 97.254 176.77 101.789 171.227 101.789H132.225L123.054 159.033C123.054 172.537 112.069 183.523 98.564 183.523H92.5171C79.0124 183.523 68.0273 172.537 68.0273 159.033L58.8562 101.789H19.8539C14.3109 101.789 9.77579 97.254 9.77579 91.711V81.6329C9.77579 76.0899 14.3109 71.5547 19.8539 71.5547H74.0743C75.586 71.0508 77.0976 70.5468 78.7101 70.3453C69.2367 64.7015 62.8874 54.3211 62.8874 42.5297C62.8874 24.5906 77.3999 10.0781 95.339 10.0781M95.7422 0C72.2602 0 53.2125 19.0477 53.2125 42.5297C53.2125 49.1813 54.8251 55.732 57.7478 61.5774H20.1562C9.07031 61.5774 0 70.6477 0 81.7336V91.8117C0 102.898 9.07031 111.968 20.1562 111.968H50.4914L58.1507 160.041C58.6546 178.685 73.9736 193.701 92.7189 193.701H98.7655C117.511 193.701 132.83 178.685 133.334 160.041L140.993 111.968H171.328C182.414 111.968 191.484 102.898 191.484 91.8117V81.7336C191.484 70.6477 182.414 61.5774 171.328 61.5774H133.737C136.659 55.732 138.272 49.282 138.272 42.5297C138.272 19.0477 119.224 0 95.7422 0Z" fill="#E2E8F0"/>
+</g>
+</g>
+</g>
+</g>
+</svg>
+`
+
+const PENALTY_KEEPER_DIVE_SVG = `<svg width="273" height="273" viewBox="0 0 273 273" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g>
+<g>
+<g>
+<g>
+<path d="M69.0538 198.887C57.5226 187.329 57.544 168.658 69.102 157.127L100.151 114.334L75.6651 89.7913C69.7571 83.8696 69.7682 74.3203 75.6898 68.4123L82.8244 61.2943C88.7461 55.3863 98.2954 55.3974 104.203 61.3191L137.231 94.4236C138.025 85.8017 141.74 77.6819 148.161 71.2756C162.787 56.6836 186.589 56.7112 201.181 71.3371C215.773 85.9629 215.745 109.765 201.119 124.357C194.77 130.692 186.57 134.459 177.946 135.233L210.974 168.338C216.882 174.259 216.871 183.809 210.949 189.717L203.815 196.835C197.893 202.743 188.344 202.731 182.436 196.81L157.95 172.267L114.443 203.715C103.455 214.676 84.7845 214.655 73.3245 203.168L69.0538 198.887Z" fill="#156C52"/>
+<path d="M197.613 74.8964C210.283 87.596 210.259 108.12 197.56 120.79C189.141 129.189 177.379 131.955 166.693 129.234C167.689 130.518 168.471 132.016 169.111 133.37L207.406 171.754C211.321 175.678 211.314 182.092 207.39 186.007L200.255 193.125C196.331 197.04 189.918 197.033 186.003 193.109L158.456 165.498L111.454 199.436C101.894 208.974 86.3584 208.956 76.8202 199.396L72.5494 195.115C63.0112 185.555 63.0293 170.019 72.5896 160.481L106.636 113.558L79.0897 85.9474C75.1747 82.0234 75.1822 75.6097 79.1062 71.6948L86.2408 64.5767C90.1648 60.6618 96.5784 60.6692 100.493 64.5933L138.788 102.977C140.213 103.692 141.637 104.406 142.919 105.405C140.223 94.7123 143.087 82.8859 151.435 74.5578C164.134 61.8877 184.658 61.9115 197.328 74.611M204.748 67.7784C188.163 51.1548 161.225 51.1236 144.602 67.7087C139.893 72.4066 136.394 78.1749 134.321 84.3724L107.77 57.7604C99.9403 49.9124 87.113 49.8975 79.2649 57.7273L72.1304 64.8454C64.2823 72.6752 64.2675 85.5026 72.0973 93.3506L93.5226 114.826L64.9003 154.201C52.0573 167.726 52.2465 189.177 65.4861 202.447L69.7567 206.727C82.9963 219.998 104.446 220.237 118.001 207.425L157.443 178.894L178.868 200.369C186.698 208.217 199.525 208.232 207.373 200.402L214.508 193.284C222.356 185.454 222.371 172.627 214.541 164.779L187.99 138.167C194.193 136.107 199.898 132.694 204.678 127.924C221.302 111.339 221.333 84.4019 204.748 67.7784Z" fill="#E2E8F0"/>
+</g>
+</g>
+</g>
+</g>
+</svg>
+`
+
+const PENALTY_BALL_SPIN_SVG = `<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+<clipPath id="c"><circle cx="64" cy="64" r="64"/></clipPath>
+<g clip-path="url(#c)">
+<defs><path id="w" d="M64 64V0A64 64 0 0 1 73.46 0.70Z"/></defs>
+<use href="#w" fill="#0D3529"/>
+<use href="#w" transform="rotate(7.5 64 64)" fill="#12392E"/>
+<use href="#w" transform="rotate(15 64 64)" fill="#173E32"/>
+<use href="#w" transform="rotate(22.5 64 64)" fill="#1C4237"/>
+<use href="#w" transform="rotate(30 64 64)" fill="#21463B"/>
+<use href="#w" transform="rotate(37.5 64 64)" fill="#264A40"/>
+<use href="#w" transform="rotate(45 64 64)" fill="#2B4F44"/>
+<use href="#w" transform="rotate(52.5 64 64)" fill="#305349"/>
+<use href="#w" transform="rotate(60 64 64)" fill="#35574D"/>
+<use href="#w" transform="rotate(67.5 64 64)" fill="#3A5B52"/>
+<use href="#w" transform="rotate(75 64 64)" fill="#406056"/>
+<use href="#w" transform="rotate(82.5 64 64)" fill="#45645B"/>
+<use href="#w" transform="rotate(90 64 64)" fill="#4A685F"/>
+<use href="#w" transform="rotate(97.5 64 64)" fill="#4F6C64"/>
+<use href="#w" transform="rotate(105 64 64)" fill="#547168"/>
+<use href="#w" transform="rotate(112.5 64 64)" fill="#59756D"/>
+<use href="#w" transform="rotate(120 64 64)" fill="#5E7971"/>
+<use href="#w" transform="rotate(127.5 64 64)" fill="#637D76"/>
+<use href="#w" transform="rotate(135 64 64)" fill="#68827A"/>
+<use href="#w" transform="rotate(142.5 64 64)" fill="#6E867F"/>
+<use href="#w" transform="rotate(150 64 64)" fill="#738A83"/>
+<use href="#w" transform="rotate(157.5 64 64)" fill="#788E88"/>
+<use href="#w" transform="rotate(165 64 64)" fill="#7D938C"/>
+<use href="#w" transform="rotate(172.5 64 64)" fill="#829791"/>
+<use href="#w" transform="rotate(180 64 64)" fill="#879B95"/>
+<use href="#w" transform="rotate(187.5 64 64)" fill="#8C9F9A"/>
+<use href="#w" transform="rotate(195 64 64)" fill="#91A49E"/>
+<use href="#w" transform="rotate(202.5 64 64)" fill="#96A8A3"/>
+<use href="#w" transform="rotate(210 64 64)" fill="#9BACA7"/>
+<use href="#w" transform="rotate(217.5 64 64)" fill="#A1B0AC"/>
+<use href="#w" transform="rotate(225 64 64)" fill="#A6B5B0"/>
+<use href="#w" transform="rotate(232.5 64 64)" fill="#ABB9B5"/>
+<use href="#w" transform="rotate(240 64 64)" fill="#B0BDB9"/>
+<use href="#w" transform="rotate(247.5 64 64)" fill="#B5C1BE"/>
+<use href="#w" transform="rotate(255 64 64)" fill="#BAC6C2"/>
+<use href="#w" transform="rotate(262.5 64 64)" fill="#BFCAC7"/>
+<use href="#w" transform="rotate(270 64 64)" fill="#C4CECB"/>
+<use href="#w" transform="rotate(277.5 64 64)" fill="#C9D2D0"/>
+<use href="#w" transform="rotate(285 64 64)" fill="#CFD7D4"/>
+<use href="#w" transform="rotate(292.5 64 64)" fill="#D4DBD9"/>
+<use href="#w" transform="rotate(300 64 64)" fill="#D9DFDD"/>
+<use href="#w" transform="rotate(307.5 64 64)" fill="#DEE3E2"/>
+<use href="#w" transform="rotate(315 64 64)" fill="#E3E8E6"/>
+<use href="#w" transform="rotate(322.5 64 64)" fill="#E8ECEB"/>
+<use href="#w" transform="rotate(330 64 64)" fill="#EDF0EF"/>
+<use href="#w" transform="rotate(337.5 64 64)" fill="#F2F4F4"/>
+<use href="#w" transform="rotate(345 64 64)" fill="#F7F9F8"/>
+<use href="#w" transform="rotate(352.5 64 64)" fill="#FCFDFD"/>
+</g>
+</svg>
+`
+
+const PENALTY_BALL_SVG = `<svg width="106" height="106" viewBox="0 0 106 106" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g>
+<g>
+<g>
+<g filter="url(#filter0_d_2_5)">
+<path d="M45 82C65.4322 82 82 65.4322 82 45C82 24.5678 65.4322 8 45 8C24.5678 8 8 24.5678 8 45C8 65.4322 24.5678 82 45 82Z" fill="#E2E8F0"/>
+</g>
+</g>
+</g>
+</g>
+<defs>
+<filter id="filter0_d_2_5" x="0" y="0" width="106" height="106" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset dx="8" dy="8"/>
+<feGaussianBlur stdDeviation="8"/>
+<feComposite in2="hardAlpha" operator="out"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_2_5"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_2_5" result="shape"/>
+</filter>
+</defs>
+</svg>
+`
+
 const dataUrl = (svg: string) => `data:image/svg+xml,${encodeURIComponent(svg)}`
 
 export type CardIcons = {
@@ -177,10 +359,17 @@ export type CardIcons = {
   scorer: HTMLImageElement | null
   /** On the throw-in's card, for a throw-in the camera cuts away from. */
   throwIn: HTMLImageElement | null
+  /** The penalty card's icon, and the scene's goal, keeper (standing, diving), spinner ball and ball. */
+  penalty: HTMLImageElement | null
+  penaltyGoal: HTMLImageElement | null
+  penaltyKeeper: HTMLImageElement | null
+  penaltyKeeperDive: HTMLImageElement | null
+  penaltyBallSpin: HTMLImageElement | null
+  penaltyBall: HTMLImageElement | null
 } & Record<IconCardKey, HTMLImageElement | null>
 
 /** No icon loaded yet: every card is drawn without its own. */
-export const NO_ICONS: CardIcons = { corner: null, freeKick: null, substitutionOut: null, substitutionIn: null, scorer: null, throwIn: null, ...iconCardRecord(() => null) }
+export const NO_ICONS: CardIcons = { corner: null, freeKick: null, substitutionOut: null, substitutionIn: null, scorer: null, throwIn: null, penalty: null, penaltyGoal: null, penaltyKeeper: null, penaltyKeeperDive: null, penaltyBallSpin: null, penaltyBall: null, ...iconCardRecord(() => null) }
 
 let loading: Promise<CardIcons> | null = null
 
@@ -208,6 +397,12 @@ export function loadIcons(): Promise<CardIcons> {
     load(SUBSTITUTION_IN_SVG),
     load(SCORER_SVG),
     load(THROW_IN_SVG),
+    load(PENALTY_SVG),
+    load(PENALTY_GOAL_SVG),
+    load(PENALTY_KEEPER_SVG),
+    load(PENALTY_KEEPER_DIVE_SVG),
+    load(PENALTY_BALL_SPIN_SVG),
+    load(PENALTY_BALL_SVG),
   ]).then(([corner, freeKick, ...rest]) => ({
     corner: corner ?? null,
     freeKick: freeKick ?? null,
@@ -216,6 +411,12 @@ export function loadIcons(): Promise<CardIcons> {
     substitutionIn: rest[ICON_CARD_KEYS.length + 1] ?? null,
     scorer: rest[ICON_CARD_KEYS.length + 2] ?? null,
     throwIn: rest[ICON_CARD_KEYS.length + 3] ?? null,
+    penalty: rest[ICON_CARD_KEYS.length + 4] ?? null,
+    penaltyGoal: rest[ICON_CARD_KEYS.length + 5] ?? null,
+    penaltyKeeper: rest[ICON_CARD_KEYS.length + 6] ?? null,
+    penaltyKeeperDive: rest[ICON_CARD_KEYS.length + 7] ?? null,
+    penaltyBallSpin: rest[ICON_CARD_KEYS.length + 8] ?? null,
+    penaltyBall: rest[ICON_CARD_KEYS.length + 9] ?? null,
   }))
   return loading
 }

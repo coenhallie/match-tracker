@@ -17,6 +17,7 @@ export type ReplayLayerKey =
   | 'corner'
   | 'freeKickBanner'
   | 'throwInBanner'
+  | 'penalty'
   | LabelCardKey
   | 'ballTrail'
   | 'ballShadow'
@@ -52,6 +53,7 @@ export const REPLAY_LAYERS: ReadonlyArray<{ key: ReplayLayerKey; liveOnly?: true
   // Not "throwIn": that was the removed throw-in zoom's key, and a browser
   // that switched it off would hide this without anyone choosing to.
   { key: 'throwInBanner' },
+  { key: 'penalty' },
   ...LABEL_CARD_KEYS.map((key) => ({ key })),
   { key: 'ballTrail' },
   { key: 'ballShadow' },
@@ -70,6 +72,7 @@ export const DEFAULT_REPLAY_LAYERS: ReplayLayers = {
   corner: true,
   freeKickBanner: true,
   throwInBanner: true,
+  penalty: true,
   ...labelCardRecord(() => true),
   ballTrail: true,
   ballShadow: true,
