@@ -29,6 +29,8 @@ export interface LabelCardIndicator {
   intensity: number
   /** Its icon, if it has one, once it has loaded. Until then it is drawn without it. Default the theme's. */
   icon?: CanvasImageSource | null
+  /** For a card about a team (goalDisallowed): the team's name under the band, when its label names one. */
+  team?: string
   /** For a card about a player (yellowCard, redCard): the team and the player under the band. */
   player?: LabelCardPlayer
   /** For the substitution card: the team and its substitutions under the band. */
@@ -148,16 +150,24 @@ const TITLE_BASELINE_PX = PADDING_Y_PX + interBaselinePx(TITLE_PX, TITLE_LINE_PX
 /**
  * The lines under a player card's band (Figma "Game Animation Visualizer", viewport/eventYellowCard
  * and eventRedCard), in design pixels from the band's foot: the team's name in Inter Black, 48 px,
- * its baseline 84 below; then the player row, Inter Semi Bold, 40 px, its baseline 177 below: a
+ * its baseline 78.5 below; then the player row, Inter Semi Bold, 40 px, its baseline 168.55 below: a
  * small card 32 by 44 in the card's colour, its middle on the middle of the capitals, the text 37
  * after it, which puts its letters' ink 40 after it, as the design has them. Both white; the team
  * centred on the pitch, the row as a whole 6 right of the middle, as both of the design's frames
  * have it. The fonts and shadows are the design's; the places were measured from its frames.
+ *
+ * The team's line is where every frame that has one puts it, the corner's, the goal disallowed's,
+ * the cards' and the substitutions': a 58 px line whose top is 32 below the band's foot (774 on
+ * the 1100 px frame), which puts its baseline 78.5 below the foot, 270.5 below the pitch's middle.
+ * The player's row, and a substitution card's first, is a 64 px box whose top is 122 below the
+ * foot (864 on the frame), its 40 px text centred on a 64 px line: its baseline 168.55 below.
  */
 const TEAM_PX = 48
-const TEAM_BASELINE_PX = 84
+const TEAM_BASELINE_PX = 78.5
 const PLAYER_PX = 40
-const PLAYER_BASELINE_PX = 177
+const ROW_TOP_PX = 122
+const ROW_LINE_PX = 64
+const PLAYER_BASELINE_PX = ROW_TOP_PX + interBaselinePx(PLAYER_PX, ROW_LINE_PX)
 const SMALL_CARD_W_PX = 32
 const SMALL_CARD_H_PX = 44
 const SMALL_CARD_GAP_PX = 37
@@ -178,13 +188,15 @@ const PLAYER_SHADOW = 'rgba(0, 0, 0, 0.25)'
  * going off right-aligned 24 before the first, the one coming on left-aligned 24 after the second,
  * both in Inter Regular, lighter than the player cards' player (measured against the frames).
  * Measured from the design's frames. The card rises so the last row's baseline is at most
- * SUBSTITUTION_BELOW_TOUCHLINE_PX below the bottom touchline, as the 5-row frame has it.
+ * SUBSTITUTION_BELOW_TOUCHLINE_PX below the bottom touchline, as the 5-row frame
+ * (viewport/eventSubstitutionMore) has it: its last row's box top at 989, its baseline 46.55 into
+ * it, and the touchline's middle, where the pitch's edge is, at 1028.
  */
 const SUBSTITUTION_ROW_STEP_PX = 72
 const BADGE_PX = 56
 const BADGE_GAP_PX = 24
 const NAME_GAP_PX = 24
-const SUBSTITUTION_BELOW_TOUCHLINE_PX = 10
+const SUBSTITUTION_BELOW_TOUCHLINE_PX = 989 + interBaselinePx(PLAYER_PX, ROW_LINE_PX) - 1028
 
 /** The band's colour, and its opacity across it: clear at each end, solid at its middle. */
 const BAND_RGB = '12, 63, 47'
@@ -276,6 +288,7 @@ export function drawLabelCard(
       ctx.fillText(line, cx, top + (TEXT_TOP_PX + i * TEXT_LINE_PX + interBaselinePx(TEXT_PX, TEXT_LINE_PX)) * u)
     })
   }
+  if (card.team) drawTeamUnderBand(ctx, card.team, cx, top + (CARD_HEIGHT_PX / 2) * u, u, font)
   if (card.player) drawPlayerLines(ctx, card.player, cx, top + CARD_HEIGHT_PX * u, u, font)
   if (card.substitution) drawSubstitutionLines(ctx, card.substitution, cx, top + CARD_HEIGHT_PX * u, u, font, theme.icons)
   ctx.restore()
@@ -292,19 +305,20 @@ function setLineShadow(ctx: CanvasRenderingContext2D, u: number): void {
 }
 
 /**
- * The team's name under a centre card's band, whose foot is at `foot`, centred on `cx`, with its
- * shadow, and nothing else: the corner's (corner.ts), as a player card's.
+ * The team's name under a centre card, the card centred on `cy`, with its shadow, and nothing
+ * else, centred on `cx`: where a label card's goes, whatever the card's own band (the corner's,
+ * corner.ts, is the reference's, a little shorter).
  */
 export function drawTeamUnderBand(
   ctx: CanvasRenderingContext2D,
   name: string,
   cx: number,
-  foot: number,
+  cy: number,
   u: number,
   family: string,
 ): void {
   setLineShadow(ctx, u)
-  drawTeamLine(ctx, name, cx, foot, u, family)
+  drawTeamLine(ctx, name, cx, cy + (CARD_HEIGHT_PX / 2) * u, u, family)
   ctx.shadowColor = 'transparent'
 }
 

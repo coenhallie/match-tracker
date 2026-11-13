@@ -213,9 +213,10 @@ describe('the team under the corner card', () => {
     expect(team.textAlign).toBe('center')
     expect(team.fillStyle).toBe('#ffffff')
     expect(team.args[1]).toBeCloseTo(CX, 6)
-    // 84 below the band's foot, as a player card's team: the design's 774 px top of a 58 px line, on a 1100 px frame.
-    expect(team.args[2]).toBeCloseTo(FOOT + 84 * u, 6)
+    // Where a label card's team goes: the design's 774 px top of a 58 px line, on a 1100 px frame. That is
+    // 84 below this band's foot, the reference's band being shorter than a label card's.
     expect(team.args[2]).toBeCloseTo(CY + 270.5 * u, 6)
+    expect(team.args[2]).toBeCloseTo(FOOT + 84 * u, 6)
     expect(written.get('Ajax')).toMatchObject({ color: 'rgba(0, 0, 0, 0.5)', blur: 4 * u, y: 2 * u })
   })
 

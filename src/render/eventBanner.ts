@@ -134,7 +134,7 @@ export interface CentreCard {
  * its title: 92 px, 13 px down from the band's top (vp-pitch-1).
  */
 const CARD_WIDTH_PX = 736
-export const CARD_HEIGHT_PX = 373
+const CARD_HEIGHT_PX = 373
 const CARD_TITLE_PX = 92
 const CARD_TITLE_TOP_PX = 13
 const CARD_TITLE_BASELINE_PX = CARD_TITLE_TOP_PX + CARD_TITLE_PX * INTER_ASCENT

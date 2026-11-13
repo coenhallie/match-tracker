@@ -29,8 +29,11 @@
 export const LABEL_CARDS = [
   /** Matched as actionName reads a label, so "VAR check", "VAR_CHECK" and "EventType.VAR_CHECK" are all one. */
   { key: 'varCheck', labels: ['var check'], size: 'centre', below: 'icon', until: 'labelOff', makesWay: true },
-  /** Matched whole, so it is not the goal's label, and no goal plays on it (actionName, frameHasAction). */
-  { key: 'goalDisallowed', labels: ['goal disallowed'], size: 'centre', below: 'icon', until: 'labelOff', makesWay: true },
+  /**
+   * Matched whole, so it is not the goal's label, and no goal plays on it (actionName, frameHasAction). The team
+   * its label names is written under the band (labelTeam in analysis).
+   */
+  { key: 'goalDisallowed', labels: ['goal disallowed'], size: 'centre', below: 'icon', until: 'labelOff', makesWay: true, team: true },
   /**
    * "Half time", "half-time" and "HALF_TIME" read as "half time"; "Halftime" is the same words written as one.
    * The labelling tool's button says "Half Time", but it sends "End first half", renamed "End FirstHalf" on saving.
@@ -73,6 +76,8 @@ export const LABEL_CARDS = [
   player?: { color: string }
   /** The substitution card: a team's substitutions listed under the band. */
   substitution?: true
+  /** A card about a team: the team its label names under the band, and nothing more. */
+  team?: true
 }>
 
 type Card = (typeof LABEL_CARDS)[number]
@@ -97,6 +102,11 @@ export const TEXT_CARD_KEYS: readonly TextCardKey[] = keysOf(LABEL_CARDS.filter(
 
 /** The cards about a player, in LABEL_CARDS order. */
 export const PLAYER_CARD_KEYS: readonly PlayerCardKey[] = keysOf(LABEL_CARDS.filter((card) => 'player' in card))
+
+/** Whether `key` names a card about a team, which writes the team its label names under the band. */
+export function isTeamCardKey(key: LabelCardKey): boolean {
+  return 'team' in labelCard(key)
+}
 
 /** Whether `key` names the substitution card. */
 export function isSubstitutionKey(key: string): key is 'substitution' {

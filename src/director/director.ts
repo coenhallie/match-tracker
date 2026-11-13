@@ -142,8 +142,8 @@
  */
 import { sameTrail, type BallTrail } from '../analysis/ballTrail.js'
 import { samePhase, type TeamId, type TeamPhase } from '../analysis/teamPhase.js'
-import { LABEL_CARDS, isLabelCardKey, isPlayerCardKey, isSubstitutionKey, labelCardRecord, playerCardColor, type LabelCardKey } from '../model/labelCards.js'
-import { cardLabels, type CardLabel } from '../analysis/cardLabels.js'
+import { LABEL_CARDS, isLabelCardKey, isPlayerCardKey, isSubstitutionKey, isTeamCardKey, labelCard, labelCardRecord, playerCardColor, type LabelCardKey } from '../model/labelCards.js'
+import { cardLabels, labelTeam, type CardLabel } from '../analysis/cardLabels.js'
 import { substitutionLabels, type SubstitutionLabel } from '../analysis/substitutionLabels.js'
 import { CardQueue, type QueuedLabel } from './cardQueue.js'
 import type { ReplayLayers, ReplayMoment } from '../model/replayLayers.js'
@@ -401,8 +401,9 @@ export class Director {
 
   /**
    * Play `moment` now, by hand (`triggerMoment`, `:1038-1063`); for an
-   * attack, `team`'s, and a card, a substitution or a corner names `team`
-   * (a corner, the team the label on screen gives first). It takes over from whatever is showing and runs as it
+   * attack, `team`'s, and a card, a substitution, a corner or a goal
+   * disallowed names `team` (a corner and a goal disallowed, the team the label
+   * on screen gives first). It takes over from whatever is showing and runs as it
    * would on its label, during playback or not, except the corner: with no
    * label or cutaway to wait on, it is on screen for CORNER_DEMO_MS, and a
    * label card, likewise for LABEL_CARD_DEMO_MS. A seek
@@ -442,13 +443,16 @@ export class Director {
       const card = this.labelCards.find((c) => c.key === moment)!
       const strength = this.labelCardStrength(card.small)
       this.stopSequences()
-      // By hand there is a team, but no player to name, nor any substitution to list.
+      // By hand there is a team, but no player to name, nor any substitution to list. A card about a team
+      // names the one its label on screen gives, if there is one.
       const teamName = this.options.teamName(team)
       const about: CardAbout = isPlayerCardKey(moment)
         ? { player: { team: teamName, player: null, color: playerCardColor(moment) } }
         : isSubstitutionKey(moment)
           ? { substitution: { team, teamName, rows: [] } }
-          : {}
+          : isTeamCardKey(moment)
+            ? { team: this.options.teamName(this.labelTeamOf(moment, frame) ?? team) }
+            : {}
       card.start(now, frame, true, strength, about)
       this.request(card)
     } else {
@@ -653,7 +657,8 @@ export class Director {
             this.stopMoment(this.playerLoss)
             this.stopLabelCards()
           }
-          card.start(time, frame, false, strength)
+          const team = isTeamCardKey(card.key) ? this.labelTeamOf(card.key, frame) : null
+          card.start(time, frame, false, strength, team === null ? {} : { team: this.options.teamName(team) })
           this.request(card)
         }
       }
@@ -809,6 +814,11 @@ export class Director {
       card.start(time, frame, false, strength, { player: this.cardPlayer(label), labels: [label] })
     }
     this.request(card)
+  }
+
+  /** The team the label of the card under `key` gives on `frame`, or null when it gives none. */
+  private labelTeamOf(key: LabelCardKey, frame: Frame): TeamId | null {
+    return labelTeam(frame, labelCard(key).labels)
   }
 
   /** A substitution as its card lists it: who went off and who came on, in the words drawn. */

@@ -67,6 +67,8 @@ export interface SubstitutionOnCard {
 
 /** Who a card is about, and the labels it was played from, to queue again if it is cut short. */
 export interface CardAbout {
+  /** For a card about a team: the team's name, as drawn, or null when its label names none. */
+  team?: string | null
   /** For a player card: who it is for, as drawn. */
   player?: LabelCardPlayer
   labels?: QueuedLabel[]
@@ -100,6 +102,8 @@ interface Showing {
   labelsSeen: Map<string, number>
   /** Played by hand: on screen for LABEL_CARD_DEMO_MS, whatever the label does. */
   byHand: boolean
+  /** For a card about a team: the team's name, as drawn, or null. */
+  team: string | null
   /** For a player card: who it is for, as drawn. */
   player: LabelCardPlayer | undefined
   /** The labels it was played from, to queue again if it is cut short: none for one played by hand. */
@@ -243,8 +247,8 @@ export class LabelCard implements Moment {
    * Show it, on `frame`; `byHand` for LABEL_CARD_DEMO_MS whatever the label
    * does, unless it stays until the next label. Taking over from another card,
    * `fromIntensity` is how strongly that was drawn: it fades in the rest of the
-   * way from there, and stays its full time. `about` says who a player card or
-   * the substitution card is about, and the labels it was played from.
+   * way from there, and stays its full time. `about` says who a team card, a
+   * player card or the substitution card is about, and the labels it was played from.
    */
   start(now: number, frame: Frame, byHand = false, fromIntensity = 0, about: CardAbout = {}): void {
     const run = this.run
@@ -260,6 +264,7 @@ export class LabelCard implements Moment {
       idle: false,
       labelsSeen: new Map(humanLabelNames(frame).map((name) => [name, now])),
       byHand,
+      team: about.team ?? null,
       player: about.player,
       labels: [...(about.labels ?? [])],
       substitution: about.substitution
@@ -312,6 +317,7 @@ export class LabelCard implements Moment {
     return {
       key: this.key,
       intensity: this.intensity(card),
+      ...(card.team !== null ? { team: card.team } : {}),
       ...(card.player ? { player: card.player } : {}),
       ...(card.substitution ? { substitution: this.substitution(card) } : {}),
     }

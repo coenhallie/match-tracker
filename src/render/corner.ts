@@ -1,6 +1,6 @@
 import type { PitchDimensions, Transform2D } from '../model/types.js'
 import type { CornerSide } from '../analysis/cornerLabel.js'
-import { CARD_HEIGHT_PX, CARD_MIDDLE_PX, drawCentreCard } from './eventBanner.js'
+import { CARD_MIDDLE_PX, drawCentreCard } from './eventBanner.js'
 import { drawTeamUnderBand } from './labelCard.js'
 import { designUnit, tracePlayingArea } from './pitchGeometry.js'
 import { DEFAULT_THEME, type RenderTheme } from './theme.js'
@@ -184,10 +184,9 @@ const CORNER_CARD = {
  * Draw the corner's card over everything else on the pitch, in frame units
  * through the context's current transform, in the theme's words, font and
  * icon, and the team taking it under it (Figma "Game Animation Visualizer",
- * viewport/eventCornerPulse): written as a player card's team is, Inter Black
- * 48 px, centred, its baseline 84 design pixels below the band's foot. Under
- * this band, 373 high, that is 270.5 below the pitch's middle, where the
- * design has it.
+ * viewport/eventCornerPulse): written where and as a label card's team is,
+ * Inter Black 48 px, centred, its baseline 270.5 design pixels below the
+ * pitch's middle, where the design has it.
  */
 export function drawCornerCard(
   ctx: CanvasRenderingContext2D,
@@ -208,6 +207,6 @@ export function drawCornerCard(
   const [cx, cy] = worldToPx(0, 0, t)
   ctx.save()
   ctx.globalAlpha = alpha
-  drawTeamUnderBand(ctx, banner.team, cx, cy + (CARD_HEIGHT_PX / 2) * u, u, card.font)
+  drawTeamUnderBand(ctx, banner.team, cx, cy, u, card.font)
   ctx.restore()
 }

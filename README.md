@@ -234,7 +234,7 @@ destroyed on can have a new one.
 | `push(message)` | Live: one websocket message. |
 | `present(state)` | Replay: `{ time, playing, record, lookback }` at the host's clock. |
 | `reset()` | Forget everything seen and end every moment. What comes next is a seek. The last picture stays until new data arrives. In live mode the clips kept for replays go too, and a replay playing ends, with a `flashback` `end` (see [Flashbacks](#flashbacks)). |
-| `trigger(moment, team?)` | Play `'goal'`, `'attack'`, `'corner'`, `'throwIn'`, `'varCheck'`, `'goalDisallowed'`, `'halfTime'`, `'secondHalf'`, `'fullTime'`, `'foul'`, `'shotOnGoal'`, `'headerOnGoal'`, `'yellowCard'`, `'redCard'` or `'substitution'` now, on the frame on screen. `team` (0 home, 1 away, default 0) is for an attack, and for a card, a substitution or a corner the team it names (a corner names the team its label on screen gives first). Returns false when the moment cannot be played on that frame (for example before the first frame, or a goal with no ball). |
+| `trigger(moment, team?)` | Play `'goal'`, `'attack'`, `'corner'`, `'throwIn'`, `'varCheck'`, `'goalDisallowed'`, `'halfTime'`, `'secondHalf'`, `'fullTime'`, `'foul'`, `'shotOnGoal'`, `'headerOnGoal'`, `'yellowCard'`, `'redCard'` or `'substitution'` now, on the frame on screen. `team` (0 home, 1 away, default 0) is for an attack, and for a card, a substitution, a corner or a goal disallowed the team it names (a corner and a goal disallowed name the team their label on screen gives first). Returns false when the moment cannot be played on that frame (for example before the first frame, or a goal with no ball). |
 | `setOptions(options)` | Change any option but `mode` and `layersStorageKey`, which are fixed at mount. The HUD and the canvas follow at once, without a remount. Options that throw change nothing. |
 | `on(event, listener)` | Listen to an event. Returns a function that unsubscribes. |
 | `availability()` | Which moments `trigger` can play on the frame on screen: `{ goal, attack: { 0, 1 }, corner, throwIn, varCheck, goalDisallowed, halfTime, secondHalf, fullTime, foul, shotOnGoal, headerOnGoal, yellowCard, redCard, substitution }`, each a boolean (`MomentAvailability`). All false before the first frame and after a reset. A goal needs a ball, and an attack needs the direction that team attacks in, which needs the keepers. A fresh copy on every call. |
@@ -325,6 +325,11 @@ written `second half`, `Start second half` or in any of the ways above
 - The latest card takes over from another: a goal disallowed replaces the VAR
   check before it, with no gap in the band. On a frame with both labels, the
   goal disallowed plays.
+- The goal disallowed names the team under the band, as the corner does, when
+  its label gives the team (`team_id`), as the labelling tool's do: by its name
+  in the `teams` option, else "Red" or "Blue". A label without a team shows the
+  card alone. Played with `trigger('goalDisallowed', team)`, it names the team
+  the label on screen gives, else `team`.
 
 #### Half time and full time
 

@@ -145,7 +145,7 @@ export interface MatchTracker {
   reset(): void
   /**
    * Play `moment` now, for `team` (default 0): the team an attack is, and the team a card, a
-   * substitution or a corner names. False when nothing can be played.
+   * substitution, a corner or a goal disallowed names. False when nothing can be played.
    */
   trigger(moment: ReplayMoment, team?: TeamId): boolean
   /** Change any option but `mode` and `layersStorageKey`, which are fixed at mount: given anyway, they are ignored. */

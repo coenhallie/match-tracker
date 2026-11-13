@@ -6,6 +6,27 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+The goal disallowed names the team.
+
+### What you see
+
+- **The team under the goal disallowed.** The goal disallowed card now writes
+  the team's name under its band, as the corner does: the labelling tool sends
+  the team with the label (`team_id`), and the widget names it by the `teams`
+  option's name, else "Red" or "Blue". A label without a team, as the exports'
+  are, shows the card as before. Played by hand
+  (`trigger('goalDisallowed', team)`), it names the team the label on screen
+  gives, else `team`.
+- **The lines under the yellow and red cards and the substitution card** are
+  where the design has them. The team's name is 5.5 design pixels higher, its
+  baseline 78.5 below the band, no longer 84. The player, and each substitution
+  row, is 8.45 higher, its baseline 168.55 below the band, no longer 177, with
+  the small card and the badges on it.
+- **A substitution card with three or more rows** rises a little less to keep
+  its last row on the pitch: that row's baseline now ends at most 7.55 design
+  pixels below the bottom touchline, as the design's five-row frame has it, no
+  longer 10. Five rows rise 202, no longer 208.
+
 ## [0.18.0] - 2026-11-13
 
 The corner names the team taking it.

@@ -1,12 +1,15 @@
 import { describe, it, expect } from 'vitest'
 import type { TeamPhase } from '../../src/analysis/teamPhase'
 import { GOAL_SEQUENCE_MS } from '../../src/analysis/goalSequence'
-import type { Frame } from '../../src/model/types'
+import type { Frame, FrameAction } from '../../src/model/types'
 import { LABEL_CARD_DEMO_MS, LABEL_CARD_IN_MS, LABEL_CARD_OUT_MS, LABEL_CARD_SHOW_MS } from '../../src/render/labelCard'
 import { FakeReplay } from './harness'
 
 /** A record: the ball at `ballX` along the pitch, and the labels it carries. */
-const frameAt = (labels: string[] = [], ballX = 40, origin = 'human'): Frame =>
+/** A human's label: its name, or the label as a whole, a team on it say. */
+type Label = string | FrameAction
+
+const frameAt = (labels: Label[] = [], ballX = 40, origin = 'human'): Frame =>
   ({
     pitch_dimensions: { length: 105, width: 68 },
     teams: [
@@ -16,7 +19,11 @@ const frameAt = (labels: string[] = [], ballX = 40, origin = 'human'): Frame =>
       },
     ],
     balls: [{ projected_coordinates: { x: ballX, y: 3 } }],
-    state: { actions: labels.map((action_type) => ({ action_type, action_origin: origin })) },
+    state: {
+      actions: labels.map((label) =>
+        typeof label === 'string' ? { action_type: label, action_origin: origin } : { action_origin: origin, ...label },
+      ),
+    },
     frame_data: [{ frame_count: 1 }],
   }) as Frame
 
@@ -32,7 +39,7 @@ function ready(): FakeReplay {
   return replay
 }
 
-const record = (replay: FakeReplay, labels: string[] = [], step = 0.04, ballX = 40) =>
+const record = (replay: FakeReplay, labels: Label[] = [], step = 0.04, ballX = 40) =>
   replay.set({ time: replay.time + step, frame: frameAt(labels, ballX) })
 const animate = (replay: FakeReplay, ms: number) => replay.animate(ms, true)
 const card = (replay: FakeReplay) => replay.last()?.labelCard
@@ -323,7 +330,47 @@ describe('the goal disallowed card', () => {
     const from = replay.outputs.length
     replay.trigger('goalDisallowed')
     animate(replay, 100)
-    for (const shown of shownFrom(replay, from)) expect(shown).toEqual({ key: 'goalDisallowed', intensity: 1 })
+    // Played by hand, it names the team it was played for: 0, Red, by default.
+    for (const shown of shownFrom(replay, from)) expect(shown).toEqual({ key: 'goalDisallowed', intensity: 1, team: 'Red' })
+  })
+
+  it('names the team its label gives, as the host names it, and none for a label without one', () => {
+    for (const [team_id, team] of [[0, 'Red'], [1, 'Blue']] as const) {
+      const replay = ready()
+      record(replay, [{ action_type: 'Goal disallowed', team_id }])
+      animate(replay, 600)
+      expect(card(replay)).toEqual({ key: 'goalDisallowed', intensity: 1, team })
+    }
+    // The exports' labels give no team, and anything but 0 or 1 is none.
+    for (const label of ['Goal disallowed', { action_type: 'Goal disallowed', team_id: -1 }]) {
+      const replay = ready()
+      record(replay, [label])
+      animate(replay, 600)
+      expect(card(replay)).toEqual({ key: 'goalDisallowed', intensity: 1 })
+    }
+  })
+
+  it('names the team its label on screen gives when played by hand, else the team it was played for', () => {
+    // Paused, so the label does not play the card itself: only the trigger does.
+    const labelled = ready()
+    labelled.pause()
+    labelled.set({ time: labelled.time + 0.04, frame: frameAt([{ action_type: 'Goal disallowed', team_id: 1 }]) })
+    animate(labelled, 100)
+    expect(card(labelled)).toBeUndefined()
+    labelled.trigger('goalDisallowed', 0)
+    animate(labelled, 600)
+    expect(card(labelled)).toMatchObject({ key: 'goalDisallowed', team: 'Blue' })
+    const bare = ready()
+    bare.trigger('goalDisallowed', 1)
+    animate(bare, 600)
+    expect(card(bare)).toMatchObject({ key: 'goalDisallowed', team: 'Blue' })
+  })
+
+  it('is the only card that names a team: a VAR check with one on its label names none', () => {
+    const replay = ready()
+    record(replay, [{ action_type: 'VAR check', team_id: 1 }])
+    animate(replay, 600)
+    expect(card(replay)).toEqual({ key: 'varCheck', intensity: 1 })
   })
 
   it('does not hand back to the VAR check while both labels stay on', () => {

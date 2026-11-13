@@ -379,6 +379,48 @@ describe('a label card’s labels', () => {
   })
 })
 
+/**
+ * Where the player's row, and a substitution card's first, has its baseline, below the band: its 64 px box
+ * 122 below it, the 40 px text centred on a 64 px line.
+ */
+const ROW = 122 + (64 - 40 * (0.96875 + 494 / 2048)) / 2 + 40 * 0.96875
+
+describe('a card about a team', () => {
+  // The band's foot: the card is 384 px high, centred on the pitch.
+  const FOOT = CY + 192 * u
+
+  /** Draw the goal disallowed card with `team`, noting the shadow and alpha each text is written with. */
+  function drawTeam(team: string | undefined, intensity = 1) {
+    const { ctx, ops } = recordingCtx()
+    const written = new Map<string, { color: string; blur: number; y: number; alpha: number }>()
+    const fillText = ctx.fillText.bind(ctx)
+    ctx.fillText = (...args: unknown[]) => {
+      written.set(String(args[0]), { color: ctx.shadowColor, blur: ctx.shadowBlur, y: ctx.shadowOffsetY, alpha: ctx.globalAlpha })
+      fillText(...args)
+    }
+    drawLabelCard(ctx as unknown as CanvasRenderingContext2D, T, { key: 'goalDisallowed', intensity, ...(team === undefined ? {} : { team }) })
+    return { ops, written }
+  }
+
+  it('writes the team under the band as a player card does, 270.5 px below the pitch\'s middle, as viewport/eventGoalDisallowed has it', () => {
+    const { ops, written } = drawTeam('Ajax')
+    const team = ops.find((o) => o.op === 'fillText' && o.args[0] === 'Ajax')!
+    expect(team.font).toContain(`900 ${48 * u}px`)
+    expect(team.font).not.toContain('italic')
+    expect(team.textAlign).toBe('center')
+    expect(team.fillStyle).toBe('#ffffff')
+    expect(team.args[1]).toBeCloseTo(CX, 6)
+    expect(team.args[2]).toBeCloseTo(FOOT + 78.5 * u, 6)
+    expect(team.args[2]).toBeCloseTo(CY + 270.5 * u, 6)
+    expect(written.get('Ajax')).toEqual({ color: 'rgba(0, 0, 0, 0.5)', blur: 4 * u, y: 2 * u, alpha: 1 })
+  })
+
+  it('fades with the card, and writes nothing without a team', () => {
+    expect(drawTeam('Ajax', 0.3).written.get('Ajax')!.alpha).toBeCloseTo(0.3, 6)
+    expect(drawTeam(undefined).ops.filter((o) => o.op === 'fillText').map((o) => o.args[0])).toEqual(['GOAL DISALLOWED'])
+  })
+})
+
 describe('a card about a player', () => {
   // The band's foot: the card is 384 px high, centred on the pitch.
   const FOOT = CY + 192 * u
@@ -401,7 +443,7 @@ describe('a card about a player', () => {
   const smallCard = (ops: Op[]) => ops.find((o) => o.op === 'fillRect' && o.fillStyle === '#EAB308')
   const PLAYER: LabelCardPlayer = { team: 'Ajax', player: 'Name', color: '#EAB308' }
 
-  it('writes the team in Inter Black 48 px, centred, 84 px below the band', () => {
+  it('writes the team in Inter Black 48 px, centred, 78.5 px below the band, where every frame has it', () => {
     const { ops, shadows } = drawPlayer(PLAYER)
     const team = text(ops, 'Ajax')!
     expect(team.font).toContain(`900 ${48 * u}px`)
@@ -409,21 +451,25 @@ describe('a card about a player', () => {
     expect(team.textAlign).toBe('center')
     expect(team.fillStyle).toBe('#ffffff')
     expect(team.args[1]).toBeCloseTo(CX, 6)
-    expect(team.args[2]).toBeCloseTo(FOOT + 84 * u, 6)
+    // A 58 px line, its top 32 below the band's foot: 774 on the 1100 px frame, its ink 786 to 820.
+    expect(team.args[2]).toBeCloseTo(FOOT + 78.5 * u, 6)
     expect(shadows.get('Ajax')).toEqual({ color: 'rgba(0, 0, 0, 0.5)', blur: 4 * u, y: 2 * u })
   })
 
-  it('writes the player in Inter 600 40 px, 177 px below the band, after a small card in its colour, as the design places it', () => {
+  it('writes the player in Inter 600 40 px, 168.55 px below the band, after a small card in its colour, as the design places it', () => {
     const { ops, shadows } = drawPlayer(PLAYER)
     const name = text(ops, 'Name')!
     const [x, y, w, h] = smallCard(ops)!.args as number[]
     expect(w).toBeCloseTo(32 * u, 6)
     expect(h).toBeCloseTo(44 * u, 6)
-    expect(y! + h! / 2).toBeCloseTo(FOOT + (177 - (CAP * 40) / 2) * u, 6)
+    // The row's 64 px box is 122 below the band (864 on the 1100 px frame), its text centred on a 64 px
+    // line; the small card's middle, 896 on the frame, is the middle of the capitals.
+    expect(y! + h! / 2).toBeCloseTo(FOOT + (ROW - (CAP * 40) / 2) * u, 6)
+    expect(FOOT / u + (ROW - (CAP * 40) / 2) - CY / u).toBeCloseTo(896 - 550, 1)
     expect(name.font).toContain(`600 ${40 * u}px`)
     expect(name.textAlign).toBe('left')
     expect(name.fillStyle).toBe('#ffffff')
-    expect(name.args[2]).toBeCloseTo(FOOT + 177 * u, 6)
+    expect(name.args[2]).toBeCloseTo(FOOT + ROW * u, 6)
     // 37 px from the small card to the text, which puts the letters' ink 40 px from it, as in the design.
     expect(name.args[1]).toBeCloseTo(x! + (32 + 37) * u, 6)
     // The recording context measures every character at 0.6 of the size: "Name" is 96 px. The design
@@ -492,17 +538,19 @@ describe('the substitution card', () => {
     expect(substitutionLiftPx(T, 0)).toBe(0)
     expect(substitutionLiftPx(T, 1)).toBeCloseTo(0, 0)
     expect(substitutionLiftPx(T, 2)).toBeLessThan(2)
-    expect(substitutionLiftPx(T, 3)).toBeCloseTo(64, -1)
+    // The last row's baseline at most 7.55 below the touchline, as the 5-row frame has it: the touchline is
+    // 34 m, 439.1 design px, below the middle, and the third row's baseline 192 + 168.55 + 144 below it.
+    expect(substitutionLiftPx(T, 3)).toBeCloseTo(192 + ROW + 144 - (34 * 1356) / 105 - 7.55, 1)
     expect(substitutionLiftPx(T, 4) - substitutionLiftPx(T, 3)).toBeCloseTo(72, 6)
     expect(substitutionLiftPx(T, 5) - substitutionLiftPx(T, 4)).toBeCloseTo(72, 6)
-    expect(substitutionLiftPx(T, 5)).toBeCloseTo(208, -1)
+    expect(substitutionLiftPx(T, 5)).toBeCloseTo(192 + ROW + 288 - (34 * 1356) / 105 - 7.55, 1)
   })
 
   it('writes each row: going off, two badges, coming on', () => {
     const ops = drawSubs({ team: 'Arsenal', rows: [row('Off A', 'On A'), row('Off B', 'On B')], rowsShown: 2 })
-    expect(text(ops, 'Arsenal')[0]!.args[2]).toBeCloseTo(FOOT + 84 * u, 6)
+    expect(text(ops, 'Arsenal')[0]!.args[2]).toBeCloseTo(FOOT + 78.5 * u, 6)
     for (const [i, [off, on]] of [['Off A', 'On A'], ['Off B', 'On B']].entries()) {
-      const baseline = FOOT + (177 + 72 * i) * u
+      const baseline = FOOT + (ROW + 72 * i) * u
       const out = text(ops, off!)[0]!
       expect(out.textAlign).toBe('right')
       expect(out.args[1]).toBeCloseTo(CX - (12 + 56 + 24) * u, 6)
@@ -563,7 +611,7 @@ describe('the substitution card', () => {
 
   it('lays a row out in the first free place when the one before it names no one', () => {
     const ops = drawSubs({ team: 'A', rows: [row(null, null), row('a', 'b')], rowsShown: 1 })
-    expect(text(ops, 'a')[0]!.args[2]).toBeCloseTo(FOOT + 177 * u, 6)
+    expect(text(ops, 'a')[0]!.args[2]).toBeCloseTo(FOOT + ROW * u, 6)
   })
 
   it('never lifts the band past the top of the frame, on a pitch narrower for its length', () => {

@@ -34,6 +34,20 @@ export function cardLabels(frame: Frame): CardLabel[] {
   return cards
 }
 
+/**
+ * The team a human's label named `names` (bare names, actionName) gives on `frame`: its `team_id`, which
+ * the labelling tool sends with a game label since 2026-11, from the first of them that gives one. Null
+ * when none does, as the exports' labels do not.
+ */
+export function labelTeam(frame: Frame, names: readonly string[]): TeamId | null {
+  for (const action of frame.state?.actions ?? []) {
+    if (!isHumanLabel(action) || !names.includes(actionName(action.action_type))) continue
+    const team = plainTeam(action.team_id)
+    if (team !== null) return team
+  }
+  return null
+}
+
 /** A label's uuid, or null when it has none. */
 export const plainUuid = (uuid: unknown): string | null => (typeof uuid === 'string' && uuid !== '' ? uuid : null)
 
