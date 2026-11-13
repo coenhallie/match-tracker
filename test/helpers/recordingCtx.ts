@@ -105,6 +105,27 @@ export function recordingCtx() {
         },
       }
     },
+    // A pattern that records its picture, repetition and transform, and reads back as a string
+    // describing them, so a fillStyle set to it can be asserted on.
+    createPattern(image: unknown, repetition: string) {
+      const pattern = {
+        image,
+        transform: null as unknown,
+        setTransform(m: unknown) {
+          pattern.transform = m
+        },
+        toString() {
+          return `pattern(${repetition})`
+        },
+      }
+      return pattern
+    },
+    createImageData(width: number, height: number) {
+      return { width, height, data: new Uint8ClampedArray(width * height * 4) }
+    },
+    putImageData(...args: unknown[]) {
+      ctx.snap('putImageData', args)
+    },
     // save and restore keep the style state, as a real context does, so code
     // that changes alpha or dash inside a save leaves nothing behind.
     stack: [] as Array<Pick<Op, 'fillStyle' | 'strokeStyle' | 'lineDash' | 'globalAlpha'>>,

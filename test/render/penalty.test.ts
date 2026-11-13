@@ -15,7 +15,7 @@ import {
 import { interBaselinePx } from '../../src/render/eventBanner'
 import { designUnit } from '../../src/render/pitchGeometry'
 import { DEFAULT_THEME, type RenderTheme } from '../../src/render/theme'
-import { recordingCtx, type Op } from '../helpers/recordingCtx'
+import { recordingCtx, stubOffscreenCanvas, type Op } from '../helpers/recordingCtx'
 import { build2DTransform, FRAME_H, FRAME_W, worldToPx } from '../../src/model/pitch'
 
 // The design (Figma "Game Animation Visualizer", viewport/eventPenalty, eventPenaltyWaiting,
@@ -73,7 +73,7 @@ describe('the penalty pose', () => {
     expect(pose.ballShadow).toEqual({ x: 403, y: 898, w: 126, h: 50 })
     expect(pose.keeper).toMatchObject({ x: 401.5, y: 497, dive: 0 })
     expect(pose.keeperShadow).toEqual({ x: 402, y: 594, w: 126, h: 50 })
-    expect(pose.trail).toBe(0)
+    expect(pose.trail).toEqual({ from: 0, to: 0, alpha: 0 })
   })
 
   it('turns the spinner once in 800 ms while waiting', () => {
@@ -115,7 +115,8 @@ describe('the penalty pose', () => {
     expect(pose.keeperShadow.y).toBeCloseTo(587.5, 6)
     expect(pose.keeperShadow.w).toBeCloseTo(178, 6)
     expect(pose.keeperShadow.h).toBeCloseTo(37, 6)
-    expect(pose.trail).toBe(1)
+    // The trail keeps the stretch of the curve behind the ball that Figma's Line 1 covers.
+    expect(pose.trail).toEqual({ from: 0.157, to: 1, alpha: 1 })
   })
 
   it('kicks along the curve through the control point, easing out, shrinking and turning', () => {
@@ -126,7 +127,9 @@ describe('the penalty pose', () => {
     expect(pose.ball.y).toBeCloseTo(along(835, 470, 380), 6)
     expect(pose.ball.size).toBeCloseTo(128 + (74 - 128) * e, 6)
     expect(pose.ball.turnDeg).toBeCloseTo(540 * e, 6)
-    expect(pose.trail).toBeCloseTo(e, 6)
+    expect(pose.trail.to).toBeCloseTo(e, 6)
+    expect(pose.trail.from).toBeCloseTo(e - 0.843, 6)
+    expect(pose.trail.alpha).toBe(1)
     expect(pose.ballShadow.x).toBeCloseTo(403 + (560 - 403) * e, 6)
     expect(pose.ballShadow.w).toBeCloseTo(126 + (63 - 126) * e, 6)
   })
@@ -273,6 +276,53 @@ describe('drawing the penalty', () => {
     expect(draw({ scene: 0.4 }).ops.find((o) => o.op === 'fillRect')!.globalAlpha).toBeCloseTo(0.4, 6)
   })
 
+  it('lays Figma’s grain over the green: black at 25% over 49% of it, a tile pixel to a design pixel', () => {
+    const offscreen = stubOffscreenCanvas()
+    try {
+      const { ctx, ops } = recordingCtx()
+      const patterns: Array<ReturnType<typeof ctx.createPattern>> = []
+      const createPattern = ctx.createPattern.bind(ctx)
+      ctx.createPattern = (image: unknown, repetition: string) => {
+        patterns.push(createPattern(image, repetition))
+        return patterns.at(-1)!
+      }
+      drawPenalty(ctx as unknown as CanvasRenderingContext2D, T, indicator({ scene: 0.6 }), THEME)
+      const fills = ops.filter((o) => o.op === 'fillRect')
+      const grain = fills[1]!
+      expect(fills[0]!.fillStyle).toContain('#086046')
+      expect(grain.fillStyle).toBe('pattern(repeat)')
+      expect(grain.args).toEqual([0, 0, FRAME_W, FRAME_H])
+      expect(grain.globalAlpha).toBeCloseTo(0.6 * 0.25, 6)
+      expect(patterns).toHaveLength(1)
+      expect(patterns[0]!.transform).toEqual({ a: u, b: 0, c: 0, d: u, e: 0, f: 0 })
+      // The tile: 256 square, black, each pixel as opaque as its share of 16 draws: 49% on average,
+      // spread about 0.12 either way from pixel to pixel.
+      expect(offscreen.sizes).toEqual([[256, 256]])
+      const image = offscreen.ops.find((o) => o.op === 'putImageData')!.args[0] as ImageData
+      const shares: number[] = []
+      for (let i = 0; i < image.data.length; i += 4) {
+        expect(image.data[i]! + image.data[i + 1]! + image.data[i + 2]!).toBe(0)
+        const share = image.data[i + 3]! / 255
+        expect(Math.round(share * 16)).toBeCloseTo(share * 16, 1)
+        shares.push(share)
+      }
+      const mean = shares.reduce((a, b) => a + b, 0) / shares.length
+      const spread = Math.sqrt(shares.reduce((a, b) => a + (b - mean) ** 2, 0) / shares.length)
+      expect(mean).toBeCloseTo(0.49, 2)
+      expect(spread).toBeCloseTo(Math.sqrt((0.49 * 0.51) / 16), 2)
+      // Made once for the context, not again each frame.
+      drawPenalty(ctx as unknown as CanvasRenderingContext2D, T, indicator(), THEME)
+      expect(offscreen.sizes).toHaveLength(1)
+      expect(ops.filter((o) => o.fillStyle === 'pattern(repeat)')).toHaveLength(2)
+    } finally {
+      offscreen.restore()
+    }
+  })
+
+  it('leaves the green plain where there is no OffscreenCanvas to make the grain in', () => {
+    expect(draw().ops.some((o) => o.fillStyle.startsWith('pattern'))).toBe(false)
+  })
+
   it('draws the scene’s pieces in order: shadows under what casts them, the trail under the ball, the banners on top', () => {
     // Early in the keeper's move, so both of him are drawn.
     const { ops } = draw({ result: 'scored', kick: 0.2, banner: 0.5 })
@@ -385,20 +435,67 @@ describe('drawing the penalty', () => {
     expect(images(draw({ result: 'missed', kick: 1, afterKickMs: 500 }).ops, 'ball')).toHaveLength(0)
   })
 
-  it('draws the trail along the curve to the ball, 16 wide with round ends, clear at the spot to 75% at the ball', () => {
-    const { ops, caps } = draw({ result: 'scored', kick: 0.5 })
-    const pose = penaltyPose(indicator({ result: 'scored', kick: 0.5 }))
-    const s = pose.trail
+  /** The point `k` along a kick's curve, from the spot through `control` to `end`, in design pixels. */
+  const along = (control: [number, number], end: [number, number], k: number): [number, number] => [
+    (1 - k) ** 2 * 402 + 2 * (1 - k) * k * control[0] + k ** 2 * end[0],
+    (1 - k) ** 2 * 835 + 2 * (1 - k) * k * control[1] + k ** 2 * end[1],
+  ]
+
+  it('draws the trail as Figma’s Line 1: 48 wide, square ended, white at the ball fading to clear grey along it', () => {
+    const { ops, caps } = draw({ result: 'scored', kick: 1 })
     const stroke = ops.find((o) => o.op === 'stroke')!
-    expect(stroke.lineWidth).toBeCloseTo(16 * u, 6)
-    expect(caps[0]).toBe('round')
-    const [sx, sy] = D(402, 835)
-    const [bx, by] = D(pose.ball.x, pose.ball.y)
-    expect(stroke.strokeStyle).toBe(`gradient(${sx},${sy}->${bx},${by}|0:rgba(255, 255, 255, 0),1:rgba(255, 255, 255, 0.75))`)
-    const curve = ops.find((o) => o.op === 'quadraticCurveTo')!.args as number[]
-    const [qx, qy] = D(402 + (400 - 402) * s, 835 + (470 - 835) * s)
-    expect(curve).toEqual([qx, qy, bx, by].map((v) => expect.closeTo(v, 6)))
+    expect(stroke.lineWidth).toBeCloseTo(48 * u, 6)
+    expect(caps[0]).toBe('butt')
+    expect(stroke.globalAlpha).toBe(1)
+    // The fade runs from the ball to the trail's far end, not from the spot.
+    const [bx, by] = D(566, 380)
+    const [tx, ty] = D(...along([400, 470], [566, 380], 0.157))
+    expect(stroke.strokeStyle).toBe(`gradient(${bx},${by}->${tx},${ty}|0:rgba(255, 255, 255, 1),1:rgba(153, 153, 153, 0))`)
     expect(draw().ops.some((o) => o.op === 'stroke')).toBe(false)
+  })
+
+  it('covers the stretch of the curve behind the ball that Figma’s Line 1 does, at the kick’s end', () => {
+    for (const [result, control, end, figmaTail, within] of [
+      ['scored', [400, 470], [566, 380], [401.466, 726.733], 5],
+      // Figma's missed line bends further left than the ball's curve: its far end is level, 42 px over.
+      ['missed', [430, 420], [610, 228], [372, 712], 43],
+    ] as const) {
+      const { ops } = draw({ result, kick: 1 })
+      const from = ops.find((o) => o.op === 'moveTo' && ops.indexOf(o) > ops.findIndex((p) => p.op === 'ellipse'))!.args as number[]
+      const [fx, fy] = D(figmaTail[0], figmaTail[1])
+      expect(Math.hypot(from[0]! - fx, from[1]! - fy) / u).toBeLessThan(within)
+      // The curve from there to the ball, cut from the kick's own: one quadratic, ending on the ball.
+      const j = result === 'scored' ? 0.157 : 0.147
+      const c = [(1 - j) * control[0] + j * end[0], (1 - j) * control[1] + j * end[1]] as const
+      const curve = ops.find((o) => o.op === 'quadraticCurveTo')!.args as number[]
+      expect(curve).toEqual([...D(c[0], c[1]), ...D(end[0], end[1])].map((v) => expect.closeTo(v, 6)))
+      expect(ops.some((o) => o.op === 'lineTo' && ops.indexOf(o) > ops.indexOf(ops.find((p) => p.op === 'quadraticCurveTo')!))).toBe(false)
+    }
+  })
+
+  it('grows from the spot early in the kick, then keeps its stretch behind the ball', () => {
+    const early = penaltyPose(indicator({ result: 'scored', kick: 0.1 }))
+    expect(early.trail.from).toBe(0)
+    expect(early.trail.to).toBeCloseTo(1 - 0.9 ** 3, 6)
+    const [sx, sy] = D(402, 835)
+    const moveTo = draw({ result: 'scored', kick: 0.1 }).ops.filter((o) => o.op === 'moveTo').at(-1)!
+    expect(moveTo.args).toEqual([sx, sy].map((v) => expect.closeTo(v, 6)))
+    const late = penaltyPose(indicator({ result: 'scored', kick: 0.8 }))
+    expect(late.trail.to - late.trail.from).toBeCloseTo(0.843, 6)
+  })
+
+  it('runs the miss’s trail on to the ball as it carries on, and fades it with the ball', () => {
+    const { ops } = draw({ result: 'missed', kick: 1, afterKickMs: 250, scene: 0.8 })
+    const stroke = ops.find((o) => o.op === 'stroke')!
+    expect(stroke.globalAlpha).toBeCloseTo(0.8 * 0.5, 6)
+    const curve = ops.find((o) => o.op === 'quadraticCurveTo')!
+    const on = ops.slice(ops.indexOf(curve)).find((o) => o.op === 'lineTo')!
+    expect(on.args).toEqual(D(625, 189).map((v) => expect.closeTo(v, 6)))
+    // Its fade starts at the ball where it is now.
+    const [tx, ty] = D(...along([430, 420], [610, 228], 0.147))
+    expect(stroke.strokeStyle).toBe(`gradient(${D(625, 189)[0]},${D(625, 189)[1]}->${tx},${ty}|0:rgba(255, 255, 255, 1),1:rgba(153, 153, 153, 0))`)
+    expect(penaltyPose(indicator({ result: 'missed', kick: 1, afterKickMs: 250 })).trail.alpha).toBeCloseTo(0.5, 6)
+    expect(draw({ result: 'missed', kick: 1, afterKickMs: 500 }).ops.some((o) => o.op === 'stroke')).toBe(false)
   })
 
   it('writes “PENALTY..” on Figma’s band, the team under it, as Figma has them', () => {

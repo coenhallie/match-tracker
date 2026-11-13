@@ -1384,6 +1384,19 @@ describe('the penalty over the pitch', () => {
     expect(zoomed.slice(from).find((o) => o.op === 'setTransform')!.args).not.toEqual([1, 0, 0, 1, 0, 0])
   })
 
+  it('draws the card fixed to the frame in a zoomed view, too', () => {
+    const band = (ops: Op[]) => ops.find((o) => o.op === 'fillRect' && o.fillStyle.includes('12, 63, 47'))!
+    const plain = render({ card: 1, scene: 0 })
+    const zoomed = render({ card: 1, scene: 0 }, true)
+    expect(band(zoomed).args).toEqual(band(plain).args)
+    const texts = (ops: Op[]) => ops.filter((o) => o.op === 'fillText' && o.args[0] !== 'Penalty').map((o) => o.args)
+    expect(texts(zoomed).map((t) => t[0])).toEqual(['PENALTY', 'Team Away'])
+    expect(texts(zoomed)).toEqual(texts(plain))
+    const from = zoomed.indexOf(band(zoomed))
+    expect(zoomed.slice(0, from).findLast((o) => o.op === 'setTransform')!.args).toEqual([1, 0, 0, 1, 0, 0])
+    expect(zoomed.slice(from).find((o) => o.op === 'setTransform')!.args).not.toEqual([1, 0, 0, 1, 0, 0])
+  })
+
   it('draws the HUD over the scene', () => {
     const ops = render({ result: 'scored', kick: 1, banner: 1 })
     const scene = ops.findIndex((o) => o.op === 'fillText' && o.args[0] === 'SCORED!')

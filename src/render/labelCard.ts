@@ -117,7 +117,7 @@ export function isLabelCardFrame(frame: Frame, names: readonly string[]): boolea
  * Semi Bold at 40 px on 48 px lines, wrapped to 480 px, each line centred, with
  * room for as many lines as fit above the card's foot.
  */
-const PADDING_X_PX = 190
+export const PADDING_X_PX = 190
 const PADDING_Y_PX = 16
 const GAP_PX = 16
 const TITLE_PX = 92

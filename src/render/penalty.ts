@@ -3,7 +3,7 @@ import type { PenaltyResult } from '../analysis/penaltyLabels.js'
 import { FRAME_H, FRAME_W, worldToPx } from '../model/pitch.js'
 import { drawEventBand, drawEventTitle, interBaselinePx, type CardBox, type TitleLayout } from './eventBanner.js'
 import { fitText, measureWidth } from './fitText.js'
-import { drawIconCard, setLineShadow, TEAM_SHADOW } from './labelCard.js'
+import { drawIconCard, PADDING_X_PX as LABEL_CARD_PADDING_X_PX, setLineShadow, TEAM_SHADOW } from './labelCard.js'
 import { designUnit } from './pitchGeometry.js'
 import { DEFAULT_THEME, type RenderTheme } from './theme.js'
 
@@ -55,16 +55,20 @@ export interface Ellipse {
 
 /**
  * Where everything that moves in the scene is, in design pixels, centres. The ball: its size across
- * (its circle's), its turn in degrees and its strength. The keeper: his turn in degrees, the diving
- * keeper's (the standing one is never turned), and `dive`, 0 to 1, how far the standing keeper has
- * cross-faded into the diving one. `trail`: how far along the kick's curve the trail reaches, 0 to 1.
+ * (its circle's), its turn in degrees and its strength. Only the spinner is drawn turned: the kicked
+ * ball is a plain disc with its drop shadow to one side, so the drawing ignores its `turnDeg`, which
+ * would only swing the shadow round it. The keeper: his turn in degrees, the diving keeper's (the
+ * standing one is never turned), and `dive`, 0 to 1, how far the standing keeper has cross-faded into
+ * the diving one. The trail: the stretch of the kick's curve it covers, `from` and `to` as the curve's
+ * parameters (0 at the spot, 1 at the curve's end), and its strength; once a missed ball carries on
+ * past the curve's end, the trail runs on to the ball.
  */
 export interface PenaltyPose {
   ball: { x: number; y: number; size: number; turnDeg: number; alpha: number }
   ballShadow: Ellipse
   keeper: { x: number; y: number; turnDeg: number; dive: number }
   keeperShadow: Ellipse
-  trail: number
+  trail: { from: number; to: number; alpha: number }
 }
 
 /**
@@ -100,10 +104,16 @@ const BALL_CIRCLE_AT_PX = 45
 /** It turns one and a half times over the kick. */
 const KICK_TURN_DEG = 540
 
-/** Each kick: the curve's control point and end, and where a miss carries on to, and its size there. */
-const KICKS: Record<PenaltyResult, { control: Point; end: Point; on?: { at: Point; size: number } }> = {
-  scored: { control: { x: 400, y: 470 }, end: { x: 566, y: 380 } },
-  missed: { control: { x: 430, y: 420 }, end: { x: 610, y: 228 }, on: { at: { x: 640, y: 150 }, size: 54 } },
+/**
+ * Each kick: the curve's control point and end, where a miss carries on to and its size there, and
+ * `trailFrom`, where on the curve the trail's far end is once the ball has reached the curve's end:
+ * the curve's point nearest the far end of Figma's Line 1 (scored 136:3377, its end at (401.5, 726.7),
+ * 4 px off the curve; missed 136:3456, its end at (372, 712), 42 px off, as Figma's line bends more
+ * than the ball's curve). The trail keeps that stretch of the curve, 1 - trailFrom, behind the ball.
+ */
+const KICKS: Record<PenaltyResult, { control: Point; end: Point; trailFrom: number; on?: { at: Point; size: number } }> = {
+  scored: { control: { x: 400, y: 470 }, end: { x: 566, y: 380 }, trailFrom: 0.157 },
+  missed: { control: { x: 430, y: 420 }, end: { x: 610, y: 228 }, trailFrom: 0.147, on: { at: { x: 640, y: 150 }, size: 54 } },
 }
 /** The ball's shadow on the goal line at the kick's end, either way (136:3176, 136:3438). */
 const LINE_SHADOW: Ellipse = { x: 560, y: 551, w: 63, h: 25 }
@@ -144,14 +154,34 @@ const GOAL_SHADOW: readonly Point[] = [
 /** Every shadow is black at 25%. */
 const SHADOW = 'rgba(0, 0, 0, 0.25)'
 
-/** The trail: 16 wide, round at its ends, white from clear at the spot to 75% at the ball (Line 1, 136:3377). */
-const TRAIL_PX = 16
-const TRAIL_ALPHA = 0.75
+/**
+ * The trail, as Figma's Line 1 is (136:3377, 136:3456): 48 wide, its ends square, faded from white at
+ * the ball to #999999 and clear at its far end, along it (Figma's gradient runs between the line's two
+ * ends). Its head is at the ball's middle, under the ball.
+ */
+const TRAIL_PX = 48
+const TRAIL_HEAD = 'rgba(255, 255, 255, 1)'
+const TRAIL_TAIL = 'rgba(153, 153, 153, 0)'
 
 /** The green over the whole frame (136:2763): top to bottom of the 1100 px design frame. */
 const GREEN_TOP = '#086046'
 const GREEN_FOOT = '#033324'
 const DESIGN_H = 1100
+/**
+ * Figma's grain over it (136:2763's noise): fractal noise four times finer than a design pixel,
+ * thresholded into black at 25% over about half of it. Figma's frame measures 12.2% darker than the
+ * plain gradient, so 49% of it is black, and, finer than any pixel it is shown at, the grain varies
+ * only a little from pixel to pixel. So each design pixel of the grain's tile is black at 25% times
+ * its share of GRAIN_SAMPLES random draws that came out black: 49% on average, spread as Figma's
+ * frame is from pixel to pixel. The tile is made once for each context, from a fixed seed, and repeated a tile pixel to a design
+ * pixel, so the grain keeps its size against everything else at any zoom and pixel density.
+ */
+const GRAIN_SHARE = 0.49
+const GRAIN_SAMPLES = 16
+const GRAIN_ALPHA = 0.25
+const GRAIN_TILE_PX = 256
+const GRAIN_SEED = 7824
+const grains = new WeakMap<CanvasRenderingContext2D, CanvasPattern | null>()
 
 /**
  * "PENALTY.." (136:2766): Figma's band at (754, 64), 846 by 160, its title 112 px on a 128 px line,
@@ -177,8 +207,7 @@ const RESULT_TITLE_PX = 160
 const RESULT_LINE_PX = 208
 const RESULT_RISE_PX = 40
 
-/** The card: a label card's (labelCard.ts), 190 either side of the title, the icon filling its 208 slot as card 136:2465 has it. */
-const CARD_PADDING_X_PX = 190
+/** The card's icon fills its 208 slot, as card 136:2465 has it. */
 const CARD_ICON_BOX: CardBox = { left: 0, top: 0, width: 208, height: 208 }
 
 const clamp01 = (k: number) => Math.min(1, Math.max(0, k))
@@ -195,6 +224,11 @@ const onCurve = (a: Point, c: Point, b: Point, k: number): Point => ({
   x: (1 - k) ** 2 * a.x + 2 * (1 - k) * k * c.x + k ** 2 * b.x,
   y: (1 - k) ** 2 * a.y + 2 * (1 - k) * k * c.y + k ** 2 * b.y,
 })
+/** The control point of the stretch of that curve from `j` to `k`: itself a quadratic. */
+const controlBetween = (a: Point, c: Point, b: Point, j: number, k: number): Point => ({
+  x: (1 - j) * (1 - k) * a.x + ((1 - j) * k + j * (1 - k)) * c.x + j * k * b.x,
+  y: (1 - j) * (1 - k) * a.y + ((1 - j) * k + j * (1 - k)) * c.y + j * k * b.y,
+})
 
 /** Where everything that moves in the scene is (PenaltyPose), in design pixels. */
 export function penaltyPose(p: PenaltyIndicator): PenaltyPose {
@@ -208,7 +242,7 @@ export function penaltyPose(p: PenaltyIndicator): PenaltyPose {
       ballShadow: { ...SPOT_SHADOW },
       keeper: { ...standing, turnDeg: DIVE_FROM_DEG, dive: 0 },
       keeperShadow: standingShadow,
-      trail: 0,
+      trail: { from: 0, to: 0, alpha: 0 },
     }
   }
   const kick = KICKS[p.result]
@@ -226,7 +260,7 @@ export function penaltyPose(p: PenaltyIndicator): PenaltyPose {
     ballShadow,
     keeper: { x: lerp(standing.x, DIVE.x, k), y: lerp(standing.y, DIVE.y, k), turnDeg: DIVE_FROM_DEG * (1 - k), dive: clamp01(k / CROSS_FADE) },
     keeperShadow: lerpEllipse(standingShadow, DIVE_SHADOW, k),
-    trail: e,
+    trail: { from: Math.max(0, kick.trailFrom - (1 - e)), to: e, alpha: ball.alpha },
   }
 }
 
@@ -250,7 +284,7 @@ export function drawPenalty(ctx: CanvasRenderingContext2D, t: Transform2D, p: Pe
         font: theme.fonts.title,
         icon: theme.icons.penalty,
         iconBox: CARD_ICON_BOX,
-        paddingXPx: CARD_PADDING_X_PX,
+        paddingXPx: LABEL_CARD_PADDING_X_PX,
         maxWidthPx: FRAME_W / designUnit(t),
         team: p.team,
       },
@@ -276,6 +310,14 @@ function drawScene(ctx: CanvasRenderingContext2D, t: Transform2D, p: PenaltyIndi
   green.addColorStop(1, GREEN_FOOT)
   ctx.fillStyle = green
   ctx.fillRect(0, 0, FRAME_W, FRAME_H)
+  const grain = grainOf(ctx)
+  if (grain) {
+    grain.setTransform({ a: u, b: 0, c: 0, d: u, e: 0, f: 0 })
+    ctx.globalAlpha = alpha * GRAIN_ALPHA
+    ctx.fillStyle = grain
+    ctx.fillRect(0, 0, FRAME_W, FRAME_H)
+    ctx.globalAlpha = alpha
+  }
 
   ctx.fillStyle = SHADOW
   ctx.beginPath()
@@ -304,25 +346,28 @@ function drawScene(ctx: CanvasRenderingContext2D, t: Transform2D, p: PenaltyIndi
   }
   ctx.globalAlpha = alpha
 
-  if (p.result !== null && pose.trail > 0) {
-    // The kick's curve as far as the trail reaches: the same curve cut short, so one quadratic.
+  const { trail, ball } = pose
+  if (p.result !== null && trail.alpha > 0 && trail.to > trail.from) {
+    // The stretch of the kick's curve behind the ball, one quadratic, then on to a missed ball carrying on.
     const kick = KICKS[p.result]
-    const s = pose.trail
-    const control = { x: lerp(SPOT.x, kick.control.x, s), y: lerp(SPOT.y, kick.control.y, s) }
-    const end = onCurve(SPOT, kick.control, kick.end, s)
-    const trail = ctx.createLinearGradient(X(SPOT.x), Y(SPOT.y), X(end.x), Y(end.y))
-    trail.addColorStop(0, 'rgba(255, 255, 255, 0)')
-    trail.addColorStop(1, `rgba(255, 255, 255, ${TRAIL_ALPHA})`)
-    ctx.strokeStyle = trail
+    const tail = onCurve(SPOT, kick.control, kick.end, trail.from)
+    const control = controlBetween(SPOT, kick.control, kick.end, trail.from, trail.to)
+    const head = onCurve(SPOT, kick.control, kick.end, trail.to)
+    const fade = ctx.createLinearGradient(X(ball.x), Y(ball.y), X(tail.x), Y(tail.y))
+    fade.addColorStop(0, TRAIL_HEAD)
+    fade.addColorStop(1, TRAIL_TAIL)
+    ctx.globalAlpha = alpha * trail.alpha
+    ctx.strokeStyle = fade
     ctx.lineWidth = TRAIL_PX * u
-    ctx.lineCap = 'round'
+    ctx.lineCap = 'butt'
     ctx.beginPath()
-    ctx.moveTo(X(SPOT.x), Y(SPOT.y))
-    ctx.quadraticCurveTo(X(control.x), Y(control.y), X(end.x), Y(end.y))
+    ctx.moveTo(X(tail.x), Y(tail.y))
+    ctx.quadraticCurveTo(X(control.x), Y(control.y), X(head.x), Y(head.y))
+    if (ball.x !== head.x || ball.y !== head.y) ctx.lineTo(X(ball.x), Y(ball.y))
     ctx.stroke()
+    ctx.globalAlpha = alpha
   }
 
-  const { ball } = pose
   if (ball.alpha > 0) {
     ctx.globalAlpha = alpha * ball.alpha
     fillEllipse(pose.ballShadow)
@@ -332,7 +377,7 @@ function drawScene(ctx: CanvasRenderingContext2D, t: Transform2D, p: PenaltyIndi
         drawTurned(ctx, icons.penaltyBallSpin, X(ball.x), Y(ball.y), ball.turnDeg, half, half, SPINNER_PX, SPINNER_PX, u)
       }
     } else if (icons.penaltyBall) {
-      // Not turned: a plain disc shows no turn, and its drop shadow would swing round it.
+      // Not turned (PenaltyPose).
       const s = ball.size / KICKED_PX
       const side = BALL_PICTURE_PX * s * u
       ctx.drawImage(icons.penaltyBall, X(ball.x - BALL_CIRCLE_AT_PX * s), Y(ball.y - BALL_CIRCLE_AT_PX * s), side, side)
@@ -348,6 +393,39 @@ function drawScene(ctx: CanvasRenderingContext2D, t: Transform2D, p: PenaltyIndi
     drawResultBanner(ctx, t, title, X, Y(RESULT_TOP_PX + RESULT_RISE_PX * (1 - banner)), u, theme.fonts.title)
   }
   ctx.restore()
+}
+
+/**
+ * The green's grain for `ctx`, made the first time it is asked for: a tile of black, each pixel as
+ * opaque as its share of GRAIN_SAMPLES draws below GRAIN_SHARE, from a small seeded generator
+ * (mulberry32), so it is the same every time. Null where there is no OffscreenCanvas to make it in:
+ * the green is then drawn plain.
+ */
+function grainOf(ctx: CanvasRenderingContext2D): CanvasPattern | null {
+  const known = grains.get(ctx)
+  if (known !== undefined) return known
+  let pattern: CanvasPattern | null = null
+  const tile = typeof OffscreenCanvas === 'undefined' ? null : new OffscreenCanvas(GRAIN_TILE_PX, GRAIN_TILE_PX)
+  const c = tile?.getContext('2d')
+  if (tile && c) {
+    const image = c.createImageData(GRAIN_TILE_PX, GRAIN_TILE_PX)
+    let seed = GRAIN_SEED
+    const draw = () => {
+      seed = (seed + 0x6d2b79f5) | 0
+      let r = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+      r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r
+      return ((r ^ (r >>> 14)) >>> 0) / 4294967296
+    }
+    for (let i = 3; i < image.data.length; i += 4) {
+      let black = 0
+      for (let k = 0; k < GRAIN_SAMPLES; k++) if (draw() < GRAIN_SHARE) black++
+      image.data[i] = Math.round((255 * black) / GRAIN_SAMPLES)
+    }
+    c.putImageData(image, 0, 0)
+    pattern = ctx.createPattern(tile, 'repeat')
+  }
+  grains.set(ctx, pattern)
+  return pattern
 }
 
 /**
