@@ -6,6 +6,17 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### What you see
+
+- **A scorer is named under the goal they follow, whatever team the goal's
+  label gives**, with the team on their own label. Production gave a goal one
+  team and its scorer the other three times running, and those goals showed no
+  scorer.
+- **A scorer never plays a goal of their own.** One with no goal waiting or
+  playing, such as one labelled more than 15 s after the goal, played the whole
+  goal again with their name; now it plays nothing, as one labelled too late to
+  read already did.
+
 ## [0.21.1] - 2026-11-13
 
 ### What you see

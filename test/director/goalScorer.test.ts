@@ -119,36 +119,48 @@ describe('the scorer under the goal', () => {
     expect(replay.last()?.goal).toBeUndefined()
   })
 
-  it('plays a goal of its own for a scorer with no goal before', () => {
+  it('plays nothing for a scorer with no goal before: the labelling tool gives a scorer only after a goal', () => {
     const replay = playing()
     replay.step(frame([scored()]))
     replay.animate(1200)
-    expect(replay.last()?.goal).toBeDefined()
-    expect(banner(replay)?.scorer).toEqual({ player: 'Skyler Fring', team: 'Blue', intensity: 1 })
-  })
-
-  it('plays no goal again for the same scorer labelled twice', () => {
-    const replay = playing()
-    replay.step(frame([scored()]))
-    play(replay, GOAL_SEQUENCE_MS / 1000 + 2)
     expect(replay.last()?.goal).toBeUndefined()
-    replay.step(frame([scored()]))
+    play(replay, 20)
+    replay.step(frame([scored(0, 9, 'Jimmy Fett')]))
     replay.animate(1200)
     expect(replay.last()?.goal).toBeUndefined()
   })
 
-  it("leaves the goal to the other team's scorer alone", () => {
+  it('names the first scorer of a goal, not a second one labelled while it plays', () => {
+    const replay = playing()
+    replay.step(frame([goal()]))
+    replay.step(frame([scored()]))
+    play(replay, 1)
+    replay.step(frame([scored(1, 9, 'Han Tano')]))
+    replay.animate(200)
+    expect(banner(replay)?.scorer?.player).toBe('Skyler Fring')
+  })
+
+  it("names the scorer under the goal they follow, with their own team, whatever team the goal's label gives", () => {
+    // As production labelled Qatar vs Australia on 2026-11-13: a goal given to one team, and its scorer
+    // from the other. The scorer's team is the one the labeller picked them from.
     const replay = playing()
     replay.step(frame([goal(0)]))
     replay.step(frame([scored(1)]))
     replay.animate(1200)
-    // The goal plays at once, as its scorer is not this one, and no one is named under it.
     expect(replay.last()?.goal).toBeDefined()
-    expect(banner(replay)?.scorer).toBeUndefined()
+    expect(banner(replay)?.scorer).toEqual({ player: 'Skyler Fring', team: 'Blue', intensity: 1 })
+    const joining = playing(0)
+    joining.step(frame([goal(0)]))
+    joining.animate(1000)
+    joining.step(frame([scored(1)]))
+    joining.animate(600)
+    expect(banner(joining)?.scorer).toEqual({ player: 'Skyler Fring', team: 'Blue', intensity: 1 })
   })
 
   it('plays once for a scorer whose label stays on for several records', () => {
     const replay = playing()
+    replay.step(frame([goal()]))
+    replay.step(frame([scored()]))
     replay.step(frame([scored()]))
     replay.animate(SCORED_GOAL_MS + 100)
     expect(replay.last()?.goal).toBeUndefined()
@@ -163,8 +175,8 @@ describe('the scorer under the goal', () => {
     seek.set({ time: 100, frame: frame() })
     seek.step(frame([scored()]))
     seek.animate(1200)
-    // The scorer has no goal waiting, and plays one of its own: the goal before the seek is gone.
-    expect(seek.last()?.goal).toBeDefined()
+    // The goal before the seek is gone, and its scorer plays nothing alone.
+    expect(seek.last()?.goal).toBeUndefined()
     const paused = playing()
     paused.step(frame([goal()]))
     paused.pause()

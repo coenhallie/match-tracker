@@ -30,9 +30,14 @@
  * In replay the wait is 0: the goal plays on its label, as the reference's
  * does. Either way, a scorer that comes while their goal plays, before it
  * closes, is written under it, fading in, and the goal lasts SCORED_GOAL_MS; one
- * that comes later is not shown, and plays nothing; a scorer
- * with no goal labelled in the SCORER_AFTER_GOAL_S before plays a goal of its
- * own. A scorer of the other team than the goal's is not its scorer.
+ * that comes later is too late to read, and is not shown. A scorer is only ever
+ * a goal's: the labelling tool gives one only after a goal, so one with no goal
+ * waiting or playing plays nothing.
+ *
+ * A scorer is the scorer of the goal they follow, whatever team the goal's label
+ * gives, and is named with their own team. The labeller picks them from their
+ * team's row, where the goal's team is not the labeller's: production gave a
+ * goal one team and its scorer the other three times running (2026-11-13).
  */
 import { GOAL_CLOSES_MS, GOAL_SEQUENCE_MS, SCORED_GOAL_MS, goalCamera, goalCameraWeight, goalLabelTeam, goalStateAt, isGoalFrame, planGoal, type GoalPlan, type GoalState } from '../analysis/goalSequence.js'
 import { scorerLabel, type ScorerLabel } from '../analysis/scorerLabel.js'
@@ -50,12 +55,6 @@ import type { Camera } from '../model/pitch.js'
  * scorer came 2.4 and 4.8 s after the goal (2026-11-13): a few seconds more than the later.
  */
 export const SCORER_WAIT_S = 6
-
-/**
- * A scorer's label belongs to a goal labelled up to this long before it, in seconds of the clock:
- * it plays no goal of its own, though the goal has been and gone.
- */
-export const SCORER_AFTER_GOAL_S = 15
 
 /** How long a scorer coming while their goal plays takes to fade in under it. */
 export const GOAL_SCORER_IN_MS = 400
@@ -75,9 +74,6 @@ interface Waiting {
 }
 
 const clamp01 = (k: number) => Math.min(1, Math.max(0, k))
-
-/** Whether `scorer` can be the scorer of a goal by `team`: unless both give a side, and not the same one. */
-const scorerOf = ({ team }: LabelTeam, scorer: ScorerLabel) => team === null || scorer.team === null || team === scorer.team
 
 interface Running {
   plan: GoalPlan
@@ -107,8 +103,6 @@ export class Goal implements Moment {
   private labelSeen = false
   /** Likewise for the scorer's. */
   private scorerSeen = false
-  /** The clock when a goal was last labelled, or null since a seek. */
-  private goalLabelAt: number | null = null
 
   /** `scorerWaitS`: how long a goal's label waits for its scorer, in seconds of the clock; 0 plays it at once. */
   constructor(
@@ -148,9 +142,8 @@ export class Goal implements Moment {
     this.scorerSeen = scorer !== null
     if (!this.ctx.layers().goal || !this.ctx.playback()) return null
     if (newGoal && !this.goal && !this.pending) {
-      this.goalLabelAt = time
       const team = goalLabelTeam(frame)
-      if (newScorer && scorerOf(team, scorer)) return { frame, team, scorer }
+      if (newScorer) return { frame, team, scorer }
       if (this.scorerWaitS <= 0) return { frame, team, scorer: null }
       this.pending = { frame, team, at: time }
       return null
@@ -158,9 +151,9 @@ export class Goal implements Moment {
     const waiting = this.pending
     if (newScorer && waiting) {
       this.pending = null
-      return { frame: waiting.frame, team: waiting.team, scorer: scorerOf(waiting.team, scorer) ? scorer : null }
+      return { frame: waiting.frame, team: waiting.team, scorer }
     }
-    if (newScorer) return this.lateScorer(frame, time, scorer)
+    if (newScorer) this.joinScorer(scorer)
     if (waiting && !(time - waiting.at < this.scorerWaitS)) {
       this.pending = null
       return { frame: waiting.frame, team: waiting.team, scorer: null }
@@ -256,10 +249,9 @@ export class Goal implements Moment {
     return banner
   }
 
-  /** A seek: the goals labelled before it are not the ones a scorer from here belongs to. */
+  /** A seek: a goal labelled before it waits no more for its scorer. */
   forget(): void {
     this.pending = null
-    this.goalLabelAt = null
   }
 
   reset(): void {
@@ -267,38 +259,30 @@ export class Goal implements Moment {
     this.pending = null
     this.labelSeen = false
     this.scorerSeen = false
-    this.goalLabelAt = null
   }
 
   /**
-   * A scorer with no goal waiting for them: written under their goal if it plays, nothing if a
-   * goal was labelled in the SCORER_AFTER_GOAL_S before, else a goal of their own, from their record.
+   * A scorer with no goal waiting for them: written under their goal if it plays and has not started
+   * to close, with the goal then lasting SCORED_GOAL_MS. Otherwise too late to read, and not shown.
    */
-  private lateScorer(frame: Frame, time: number, scorer: ScorerLabel): GoalStart | null {
+  private joinScorer(scorer: ScorerLabel): void {
     const goal = this.goal
-    if (goal) {
-      // Named, and long enough to read, unless it has started to close: too late to read them.
-      if (!goal.scorer && scorerOf(goal.team, scorer) && goal.elapsedMs < GOAL_CLOSES_MS) {
-        goal.scorer = this.named(scorer, goal.team)
-        goal.scorerFromMs = goal.elapsedMs
-        goal.endMs = SCORED_GOAL_MS
-      }
-      return null
-    }
-    if (this.goalLabelAt !== null && Math.abs(time - this.goalLabelAt) <= SCORER_AFTER_GOAL_S) return null
-    // Their goal, as if labelled: the same scorer labelled again soon after plays nothing.
-    this.goalLabelAt = time
-    return { frame, team: { team: scorer.team, teamName: scorer.teamName }, scorer }
+    if (!goal || goal.scorer || !(goal.elapsedMs < GOAL_CLOSES_MS)) return
+    goal.scorer = this.named(scorer, goal.team)
+    goal.scorerFromMs = goal.elapsedMs
+    goal.endMs = SCORED_GOAL_MS
   }
 
   /**
-   * The scorer in the words drawn: their team's name (teamWords), and their name or shirt number, as a
-   * carded player's (DirectorOptions.playerName). Of the goal's team when their label says none.
+   * The scorer in the words drawn: their team (teamWords), and their name or shirt number, as a carded
+   * player's (DirectorOptions.playerName). Their team is the one their label gives, and the goal's
+   * only when their label gives none.
    */
   private named(scorer: ScorerLabel, goalTeam: LabelTeam): GoalScorer {
-    const team = scorer.team ?? goalTeam.team
+    const own = scorer.team !== null || scorer.teamName !== null
+    const { team, teamName } = own ? scorer : goalTeam
     return {
-      team: teamWords(this.ctx, { team, teamName: scorer.teamName ?? goalTeam.teamName }),
+      team: teamWords(this.ctx, { team, teamName }),
       player: team === null || scorer.number === null ? scorer.name : this.ctx.playerName(team, scorer.number, scorer.name),
     }
   }

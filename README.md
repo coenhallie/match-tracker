@@ -352,9 +352,14 @@ the "GOAL" banner. video-annotation has no scorer.
 - **In replay** the goal plays on its label, as video-annotation's does.
 - Either way, a scorer whose label comes while their goal plays, before it
   starts to close, is named under it, fading in. One that comes later is not
-  shown, and plays nothing. A scorer
-  with no goal labelled in the 15 s before plays a goal of their own. A scorer
-  of the other team than the goal's is not its scorer: the goal plays without.
+  shown. Live, that leaves the labeller about 8.6 s from the goal's label: the
+  6 s wait, and 2.6 s into the goal; in replay, 2.6 s.
+- A scorer is only ever shown under a goal: one with no goal waiting or playing
+  plays nothing, as the labelling tool gives a scorer only after a goal.
+- A scorer is the scorer of the goal they follow, whatever team the goal's label
+  gives, and is named with the team on their own label. The labeller picks them
+  from their team's row, but not the goal's team: production has given a goal
+  one team and its scorer the other.
 - `Player Own Goal` names the conceding team's player, and plays nothing.
 - A goal played with `trigger('goal')` names no scorer.
 
