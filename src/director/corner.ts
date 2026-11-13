@@ -1,6 +1,6 @@
 /**
  * The corner, which the reference does not have: built on the reference's
- * free kick, which the widget no longer shows, on its card and held as it
+ * free kick, which the widget does not show, on its card and held as it
  * was, with the corner it is taken from lit up as a cone (corner.ts in
  * render).
  *
@@ -28,29 +28,15 @@
 import type { Frame, TrackerRecord } from '../model/types.js'
 import { cornerLabel, isCornerFrame } from '../analysis/cornerLabel.js'
 import type { TeamId } from '../analysis/teamPhase.js'
-import {
-  CORNER_DEMO_MS,
-  CORNER_IN_MS,
-  CORNER_OUT_MS,
-  CORNER_REARM_S,
-  CORNER_SHOW_MS,
-  cornerSections,
-  type CornerBanner,
-} from '../render/corner.js'
+import { CORNER_REARM_S, cornerSections, type CornerBanner } from '../render/corner.js'
 import { playMoved } from '../analysis/stoppage.js'
-import { setPieceUnderWay } from './setPiece.js'
+import { clockIntensity, startClock, stepClock, type SetPieceClock } from './setPiece.js'
 import type { Moment, MomentContext, MomentStep } from './moment.js'
 
-interface Showing {
+interface Showing extends SetPieceClock {
   corner: CornerBanner['corner']
   /** The name of the team taking it, as drawn, or null for none. */
   team: string | null
-  startedMs: number | null
-  elapsedMs: number
-  /** When it started to fade out, in ms from its start; null until then. */
-  leavingFromMs: number | null
-  /** Played by hand: on screen for CORNER_DEMO_MS, whatever play does. */
-  byHand: boolean
 }
 
 export class Corner implements Moment {
@@ -95,30 +81,14 @@ export class Corner implements Moment {
     const label = cornerLabel(record)
     const taking = label?.team ?? (byHand ? team : null)
     this.corner = {
+      ...startClock(byHand),
       corner: label?.side ?? null,
       team: taking === null ? null : this.ctx.teamName(taking),
-      startedMs: null,
-      elapsedMs: 0,
-      leavingFromMs: null,
-      byHand,
     }
   }
 
   step(ms: number): MomentStep {
-    const corner = this.corner
-    if (!corner) return 'stop'
-    if (corner.startedMs === null) corner.startedMs = ms
-    corner.elapsedMs = ms - corner.startedMs
-    const still = this.ctx.reducedMotion()
-    const over = corner.byHand
-      ? corner.elapsedMs >= CORNER_DEMO_MS - (still ? 0 : CORNER_OUT_MS)
-      : corner.elapsedMs >= CORNER_SHOW_MS && !setPieceUnderWay(this.ctx, this.ctx.memory().cornerLabelAt)
-    if (corner.leavingFromMs === null && over) {
-      if (still) return 'stop'
-      corner.leavingFromMs = corner.elapsedMs
-    }
-    if (corner.leavingFromMs !== null && corner.elapsedMs - corner.leavingFromMs >= CORNER_OUT_MS) return 'stop'
-    return 'paint'
+    return this.corner ? stepClock(this.ctx, this.corner, this.ctx.memory().cornerLabelAt, ms) : 'stop'
   }
 
   /** End it at once, back to the frame as it is. */
@@ -133,11 +103,7 @@ export class Corner implements Moment {
     const m = this.corner
     if (!m) return undefined
     const still = this.ctx.reducedMotion()
-    const intensity = still
-      ? 1
-      : m.leavingFromMs !== null
-        ? Math.max(0, 1 - (m.elapsedMs - m.leavingFromMs) / CORNER_OUT_MS)
-        : Math.min(1, m.elapsedMs / CORNER_IN_MS)
+    const intensity = clockIntensity(this.ctx, m)
     return {
       intensity,
       playersFade: intensity,
