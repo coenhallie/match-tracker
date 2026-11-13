@@ -28,12 +28,13 @@
  * plays then, with them; with none by then, it plays without. The shot is
  * planned from the goal's own record, as by the scorer's the ball has gone on.
  * In replay the wait is 0: the goal plays on its label, as the reference's
- * does. Either way, a scorer that comes while their goal plays is written under
- * it, fading in, and one that comes after it is over plays nothing; a scorer
+ * does. Either way, a scorer that comes while their goal plays, before it
+ * closes, is written under it, fading in, and the goal lasts SCORED_GOAL_MS; one
+ * that comes later is not shown, and plays nothing; a scorer
  * with no goal labelled in the SCORER_AFTER_GOAL_S before plays a goal of its
  * own. A scorer of the other team than the goal's is not its scorer.
  */
-import { GOAL_SEQUENCE_MS, goalCamera, goalCameraWeight, goalLabelTeam, goalStateAt, isGoalFrame, planGoal, type GoalPlan, type GoalState } from '../analysis/goalSequence.js'
+import { GOAL_CLOSES_MS, GOAL_SEQUENCE_MS, SCORED_GOAL_MS, goalCamera, goalCameraWeight, goalLabelTeam, goalStateAt, isGoalFrame, planGoal, type GoalPlan, type GoalState } from '../analysis/goalSequence.js'
 import { scorerLabel, type ScorerLabel } from '../analysis/scorerLabel.js'
 import { NO_TEAM, type LabelTeam } from '../analysis/cardLabels.js'
 import type { Frame } from '../model/types.js'
@@ -86,6 +87,8 @@ interface Running {
   scorer: GoalScorer | null
   /** When the scorer came, in ms into the sequence, for one who came while it played; null for one known from the start. */
   scorerFromMs: number | null
+  /** How long it lasts: GOAL_SEQUENCE_MS, or SCORED_GOAL_MS with its scorer named. */
+  endMs: number
   /** The first animation frame's timestamp, once it has had one. */
   startedMs: number | null
   elapsedMs: number
@@ -181,6 +184,7 @@ export class Goal implements Moment {
       team,
       scorer: from.scorer ? this.named(from.scorer, team) : null,
       scorerFromMs: null,
+      endMs: from.scorer ? SCORED_GOAL_MS : GOAL_SEQUENCE_MS,
       startedMs: null,
       elapsedMs: 0,
       camera:
@@ -197,10 +201,10 @@ export class Goal implements Moment {
     if (!goal) return 'stop'
     if (goal.startedMs === null) goal.startedMs = ms
     goal.elapsedMs = ms - goal.startedMs
-    if (goal.elapsedMs >= GOAL_SEQUENCE_MS) return 'stop'
+    if (goal.elapsedMs >= goal.endMs) return 'stop'
     if (goal.camera) {
       const { from, to } = goal.camera
-      this.ctx.showCamera(blendCamera(from, to, goalCameraWeight(goal.elapsedMs)))
+      this.ctx.showCamera(blendCamera(from, to, goalCameraWeight(goal.elapsedMs, goal.endMs)))
     }
     return 'paint'
   }
@@ -242,7 +246,7 @@ export class Goal implements Moment {
     const goal = this.goal
     if (!goal) return undefined
     const still = this.ctx.reducedMotion()
-    const intensity = still ? 1 : goalBannerIntensity(goal.plan, goal.elapsedMs)
+    const intensity = still ? 1 : goalBannerIntensity(goal.plan, goal.elapsedMs, goal.endMs)
     if (!(intensity > 0)) return undefined
     const banner: GoalBanner = { intensity, side: goal.plan.side, slide: still ? 1 : goalBannerSlide(goal.plan, goal.elapsedMs) }
     if (goal.scorer) {
@@ -273,9 +277,11 @@ export class Goal implements Moment {
   private lateScorer(frame: Frame, time: number, scorer: ScorerLabel): GoalStart | null {
     const goal = this.goal
     if (goal) {
-      if (!goal.scorer && scorerOf(goal.team, scorer)) {
+      // Named, and long enough to read, unless it has started to close: too late to read them.
+      if (!goal.scorer && scorerOf(goal.team, scorer) && goal.elapsedMs < GOAL_CLOSES_MS) {
         goal.scorer = this.named(scorer, goal.team)
         goal.scorerFromMs = goal.elapsedMs
+        goal.endMs = SCORED_GOAL_MS
       }
       return null
     }

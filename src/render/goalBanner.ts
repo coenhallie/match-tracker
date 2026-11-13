@@ -136,10 +136,10 @@ const SCORER_MAX_WIDTH_PX = 800
 const clamp01 = (k: number) => Math.min(1, Math.max(0, k))
 const easeOutCubic = (k: number) => 1 - (1 - k) ** 3
 
-/** How strongly the card shows `elapsedMs` into the sequence planned by `plan`. */
-export function goalBannerIntensity(plan: GoalPlan, elapsedMs: number): number {
+/** How strongly the card shows `elapsedMs` into the sequence planned by `plan`, which ends at `endMs`. */
+export function goalBannerIntensity(plan: GoalPlan, elapsedMs: number, endMs = GOAL_SEQUENCE_MS): number {
   const coming = (elapsedMs - plan.shotMs) / GOAL_BANNER_IN_MS
-  const going = (GOAL_SEQUENCE_MS - elapsedMs) / GOAL_BANNER_OUT_MS
+  const going = (endMs - elapsedMs) / GOAL_BANNER_OUT_MS
   return clamp01(Math.min(coming, going))
 }
 

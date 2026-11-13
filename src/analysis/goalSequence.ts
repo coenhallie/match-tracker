@@ -16,6 +16,13 @@ import { labelTeam, type LabelTeam } from './cardLabels.js'
 /** Length of the whole sequence, from the shot until the ball has settled. */
 export const GOAL_SEQUENCE_MS = 3200
 
+/**
+ * The whole sequence for a goal with its scorer named under it (director/goal.ts, "The scorer"),
+ * the widget's own: long enough to read who scored and for which team. The shot and the ball
+ * settling in the net are the same; the banner and the view on the goal hold longer.
+ */
+export const SCORED_GOAL_MS = 6000
+
 /** How far in front of the goal a shot starts when the ball gives no usable start. */
 const FALLBACK_SHOT_METRES = 14
 /** Closer than this to the goal line, the ball is too near for a visible shot. */
@@ -210,6 +217,9 @@ const CAMERA_MARGIN_METRES = 5
 const CAMERA_IN_MS = 400
 const CAMERA_OUT_MS = 600
 
+/** When a goal alone starts to close: the view sets off back out, and the banner then fades. */
+export const GOAL_CLOSES_MS = GOAL_SEQUENCE_MS - CAMERA_OUT_MS
+
 const easeInOutCubic = (u: number) => (u < 0.5 ? 4 * u ** 3 : 1 - (-2 * u + 2) ** 3 / 2)
 
 /**
@@ -257,13 +267,14 @@ export function goalCamera(
 }
 
 /**
- * How far the camera is towards goalCamera at time `t`: 0 is the view the
- * user had, 1 is the goal framed. Eased both ways, so it never jumps.
+ * How far the camera is towards goalCamera at time `t` into a sequence that
+ * ends at `endMs`: 0 is the view the user had, 1 is the goal framed. Eased
+ * both ways, so it never jumps.
  */
-export function goalCameraWeight(t: number): number {
-  if (t <= 0 || t >= GOAL_SEQUENCE_MS) return 0
+export function goalCameraWeight(t: number, endMs = GOAL_SEQUENCE_MS): number {
+  if (t <= 0 || t >= endMs) return 0
   if (t < CAMERA_IN_MS) return easeOutCubic(t / CAMERA_IN_MS)
-  const outFrom = GOAL_SEQUENCE_MS - CAMERA_OUT_MS
+  const outFrom = endMs - CAMERA_OUT_MS
   if (t > outFrom) return 1 - easeInOutCubic((t - outFrom) / CAMERA_OUT_MS)
   return 1
 }

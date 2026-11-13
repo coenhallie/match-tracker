@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { GOAL_SEQUENCE_MS } from '../../src/analysis/goalSequence'
+import { GOAL_SEQUENCE_MS, SCORED_GOAL_MS } from '../../src/analysis/goalSequence'
+import { GOAL_BANNER_OUT_MS } from '../../src/render/goalBanner'
 import type { Frame, FrameAction } from '../../src/model/types'
 import { FakeReplay } from './harness'
 
@@ -149,7 +150,7 @@ describe('the scorer under the goal', () => {
   it('plays once for a scorer whose label stays on for several records', () => {
     const replay = playing()
     replay.step(frame([scored()]))
-    replay.animate(GOAL_SEQUENCE_MS + 100)
+    replay.animate(SCORED_GOAL_MS + 100)
     expect(replay.last()?.goal).toBeUndefined()
     replay.step(frame([scored()]))
     replay.animate(1200)
@@ -178,6 +179,77 @@ describe('the scorer under the goal', () => {
     replay.toggle({ goal: false })
     play(replay, WAIT_S + 1)
     expect(replay.last()?.goal).toBeUndefined()
+  })
+
+  describe('how long a goal with its scorer lasts', () => {
+    /** A goal with its scorer known from the start, and the zoom near goal off, so the goal moves the view. */
+    function scoredGoal(): FakeReplay {
+      const replay = new FakeReplay({ goalZoom: false }, { scorerWaitS: WAIT_S })
+      replay.set({ time: 10, frame: frame(), playing: true })
+      replay.step(frame([goal()]))
+      replay.step(frame([scored()]))
+      return replay
+    }
+
+    it('lasts SCORED_GOAL_MS, 6 s, where a goal alone lasts GOAL_SEQUENCE_MS', () => {
+      expect(SCORED_GOAL_MS).toBe(6000)
+      const replay = scoredGoal()
+      replay.animate(SCORED_GOAL_MS - 100)
+      expect(replay.last()?.goal).toBeDefined()
+      replay.animate(200)
+      expect(replay.last()?.goal).toBeUndefined()
+      const alone = playing(0)
+      alone.step(frame([goal()]))
+      alone.animate(GOAL_SEQUENCE_MS + 100)
+      expect(alone.last()?.goal).toBeUndefined()
+    })
+
+    it('names the scorer in full until the last GOAL_BANNER_OUT_MS, then fades them out with the banner', () => {
+      const replay = scoredGoal()
+      // In once the ball is in the net and GOAL_BANNER_IN_MS on: this shot takes 0.75 s.
+      replay.animate(1200)
+      expect(banner(replay)).toMatchObject({ intensity: 1, scorer: { intensity: 1 } })
+      replay.animate(SCORED_GOAL_MS - GOAL_BANNER_OUT_MS - 1300)
+      expect(banner(replay)).toMatchObject({ intensity: 1, scorer: { intensity: 1 } })
+      replay.animate(GOAL_BANNER_OUT_MS / 2)
+      const fading = banner(replay)!.scorer!.intensity
+      expect(fading).toBeGreaterThan(0)
+      expect(fading).toBeLessThan(1)
+    })
+
+    it('keeps the view in on the goal while the scorer is named, and eases out at the end', () => {
+      const replay = scoredGoal()
+      replay.animate(1000)
+      const inOnGoal = replay.lastView()!.zoom
+      expect(inOnGoal).toBeGreaterThan(1)
+      replay.animate(SCORED_GOAL_MS - 1000 - 700)
+      expect(replay.lastView()!.zoom).toBeCloseTo(inOnGoal, 6)
+      replay.animate(800)
+      expect(replay.lastView()).toMatchObject({ zoom: 1, panX: 0, panY: 0 })
+    })
+
+    it('lasts SCORED_GOAL_MS for a scorer who comes while the goal plays, before it closes', () => {
+      const replay = playing(0)
+      replay.step(frame([goal()]))
+      replay.animate(1500)
+      replay.step(frame([scored()]))
+      replay.animate(SCORED_GOAL_MS - 1500 - GOAL_BANNER_OUT_MS - 100)
+      expect(banner(replay)?.scorer?.intensity).toBe(1)
+      replay.animate(600)
+      expect(replay.last()?.goal).toBeUndefined()
+    })
+
+    it('does not name a scorer who comes as it closes, too late to read: it ends when a goal alone does', () => {
+      const replay = playing(0)
+      replay.step(frame([goal()]))
+      replay.animate(GOAL_SEQUENCE_MS - 300)
+      replay.step(frame([scored()]))
+      replay.animate(100)
+      expect(replay.last()?.goal).toBeDefined()
+      expect(banner(replay)?.scorer).toBeUndefined()
+      replay.animate(300)
+      expect(replay.last()?.goal).toBeUndefined()
+    })
   })
 
   describe('replay, which plays the goal at once', () => {

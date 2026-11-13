@@ -6,6 +6,16 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### What you see
+
+- **A goal with its scorer lasts 6 s**, where it lasted 3.2 s, so the scorer
+  and their team are readable: the GOAL banner and the scorer's band are up in
+  full for about 4.7 s, where it was about 2 s. The view stays in on the goal
+  while they are up, and eases back out at the end. A scorer who comes while
+  their goal plays makes it last 6 s too. One who comes as it closes (from
+  2.6 s in) or later is too late to read, and is not shown. A goal without a
+  scorer still lasts 3.2 s, as video-annotation's does.
+
 ## [0.21.0] - 2026-11-13
 
 The goal names its scorer, and every label names its team on production too.

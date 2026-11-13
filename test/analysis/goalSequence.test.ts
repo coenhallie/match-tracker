@@ -217,7 +217,7 @@ describe('goalCameraWeight', () => {
   })
 
   it('eases back out to the normal view by the end', () => {
-    const tail = [2700, 2850, 3000, 3150].map(goalCameraWeight)
+    const tail = [2700, 2850, 3000, 3150].map((t) => goalCameraWeight(t))
     for (let i = 1; i < tail.length; i++) expect(tail[i]).toBeLessThan(tail[i - 1]!)
     expect(goalCameraWeight(GOAL_SEQUENCE_MS)).toBe(0)
   })

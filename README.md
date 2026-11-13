@@ -338,13 +338,21 @@ option's `players`, else the label's, else their shirt number; the team is named
 as for every label (see [A label's team](#a-labels-team)). The band comes and goes with
 the "GOAL" banner. video-annotation has no scorer.
 
+- **A goal with its scorer lasts 6 s** (`SCORED_GOAL_MS`), where a goal alone
+  lasts video-annotation's 3.2 s: the shot is the same, and the banner, the band
+  and the view in on the goal hold until the last 0.6 s, so the scorer and their
+  team are up in full for about 4.7 s. A scorer who comes while their goal plays,
+  before it starts to close (2.6 s in), makes it last 6 s too. One who comes
+  later is too late to read, and is not shown.
+
 - **Live, a goal waits for its scorer**, up to 6 s of the stream's clock, and
   plays when they come, with them under it. With no scorer by then, it plays
   without. The shot is the one on the goal's record: by the scorer's, the ball
   has gone on. No replay starts while a goal waits (see [Flashbacks](#flashbacks)).
 - **In replay** the goal plays on its label, as video-annotation's does.
-- Either way, a scorer whose label comes while their goal plays is named under
-  it, fading in, and one that comes after it is over plays nothing. A scorer
+- Either way, a scorer whose label comes while their goal plays, before it
+  starts to close, is named under it, fading in. One that comes later is not
+  shown, and plays nothing. A scorer
   with no goal labelled in the 15 s before plays a goal of their own. A scorer
   of the other team than the goal's is not its scorer: the goal plays without.
 - `Player Own Goal` names the conceding team's player, and plays nothing.
