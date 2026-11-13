@@ -44,10 +44,10 @@ class Pitch {
   /** The next record by playback, 0.04 s on: play moving, unless `still`, when everyone is where they were. */
   record(
     labels: string[] = [],
-    { still = false, ball = { x: 48, y: 30 } as { x: number; y: number } | null, phase = NOBODY } = {},
+    { still = false, ball = { x: 48, y: 30 } as { x: number; y: number } | null, phase = NOBODY, turned = undefined as true | undefined } = {},
   ) {
     if (!still) this.x += 0.1
-    return this.replay.set({ time: this.replay.time + 0.04, frame: frameAt(this.x, labels, ball), phase })
+    return this.replay.set({ time: this.replay.time + 0.04, frame: frameAt(this.x, labels, ball), phase, turned })
   }
 
   animate(ms: number) {
@@ -82,35 +82,37 @@ describe('corner', () => {
     }
   })
 
-  it('lights up the corner nearest the ball', () => {
+  it('lights up the corner its label names, wherever the ball is', () => {
+    // The ball at the far corner each time: it says nothing about which corner it is.
     const cases = [
-      [{ x: 50, y: 32 }, { x: 1, y: 1 }],
-      [{ x: 50, y: -32 }, { x: 1, y: -1 }],
-      [{ x: -50, y: 32 }, { x: -1, y: 1 }],
-      [{ x: -50, y: -32 }, { x: -1, y: -1 }],
+      ['Corner kick - Top left', { x: -1, y: -1 }, { x: 50, y: 32 }],
+      ['Corner kick - Top right', { x: 1, y: -1 }, { x: -50, y: 32 }],
+      ['Corner kick - Bottom left', { x: -1, y: 1 }, { x: 50, y: -32 }],
+      ['Corner kick - Bottom right', { x: 1, y: 1 }, { x: -50, y: -32 }],
     ] as const
-    for (const [ball, corner] of cases) {
+    for (const [label, corner, ball] of cases) {
       const pitch = new Pitch()
-      pitch.record(CORNER, { ball })
+      pitch.record([label], { ball })
       pitch.animate(100)
-      expect(pitch.corner()!.corner).toEqual(corner)
+      expect({ label, corner: pitch.corner()?.corner }).toEqual({ label, corner })
     }
   })
 
-  it('goes by the ball last tracked when the label comes with it lost, and by none when that is too old', () => {
-    const pitch = new Pitch()
-    pitch.record([], { ball: { x: -50, y: 30 } })
-    pitch.record(CORNER, { ball: null })
-    pitch.animate(100)
-    expect(pitch.corner()!.corner).toEqual({ x: -1, y: 1 })
+  it('shows the card alone on a label that names no corner, ball or not', () => {
+    for (const ball of [{ x: 50, y: 32 }, null]) {
+      const pitch = new Pitch()
+      pitch.record(CORNER, { ball })
+      pitch.animate(100)
+      expect(pitch.corner()).toMatchObject({ corner: null })
+    }
+  })
 
-    const stale = new Pitch()
-    stale.record([], { ball: { x: -50, y: 30 } })
-    for (let i = 0; i < 130; i++) stale.record([], { ball: null })
-    stale.record(CORNER, { ball: null })
-    stale.animate(100)
-    // The card alone: no corner to light.
-    expect(stale.corner()).toMatchObject({ corner: null })
+  it('lights the corner turned round on a second-half record, as the pitch is', () => {
+    const pitch = new Pitch()
+    pitch.record(['Corner kick - Bottom left'], { turned: true })
+    pitch.animate(100)
+    // The camera stays on its touchline: its bottom left is the turned pitch's top right.
+    expect(pitch.corner()?.corner).toEqual({ x: 1, y: -1 })
   })
 
   it('lights its sections one after another from the flag out', () => {
@@ -294,26 +296,26 @@ describe('corner', () => {
 })
 
 describe('corner played by hand', () => {
-  const ready = (ball: { x: number; y: number } | null = { x: -40, y: -20 }) => {
+  const ready = (ball: { x: number; y: number } | null = { x: -40, y: -20 }, labels: string[] = []) => {
     const replay = new FakeReplay()
-    replay.set({ time: 10, frame: frameAt(0, [], ball), phase: NOBODY })
+    replay.set({ time: 10, frame: frameAt(0, labels, ball), phase: NOBODY })
     return replay
   }
 
-  it('plays with its layer off and no label, even paused, at the corner nearest the ball', () => {
+  it('plays with its layer off and no label, even paused, as the card alone: no label names a corner', () => {
     const replay = ready()
     replay.toggle({ corner: false })
     expect(replay.director.availability().corner).toBe(true)
     replay.trigger('corner')
     replay.animate(600, true)
-    expect(replay.last()!.corner).toMatchObject({ intensity: 1, corner: { x: -1, y: -1 } })
+    expect(replay.last()!.corner).toMatchObject({ intensity: 1, corner: null })
   })
 
-  it('shows the card alone with no ball to go by', () => {
-    const replay = ready(null)
+  it('lights the corner the label on screen names', () => {
+    const replay = ready({ x: -40, y: 20 }, ['Corner kick - Top right'])
     replay.trigger('corner')
     replay.animate(600, true)
-    expect(replay.last()!.corner).toMatchObject({ intensity: 1, corner: null })
+    expect(replay.last()!.corner).toMatchObject({ intensity: 1, corner: { x: 1, y: -1 } })
   })
 
   it('is on screen for CORNER_DEMO_MS, whatever play does, then fades out', () => {

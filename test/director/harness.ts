@@ -10,6 +10,7 @@ import {
 import { nextPlayback } from '../../src/director/playback'
 import { DEFAULT_REPLAY_LAYERS, type ReplayLayers, type ReplayMoment } from '../../src/model/replayLayers'
 import type { Frame, RecordValidity, TrackerRecord } from '../../src/model/types'
+import type { ShownRecord } from '../../src/analysis/secondHalf'
 import type { FrameLayers } from '../../src/render/renderer'
 
 /** The view every test draws in: the reference's frame box, not zoomed. */
@@ -34,6 +35,8 @@ export interface Change {
   trail?: BallTrail | null
   /** The validity of the record `frame` makes, as a live stream's records carry it. */
   validity?: RecordValidity
+  /** The record `frame` makes is a second-half one, shown turned round (secondHalf.ts). */
+  turned?: true
 }
 
 /**
@@ -104,6 +107,7 @@ export class FakeReplay {
     if (change.frame !== undefined) {
       next.record = change.frame && { t: next.time, frameCount: ++this.frameCount, frame: change.frame }
       if (next.record && change.validity) next.record.validity = change.validity
+      if (next.record && change.turned) (next.record as ShownRecord).turned = true
     }
     this.state = next
     const playback = nextPlayback(this.flag, next.time, next.playing)

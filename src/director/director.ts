@@ -435,7 +435,7 @@ export class Director {
     } else if (moment === 'corner') {
       this.stopSequences()
       this.memory.cornerLabelAt = now
-      this.corner.start(frame, now, true)
+      this.corner.start(record, true)
       this.request(this.corner)
     } else if (isLabelCardKey(moment)) {
       const card = this.labelCards.find((c) => c.key === moment)!
@@ -631,7 +631,7 @@ export class Director {
         this.stopMoment(this.playerLoss)
         this.stopMoment(this.throwIn)
         this.stopLabelCards(true)
-        this.corner.start(frame, time)
+        this.corner.start(record)
         this.request(this.corner)
       }
       for (const card of this.labelCards) {

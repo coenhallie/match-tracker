@@ -292,6 +292,13 @@ A penalty scored is a goal: the goal plays on `Penalty scored` (as the
 labelling tool sends it, or `PENALTY_SCORED`, `PenaltyScored`), `Penalty goal`,
 `Penalty kick scored`, `Penalty kick goal` and `Scored penalty` as on `Goal`.
 `Penalty` alone is a penalty given and plays nothing.
+A corner's label names the corner it lights up, as the labelling tool sends it:
+`Corner kick - Top left`, `Corner kick - Top right`, `Corner kick - Bottom left`
+and `Corner kick - Bottom right`, the corner as the camera sees it from its
+touchline. Where the ball is plays no part. A corner label that names no corner
+(`Corner`, `Corner kick`, `EventType.CORNER_KICK`) shows the card alone, as does
+a corner played with `trigger` unless the frame on screen carries a label that
+names one.
 
 #### VAR check, goal disallowed and second half
 
@@ -353,8 +360,9 @@ as it does in the stadium. Their height is kept.
   so both labels, or one twice, turn it once. A label from the pipeline's AI, or
   one without an origin, turns nothing.
 - Everything goes by the turned frames: the attacking direction, the goal a goal
-  goes in, the corner's and the throw-in's side, the ball trail and the zoom near
-  goal. A frame's phase and trail are worked out from its window turned as it is,
+  goes in, the throw-in's side, the ball trail and the zoom near goal. The corner
+  a corner's label names is turned with them, as the camera that the labeller
+  names it by stays on its touchline. A frame's phase and trail are worked out from its window turned as it is,
   so they never read across the turn.
 - The turn happens under the half time's or the second half's card, so the jump
   to the other ends is not seen. It happens with their layers off too.

@@ -1,5 +1,5 @@
-import type { Frame, PitchDimensions, Transform2D } from '../model/types.js'
-import { frameHasAction } from '../analysis/actionLabels.js'
+import type { PitchDimensions, Transform2D } from '../model/types.js'
+import type { CornerSide } from '../analysis/cornerLabel.js'
 import { CARD_MIDDLE_PX, drawCentreCard } from './eventBanner.js'
 import { tracePlayingArea } from './pitchGeometry.js'
 import { DEFAULT_THEME, type RenderTheme } from './theme.js'
@@ -24,11 +24,12 @@ export interface CornerBanner {
   /** 0 to 1: how far the ball and its trail have faded out, so nothing of play is left under the card. */
   ballFade: number
   /**
-   * The corner the cone fans out from, by the signs of its x and y in pitch
-   * metres: x -1 the left goal line, y 1 the bottom touchline. Null when
-   * there is no ball to tell which corner: the card is shown alone.
+   * The corner the cone fans out from, the one its label names (cornerLabel),
+   * by the signs of its x and y in pitch metres: x -1 the left goal line, y 1
+   * the bottom touchline. Null when the label names no corner: the card is
+   * shown alone.
    */
-  corner: { x: -1 | 1; y: -1 | 1 } | null
+  corner: CornerSide | null
   /** 0 to 1 for each of the cone's sections, from the flag out: how strongly it is lit (cornerSections). */
   sections: readonly number[]
   /**
@@ -57,14 +58,6 @@ export const CORNER_DEMO_MS = 4000
  * 9 s within one corner, and the corners themselves are minutes apart.
  */
 export const CORNER_REARM_S = 15
-
-/** The names a corner's label goes by, bare (actionName): "Corner", "Corner kick", "EventType.CORNER_KICK". */
-const CORNER_LABELS = ['corner', 'corner kick']
-
-/** Whether the pipeline labelled this frame a corner, however the export writes it. */
-export function isCornerFrame(frame: Frame): boolean {
-  return CORNER_LABELS.some((name) => frameHasAction(frame, name))
-}
 
 /**
  * The cone's sections, by their outer edge's distance from the flag, in

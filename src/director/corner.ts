@@ -9,10 +9,10 @@
  * fades out, and the corner's sections light up one after another from the
  * flag outwards, again and again while it shows.
  *
- * The export does not say which corner, so it is the one nearest the ball:
- * the ball on the frame, or the last one tracked within BALL_MEMORY_S, as
- * the ball is often lost as it goes out. With no ball to go by, the card is
- * shown alone.
+ * The corner lit up is the one its label names (cornerLabel): the labelling
+ * tool has a button for each. Where the ball is plays no part, as a corner is
+ * mostly prepared off camera, with the ball lost or somewhere else. A label
+ * that names no corner, as the exports' do, shows the card alone.
  *
  * A corner is usually prepared off camera, so it is held for at least
  * CORNER_SHOW_MS, and after that for as long as the label is on or play is
@@ -21,7 +21,8 @@
  * that means someone wants the real frame stops it at once. Played by hand,
  * it is on screen for CORNER_DEMO_MS whatever play does.
  */
-import type { Frame } from '../model/types.js'
+import type { Frame, TrackerRecord } from '../model/types.js'
+import { cornerLabel, isCornerFrame } from '../analysis/cornerLabel.js'
 import {
   CORNER_DEMO_MS,
   CORNER_IN_MS,
@@ -29,20 +30,11 @@ import {
   CORNER_REARM_S,
   CORNER_SHOW_MS,
   cornerSections,
-  isCornerFrame,
   type CornerBanner,
 } from '../render/corner.js'
-import { shownBall } from './ballRoll.js'
 import { playMoved } from '../analysis/stoppage.js'
 import { setPieceUnderWay } from './setPiece.js'
 import type { Moment, MomentContext, MomentStep } from './moment.js'
-import { BALL_MEMORY_S } from './throwIn.js'
-
-/** The corner nearest `ball`, by the signs of its x and y. */
-const nearestCorner = (ball: { x: number; y: number }): NonNullable<CornerBanner['corner']> => ({
-  x: ball.x < 0 ? -1 : 1,
-  y: ball.y < 0 ? -1 : 1,
-})
 
 interface Showing {
   corner: CornerBanner['corner']
@@ -86,11 +78,13 @@ export class Corner implements Moment {
     return fresh && this.ctx.layers().corner && !blocked && !this.corner
   }
 
-  /** Show it at the corner nearest the ball on `frame`, or the one last tracked as of `now`. */
-  start(frame: Frame, now: number, byHand = false): void {
-    const { lastBall } = this.ctx.memory()
-    const ball = shownBall(frame, undefined) ?? (lastBall && now - lastBall.at <= BALL_MEMORY_S ? lastBall : null)
-    const corner = ball ? nearestCorner(ball) : null
+  /**
+   * Show it at the corner the label on `record` names, or as the card alone
+   * when it names none. Played by hand, there is no label to go by unless the
+   * record on screen carries one.
+   */
+  start(record: TrackerRecord, byHand = false): void {
+    const corner = cornerLabel(record)?.side ?? null
     this.corner = { corner, startedMs: null, elapsedMs: 0, leavingFromMs: null, byHand }
   }
 

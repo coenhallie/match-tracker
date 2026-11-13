@@ -9,7 +9,6 @@ import {
   cornerSections,
   drawCornerCard,
   drawCornerCone,
-  isCornerFrame,
   type CornerBanner,
 } from '../../src/render/corner'
 import { designUnit } from '../../src/render/pitchGeometry'
@@ -31,22 +30,6 @@ const banner = (over: Partial<CornerBanner> = {}): CornerBanner => ({
   corner: { x: 1, y: 1 },
   sections: [1, 1, 1],
   ...over,
-})
-
-describe('corner label', () => {
-  const frame = (labels: string[]) =>
-    ({ teams: [], state: { actions: labels.map((action_type) => ({ action_type, action_origin: 'human' })) } }) as unknown as Frame
-
-  it('matches however the export writes it', () => {
-    expect(isCornerFrame(frame(['EventType.CORNER_KICK']))).toBe(true)
-    expect(isCornerFrame(frame(['EventType.CORNER']))).toBe(true)
-    expect(isCornerFrame(frame(['Corner kick']))).toBe(true)
-    expect(isCornerFrame(frame(['Corner']))).toBe(true)
-    expect(isCornerFrame(frame(['EventType.FREE_KICK']))).toBe(false)
-    expect(isCornerFrame(frame(['EventType.GOAL_KICK']))).toBe(false)
-    expect(isCornerFrame(frame(['Short corner routine']))).toBe(false)
-    expect(isCornerFrame(frame([]))).toBe(false)
-  })
 })
 
 describe('corner sections', () => {

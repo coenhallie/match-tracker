@@ -36,6 +36,17 @@ import { humanLabelNames } from './actionLabels.js'
 /** The bare label names (actionName) that end the first half or start the second. */
 const HALF_LABELS: ReadonlySet<string> = new Set([...labelCard('halfTime').labels, ...labelCard('secondHalf').labels])
 
+/**
+ * A record as the widget shows it. `turned` is set on a second-half one, its
+ * frame turned half round the centre spot: its positions are turned, but a
+ * label naming a place on the pitch, as a corner's does, still names it as the
+ * camera sees it (cornerLabel). Not a host's: hosts never see a turned record.
+ * Any TrackerRecord is one, unturned, and a copy made by spreading one keeps it.
+ */
+export interface ShownRecord extends TrackerRecord {
+  turned?: true
+}
+
 const turnPoint = (p: ProjectedCoordinates): ProjectedCoordinates => ({ ...p, x: -p.x, y: -p.y })
 
 function turnPerson<T extends Player | Ball>(person: T): T {
@@ -61,7 +72,7 @@ export class SecondHalf {
    * Each record's turned copy, made once: a replay host hands the same records
    * over many display frames, and the window around them over many records.
    */
-  private turned = new WeakMap<TrackerRecord, TrackerRecord>()
+  private turned = new WeakMap<TrackerRecord, ShownRecord>()
 
   /** When the second half starts, in record time: the earlier of the host's start and the labels', or null while neither says. */
   get from(): number | null {
@@ -109,7 +120,7 @@ export class SecondHalf {
   }
 
   /** `record` as it is shown: turned round in the second half, as it is before. */
-  shown(record: TrackerRecord): TrackerRecord {
+  shown(record: TrackerRecord): ShownRecord {
     return this.covers(record.t) ? this.turn(record) : record
   }
 
@@ -118,7 +129,7 @@ export class SecondHalf {
    * all turned or none, as `at` is, so a phase or a ball trail never reads
    * across the turn.
    */
-  window(records: readonly TrackerRecord[], at: TrackerRecord): readonly TrackerRecord[] {
+  window(records: readonly TrackerRecord[], at: TrackerRecord): readonly ShownRecord[] {
     return this.covers(at.t) ? records.map((r) => this.turn(r)) : records
   }
 
@@ -129,10 +140,10 @@ export class SecondHalf {
     this.turned = new WeakMap()
   }
 
-  private turn(record: TrackerRecord): TrackerRecord {
+  private turn(record: TrackerRecord): ShownRecord {
     let turned = this.turned.get(record)
     if (!turned) {
-      turned = { ...record, frame: turnFrame(record.frame) }
+      turned = { ...record, frame: turnFrame(record.frame), turned: true }
       this.turned.set(record, turned)
     }
     return turned

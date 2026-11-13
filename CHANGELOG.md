@@ -6,6 +6,27 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+The corner lights up the corner its label names.
+
+### What you see
+
+- **The corner from its label.** The labelling tool now has a button for each
+  corner and sends it in the label: `Corner kick - Top left`, `Top right`,
+  `Bottom left` and `Bottom right`, the corner as the camera sees it. The corner
+  plays on these and lights up the corner the label names. These labels used to
+  play nothing, as only `Corner` and `Corner kick` were a corner's.
+- **The ball no longer picks the corner.** It used to be the corner nearest the
+  ball, which was often the wrong one: a corner is mostly prepared off camera,
+  with the ball lost or somewhere else. A corner label that names no corner
+  (`Corner`, `Corner kick`, the exports' `EventType.CORNER_KICK`) now shows the
+  card alone, without the cone.
+- **In the second half** the corner is turned with the pitch: the camera stays on
+  its touchline, so the camera's bottom left is the turned pitch's top right.
+- **Played by hand** (`trigger('corner')`), the corner shows the card alone,
+  unless the frame on screen carries a label that names a corner. It used to
+  light up the corner nearest the ball.
+- A flashback counts the new labels as corners too.
+
 ## [0.16.0] - 2026-11-12
 
 Substituted players named as the labeller named them.

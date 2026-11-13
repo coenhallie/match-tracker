@@ -1,10 +1,10 @@
 import { frameHasAction } from '../analysis/actionLabels.js'
+import { isCornerFrame } from '../analysis/cornerLabel.js'
 import { HISTORY_S } from '../analysis/derive.js'
 import { isGoalFrame } from '../analysis/goalSequence.js'
 import type { TeamPhase } from '../analysis/teamPhase.js'
 import { KIND_RANK, type FlashbackKind, type SpottedMoment } from '../model/flashback.js'
 import type { TrackerRecord } from '../model/types.js'
-import { isCornerFrame } from '../render/corner.js'
 import { shownBall } from './ballRoll.js'
 import { resolvePitchDimensions } from '../model/pitch.js'
 
