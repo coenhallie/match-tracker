@@ -15,6 +15,7 @@ import type { FrameLayers } from '../../src/render/renderer'
 import { FakeIntersectionObserver, installEnv, makeHost, type Env } from './env'
 import { control } from './recording'
 import { message } from './messages'
+import { SCORER_WAIT_S } from '../../src/director/goal'
 import { STYLES } from '../../src/widget/styles'
 
 vi.mock('../../src/director/director', async (importOriginal) => {
@@ -154,6 +155,16 @@ function goalThenRun(stream: Stream, runRecords = 50, shape: (i: number) => Shap
   return stream.t(GOAL)
 }
 
+/**
+ * Goals as the labelling tool labels them: "Goal" on each record of `at`, and the scorer on the
+ * record after it. A goal waits for its scorer live (goal.ts, "The scorer"): with them a record on,
+ * it plays then, well clear of a run that starts soon after it.
+ */
+const scoredGoals =
+  (...at: number[]) =>
+  (i: number): Shape =>
+    at.includes(i) ? { labels: ['goal'] } : at.includes(i - 1) ? { labels: ['Player scored'] } : {}
+
 const isClip = (frame: Frame) => frameNo(frame) < FIRST_FRAME + RUN
 
 /** Run one animation frame of `ms`: what was drawn in it, and whether director `index` painted in it. */
@@ -205,6 +216,23 @@ describe('flashbacks in live mode', () => {
       `flashback:start@${stream.t(GOAL)}`,
       `flashback:end@${stream.t(GOAL)}`,
     ])
+  })
+
+  it('holds a replay back while a goal waits for its scorer: the goal plays first, then the replay', () => {
+    const { tracker } = mount()
+    const stream = new Stream(tracker)
+    // The camera goes away 2 s after a goal, before its scorer comes, as it does for the replays on
+    // television: the goal waits for its scorer, SCORER_WAIT_S, and no replay starts meanwhile.
+    const LATE = RUN - 50
+    stream.push(RUN, 'valid', (i) => (i === GOAL || i === LATE ? { labels: ['goal'] } : {}))
+    const log = events(tracker)
+    // The goal and the replays alone: the attack covering the run comes and goes as it would.
+    const shown = () => log.filter((e) => e.startsWith('flashback') || e.startsWith('moment:goal'))
+    stream.push(Math.round((SCORER_WAIT_S - 2.2) / 0.04), 'long')
+    expect(shown()).toEqual([])
+    stream.push(250, 'long')
+    // The first goal's clip: the late one is within LABEL_REARM_S of it, and is not a clip of its own.
+    expect(shown().slice(0, 3)).toEqual(['moment:goal:start', 'moment:goal:end', `flashback:start@${stream.t(GOAL)}`])
   })
 
   it('names who a label names in a replay, as live: the corner’s team, the card’s player', () => {
@@ -470,7 +498,7 @@ describe('flashbacks in live mode', () => {
     const log = events(tracker)
     const stream = new Stream(tracker)
     // Two goals 20 s apart: the later one plays, the earlier one waits in the store.
-    stream.push(800, 'valid', (i) => (i === GOAL || i === 600 ? { labels: ['goal'] } : {}))
+    stream.push(800, 'valid', scoredGoals(GOAL, 600))
     expect(bytes(tracker)).toBeGreaterThan(0)
     stream.push(25, 'long')
     const at = stream.t(600)
@@ -534,7 +562,7 @@ describe('flashbacks in live mode', () => {
     const stream = new Stream(tracker)
     // Two goals 20 s apart: the later one plays first.
     const LATER = 600
-    stream.push(800, 'valid', (i) => (i === GOAL || i === LATER ? { labels: ['goal'] } : {}))
+    stream.push(800, 'valid', scoredGoals(GOAL, LATER))
     stream.push(25, 'long')
     env.setVisibility('hidden')
     env.setVisibility('visible')
@@ -579,7 +607,7 @@ describe('flashbacks in live mode', () => {
     const stream = new Stream(tracker)
     // Two goals, 20 s apart: the later one plays first.
     const SECOND = 600
-    stream.push(800, 'valid', (i) => (i === GOAL || i === SECOND ? { labels: ['goal'] } : {}))
+    stream.push(800, 'valid', scoredGoals(GOAL, SECOND))
     stream.push(25, 'long')
     expect(log.filter((e) => e.startsWith('flashback'))).toEqual([`flashback:start@${stream.t(SECOND)}`])
     // The pipeline starts again, its clock 20 s back.
@@ -679,7 +707,7 @@ describe('flashbacks in live mode', () => {
     const stream = new Stream(tracker)
     // Two goals 20 s apart, so both are kept.
     const LATER = 600
-    stream.push(800, 'valid', (i) => (i === GOAL || i === LATER ? { labels: ['goal'] } : {}))
+    stream.push(800, 'valid', scoredGoals(GOAL, LATER))
     const log = events(tracker)
     // A 6 s run with its exact countdown: the first clip is fitted to it and runs out at the gap.
     for (let k = 0; k < 150; k++) stream.push(1, { validIn: 6 - k * 0.04 })
@@ -714,7 +742,7 @@ describe('flashbacks in live mode', () => {
       // Records 100 ms apart, as the default socket sends them; two goals 20 s apart, both kept.
       const stream = new Stream(tracker, 0.1)
       const LATER = 240
-      stream.push(320, 'valid', (i) => (i === 40 || i === LATER ? { labels: ['goal'] } : {}))
+      stream.push(320, 'valid', scoredGoals(40, LATER))
       const log = events(tracker)
       // A 6 s run with its exact countdown, a 0.3 s valid gap, then a long run.
       const states: State[] = [

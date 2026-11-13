@@ -242,6 +242,12 @@ export interface DirectorOptions {
    * stay the reference's whatever its data carries. Read once, when the director is made.
    */
   coverInvalidFrames?: boolean
+  /**
+   * How long a goal's label waits for its scorer's, in seconds of the clock, before the goal plays
+   * without one (goal.ts, "The scorer"). Live mode only, SCORER_WAIT_S: replay plays the goal on its
+   * label, as the reference does. Default 0. Read once, when the director is made.
+   */
+  scorerWaitS?: number
 }
 
 /** Which moments can be played by hand on the frame on screen (`momentAvailability`, `:1020-1036`). */
@@ -357,13 +363,18 @@ export class Director {
       substitutionName: (team, number, labelName) => this.options.substitutionName(team, number, labelName),
       showCamera: (camera) => this.showCamera(camera),
     }
-    this.goal = new Goal(this.context)
+    this.goal = new Goal(this.context, options.scorerWaitS)
     this.attack = new Attack(this.context)
     this.corner = new Corner(this.context)
     this.freeKick = new FreeKick(this.context)
     this.throwIn = new ThrowIn(this.context)
     this.labelCards = LABEL_CARDS.map((card) => new LabelCard(this.context, card))
     this.playerLoss = new PlayerLoss(this.context, options.coverInvalidFrames)
+  }
+
+  /** Whether a goal's label is waiting for its scorer's (goal.ts, "The scorer"): it plays when they come, or the wait is over. */
+  get goalWaiting(): boolean {
+    return this.goal.waiting
   }
 
   /** The user's view: their zoom and pan, or where a sequence has put them, and the width drawn at. */
@@ -622,6 +633,7 @@ export class Director {
     this.memory.lastBall = null
     this.memory.playMovedAt = this.shown.time
     this.playerLoss.forget()
+    this.goal.forget()
     this.goalZoom.forgetBall()
   }
 
@@ -636,7 +648,8 @@ export class Director {
       const frame = record.frame
       // First, so a card that goes on this label is on its way out as the label's own moment comes.
       for (const card of this.labelCards) if (card.notice(frame, time)) this.request(card)
-      if (this.goal.detect(frame)) {
+      const goal = this.goal.detect(frame, time)
+      if (goal) {
         // The goal takes over from any other moment still showing.
         this.stopMoment(this.attack)
         this.stopMoment(this.playerLoss)
@@ -644,7 +657,7 @@ export class Director {
         this.stopMoment(this.freeKick)
         this.stopMoment(this.throwIn)
         this.stopLabelCards(true)
-        if (this.goal.start(frame)) this.request(this.goal)
+        if (this.goal.start(goal.frame, goal)) this.request(this.goal)
       }
       // A set piece takes over from an attack, the attack over a player loss, a throw-in, a label
       // card and the other set piece: the latest of a corner and a free kick shows.

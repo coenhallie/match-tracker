@@ -69,6 +69,11 @@ export interface FlashbackLive {
   state: RecordValidity | null
   /** Whether the live director is showing a moment a human label started. */
   labelMoment: boolean
+  /**
+   * Whether a live goal is waiting for its scorer's label (goal.ts, "The scorer"): it is about to
+   * play, and plays before any clip, so none starts meanwhile. One playing plays on until it does.
+   */
+  goalWaiting: boolean
   /** Whether the `flashback` layer is on. */
   layerOn: boolean
 }
@@ -300,7 +305,7 @@ export class Flashback {
   /** Start the next clip if the start rule holds. True when one started. */
   private start(nowMs: number, live: FlashbackLive, state: RecordValidity | null, events: FlashbackEvent[]): boolean {
     const left = runLeft(state)
-    if (this.held || !live.layerOn || live.labelMoment) return false
+    if (this.held || !live.layerOn || live.labelMoment || live.goalWaiting) return false
     if (left === undefined || left < FLASHBACK_MIN_RUN_S) return false
     const chained = this.playing !== null
     for (let clip = this.store.next(); clip; clip = this.store.next()) {

@@ -6,6 +6,27 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+The goal names its scorer.
+
+### What you see
+
+- **The scorer under the goal.** The labelling tool labels a goal and then, a
+  few seconds later, its scorer (`Player scored`). Once the scorer is known, the
+  goal names them under its banner, in a band across the foot of the pitch, as
+  the match-summary design has it (viewport/eventGoalScorerInfo): the scorer's
+  icon and name, and their team's name under it. The name is the one in the
+  `teams` option's `players`, else the label's, else the shirt number; the team
+  is its name in the `teams` option, else "Red" or "Blue".
+- **Live, a goal waits up to 6 s for its scorer**, and plays when they come. With
+  none by then it plays without, 6 s after its label. The shot is the one on the
+  goal's record. On staging the scorer came 2.4 and 4.8 s after the goal.
+- **Replays in live mode** wait for a goal waiting for its scorer: the goal
+  plays first, as it did before it waited.
+- **In replay** the goal still plays on its label, as video-annotation's does. A
+  scorer whose label comes while it plays is named under it, fading in. A scorer
+  with no goal labelled in the 15 s before plays a goal of their own; one that
+  comes after their goal is over plays nothing.
+
 ## [0.20.0] - 2026-11-13
 
 The free kick is back: the widget's own, from the match-summary design.

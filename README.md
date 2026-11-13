@@ -7,7 +7,7 @@ replay from video-annotation, taken out of Vue: the same picture, timing and
 behaviour for the same data, with the attacking/defending row and the layers
 menu. Unlike video-annotation's, the view has no zoom or pan of its own: only
 the animations (a goal's camera, the zoom near goal) move it. The corner is the widget's own, as video-annotation has none,
-and so are the free kick, the VAR check, the goal disallowed, the half time, the second half, the full time, the foul, the shot and header on goal, the goal on a penalty scored and the attack shown over a player loss.
+and so are the free kick, the VAR check, the goal disallowed, the half time, the second half, the full time, the foul, the shot and header on goal, the goal on a penalty scored, the goal's scorer and the attack shown over a player loss.
 video-annotation's own free kick, a card across the middle, isn't shown.
 
 - **Framework-free.** One function, `createMatchTracker`, and plain DOM. A thin
@@ -306,6 +306,30 @@ gives, else `team`.
 A free kick's label is the labelling tool's `Freekick`, or `Free kick` written in
 any of the ways above (`FREE_KICK`, `EventType.FREE_KICK`).
 
+#### The scorer
+
+The labelling tool labels a goal twice: `Goal` (or `Penalty scored`), which gives
+the team (`team_id`), and a few seconds later `Player scored`, from the scorer's
+row, which gives the player (`team_id`, `player_number` and, in the label's
+`raw_data`, `player_name`). Once the scorer is known, the goal names them under
+its banner, in a band across the foot of the pitch: the scorer's icon and name,
+and their team's name under it. The scorer's name is their name in the `teams`
+option's `players`, else the label's, else their shirt number; the team is its
+name in the `teams` option, else "Red" or "Blue". The band comes and goes with
+the "GOAL" banner. video-annotation has no scorer.
+
+- **Live, a goal waits for its scorer**, up to 6 s of the stream's clock, and
+  plays when they come, with them under it. With no scorer by then, it plays
+  without. The shot is the one on the goal's record: by the scorer's, the ball
+  has gone on. No replay starts while a goal waits (see [Flashbacks](#flashbacks)).
+- **In replay** the goal plays on its label, as video-annotation's does.
+- Either way, a scorer whose label comes while their goal plays is named under
+  it, fading in, and one that comes after it is over plays nothing. A scorer
+  with no goal labelled in the 15 s before plays a goal of their own. A scorer
+  of the other team than the goal's is not its scorer: the goal plays without.
+- `Player Own Goal` names the conceding team's player, and plays nothing.
+- A goal played with `trigger('goal')` names no scorer.
+
 #### Free kick
 
 On a free kick label (the `freeKickBanner` layer, on by default), the ball's spot
@@ -567,7 +591,8 @@ live mode only.
   then a corner, then a shot or header, then the attack near goal.
 - A replay starts on an invalid frame whose run has 5 s or more to go (its
   lookahead says so, or says no valid frame is due within its 10 s), while no
-  moment a human label started is on screen. It plays the most important clip
+  moment a human label started is on screen, and no goal is waiting for its
+  scorer (see [The scorer](#the-scorer)): the goal plays first. It plays the most important clip
   ready, the newest of its kind. When the run's time left is known and the clip
   is longer, its start is cut, keeping at least 2 s after the moment and 1 s
   before it, and if even that does not fit, its end too. When it ends with 5 s

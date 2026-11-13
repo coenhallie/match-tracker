@@ -1,9 +1,11 @@
 import type { Transform2D } from '../model/types.js'
-import { CARD_MIDDLE_PX, INTER_ASCENT, drawCentreCard, drawEventBand, drawEventTitle, type TitleLayout } from './eventBanner.js'
+import { CARD_MIDDLE_PX, INTER_ASCENT, drawCentreCard, drawEventBand, drawEventTitle, interBaselinePx, type TitleLayout } from './eventBanner.js'
+import { fitText, measureWidth } from './fitText.js'
+import { PLAYER_SHADOW, TEAM_SHADOW, setLineShadow } from './labelCard.js'
 import { designUnit } from './pitchGeometry.js'
 import { DEFAULT_THEME, type RenderTheme } from './theme.js'
 import { GOAL_SEQUENCE_MS, type GoalPlan } from '../analysis/goalSequence.js'
-import { FRAME_W, worldToPx } from '../model/pitch.js'
+import { FRAME_H, FRAME_W, worldToPx } from '../model/pitch.js'
 
 /**
  * The goal's banner, as the match-summary design shows it (Figma "Game
@@ -21,6 +23,9 @@ import { FRAME_W, worldToPx } from '../model/pitch.js'
  * the frame rather than to the pitch: at the zoomed pitch's scale it would
  * cover the screen. And it comes in as the ball reaches the net, so the shot
  * itself is seen first.
+ *
+ * Once the scorer is known, the banner has them under it, in a band of their
+ * own at the foot of the frame (drawScorerBand). The reference's card has none.
  */
 export interface GoalBanner {
   /** 0 to 1: how far it has faded in, or out. */
@@ -34,6 +39,17 @@ export interface GoalBanner {
   slide?: number
   /** The reference card's goal-net icon. Without one it is drawn without it, as the parity test draws it. */
   icon?: CanvasImageSource | null
+  /** Who scored, written in a band at the foot of the frame, once known; only under a banner with a side. */
+  scorer?: GoalScorer & {
+    /** 0 to 1: how far it has faded in, or out with the banner. */
+    intensity: number
+  }
+}
+
+/** The scorer, in the words drawn: their name or shirt number, and their team's name, each null when not known. */
+export interface GoalScorer {
+  player: string | null
+  team: string | null
 }
 
 /** Fading in from the ball reaching the net, and out over the end of the sequence, as the camera eases back. */
@@ -88,6 +104,35 @@ const GOAL_CARD = {
   },
 }
 
+/**
+ * The scorer's band (Figma "Game Animation Visualizer", viewport/eventGoalScorerInfo 149:2940,
+ * bannerPlayerInfo 149:3090), in design pixels: the event band, 274 high, at 85%, across the foot
+ * of the frame, as across the foot of the design's 1600 by 1100 frame from 826 down. That frame is
+ * taller than ours for the pitch, so the band keeps to our frame's foot and width, not to where the
+ * design's would be against the pitch, which is below ours. In it, 48 down, a 64 px
+ * row centred as a whole: the scorer's icon, its drawing inset 10.94% left and 15.57% top in a
+ * 56 px badge 4 down the row, and 80 from the row's start the player's name, Inter Semi Bold,
+ * 40 px, centred on the row. 136 down, the team's name, Inter Black, 48 px, centred, its baseline
+ * 46.5 into its 58 px line, as the label cards' team line has it. Both white, with the label cards'
+ * shadows. Each is kept to the band's solid middle, 800 wide: a longer one is drawn smaller, then
+ * cut short (fitText).
+ */
+const SCORER_BAND_HEIGHT_PX = 274
+const SCORER_BAND_ALPHA = 0.85
+const SCORER_ROW_TOP_PX = 48
+const SCORER_ROW_PX = 64
+const SCORER_BADGE_TOP_PX = 4
+const SCORER_BADGE_PX = 56
+const SCORER_ICON_INSET = { left: 0.1094, top: 0.1557 }
+/** The icon's drawing, as its SVG's box has it (icons.ts). */
+const SCORER_ICON_W_PX = 41.1129
+const SCORER_ICON_H_PX = 39.319
+const SCORER_NAME_LEFT_PX = 80
+const SCORER_NAME_PX = 40
+const SCORER_TEAM_BASELINE_PX = 136 + 46.5
+const SCORER_TEAM_PX = 48
+const SCORER_MAX_WIDTH_PX = 800
+
 const clamp01 = (k: number) => Math.min(1, Math.max(0, k))
 const easeOutCubic = (k: number) => 1 - (1 - k) ** 3
 
@@ -136,5 +181,66 @@ export function drawGoalBanner(
   drawEventBand(ctx, left, top, width, BAND_HEIGHT_PX * u)
   const baseline = top + (TITLE_TOP_PX + TITLE_PX * INTER_ASCENT) * u
   drawEventTitle(ctx, t, theme.text.goal, left, baseline, TITLE_PX, TITLE_LAYOUT, theme.fonts.title)
+  ctx.restore()
+  if (banner.scorer) drawScorerBand(ctx, t, banner.scorer, theme)
+}
+
+/**
+ * The scorer's band at the foot of the frame, at `scorer.intensity`, in frame units through the
+ * context's current transform: the player's row, if they are named, and the team's line, if it is.
+ * Nothing when neither is.
+ */
+function drawScorerBand(
+  ctx: CanvasRenderingContext2D,
+  t: Transform2D,
+  scorer: NonNullable<GoalBanner['scorer']>,
+  theme: RenderTheme,
+): void {
+  const alpha = clamp01(scorer.intensity)
+  if (alpha <= 0 || (scorer.player === null && scorer.team === null)) return
+  const u = designUnit(t)
+  const cx = FRAME_W / 2
+  const top = FRAME_H - SCORER_BAND_HEIGHT_PX * u
+  const maxWidth = SCORER_MAX_WIDTH_PX * u
+  const family = theme.fonts.title
+  ctx.save()
+  ctx.globalAlpha = alpha * SCORER_BAND_ALPHA
+  drawEventBand(ctx, 0, top, FRAME_W, SCORER_BAND_HEIGHT_PX * u)
+  ctx.globalAlpha = alpha
+  setLineShadow(ctx, u)
+  if (scorer.player !== null) {
+    const nameFont = (px: number) => `600 ${px}px ${family}`
+    const lead = SCORER_NAME_LEFT_PX * u
+    const name = fitText(ctx, scorer.player, nameFont, SCORER_NAME_PX * u, maxWidth - lead)
+    const rowLeft = cx - (lead + measureWidth(ctx, name.text, nameFont(name.px))) / 2
+    const rowTop = top + SCORER_ROW_TOP_PX * u
+    const icon = theme.icons.scorer
+    if (icon) {
+      const badgeTop = rowTop + SCORER_BADGE_TOP_PX * u
+      ctx.shadowColor = 'transparent'
+      ctx.drawImage(
+        icon,
+        rowLeft + SCORER_BADGE_PX * SCORER_ICON_INSET.left * u,
+        badgeTop + SCORER_BADGE_PX * SCORER_ICON_INSET.top * u,
+        SCORER_ICON_W_PX * u,
+        SCORER_ICON_H_PX * u,
+      )
+    }
+    ctx.font = nameFont(name.px)
+    ctx.textAlign = 'left'
+    ctx.fillStyle = '#ffffff'
+    ctx.shadowColor = PLAYER_SHADOW
+    ctx.fillText(name.text, rowLeft + lead, rowTop + interBaselinePx(SCORER_NAME_PX, SCORER_ROW_PX) * u)
+  }
+  if (scorer.team !== null) {
+    const teamFont = (px: number) => `900 ${px}px ${family}`
+    const team = fitText(ctx, scorer.team, teamFont, SCORER_TEAM_PX * u, maxWidth)
+    ctx.font = teamFont(team.px)
+    ctx.textAlign = 'center'
+    ctx.fillStyle = '#ffffff'
+    ctx.shadowColor = TEAM_SHADOW
+    ctx.fillText(team.text, cx, top + SCORER_TEAM_BASELINE_PX * u)
+  }
+  ctx.shadowColor = 'transparent'
   ctx.restore()
 }

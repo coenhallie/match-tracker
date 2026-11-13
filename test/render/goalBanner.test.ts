@@ -14,7 +14,11 @@ import { createRenderer } from '../../src/render/renderer'
 import type { Frame } from '../../src/model/types'
 import { fakeCanvas, recordingCtx, stubOffscreenCanvas, type Op } from '../helpers/recordingCtx'
 import { normalizeCalls } from '../helpers/normalize'
-import { build2DTransform, FRAME_W, worldToPx } from '../../src/model/pitch'
+import { build2DTransform, FRAME_H, FRAME_W, worldToPx } from '../../src/model/pitch'
+import { DEFAULT_THEME } from '../../src/render/theme'
+import { interBaselinePx } from '../../src/render/eventBanner'
+import { measureWidth } from '../../src/render/fitText'
+import { CJK_FALLBACK } from '../../src/assets/fontFamilies'
 
 const PITCH = { length: 105, width: 68 }
 const T = build2DTransform(PITCH)
@@ -165,6 +169,98 @@ describe('goal banner', () => {
 
   it('draws nothing at zero', () => {
     expect(draw({ intensity: 0 })).toHaveLength(0)
+  })
+})
+
+// The scorer under the banner (Figma "Game Animation Visualizer", viewport/eventGoalScorerInfo 149:2940,
+// bannerPlayerInfo 149:3090): a band across the foot of its 1600 by 1100 frame, which is the foot of ours.
+describe('the scorer under the goal banner', () => {
+  const ICON = { width: 41, height: 39 } as unknown as CanvasImageSource
+  function draw(scorer: GoalBanner['scorer'], over: Partial<GoalBanner> = {}) {
+    const { ctx, ops } = recordingCtx()
+    const theme = { ...DEFAULT_THEME, icons: { ...DEFAULT_THEME.icons, scorer: ICON } }
+    drawGoalBanner(ctx as unknown as CanvasRenderingContext2D, T, { intensity: 1, side: -1, slide: 1, scorer, ...over }, theme)
+    return { ctx, ops }
+  }
+  const SCORER = { player: 'Skyler Fring', team: 'Team Away', intensity: 1 }
+  const bands = (ops: Op[]) => ops.filter((o) => o.op === 'fillRect')
+  const text = (ops: Op[], words: string) => ops.find((o) => o.op === 'fillText' && o.args[0] === words)
+
+  // The bottom 274 of the frame, as the design's 826 to 1100, and all the way across it.
+  const BAND_TOP = FRAME_H - 274 * u
+
+  it('is a band across the foot of the frame, 274 high, at 85%', () => {
+    const [, foot] = bands(draw(SCORER).ops)
+    const [x, y, w, h] = foot!.args as number[]
+    expect(x).toBe(0)
+    expect(w).toBe(FRAME_W)
+    expect(y).toBeCloseTo(BAND_TOP, 6)
+    expect(h).toBeCloseTo(274 * u, 6)
+    expect(foot!.fillStyle).toContain('12, 63, 47')
+    expect(foot!.globalAlpha).toBeCloseTo(0.85, 9)
+  })
+
+  it('writes the team in Inter Black, 48 px, centred, its 58 px line 136 into the band', () => {
+    const team = text(draw(SCORER).ops, 'Team Away')!
+    expect((normalizeCalls([team])[0] as Op).font).toBe(`900 ${48 * u}px Inter, sans-serif`)
+    expect(team.textAlign).toBe('center')
+    expect(team.args[1]).toBeCloseTo(CX, 6)
+    expect(team.args[2]).toBeCloseTo(BAND_TOP + (136 + 46.5) * u, 6)
+  })
+
+  it('writes the player in Inter Semi Bold, 40 px, after the scorer icon, the row centred, its 64 px box 48 into the band', () => {
+    const { ctx, ops } = draw(SCORER)
+    const player = text(ops, 'Skyler Fring')!
+    const font = `600 ${40 * u}px "MatchTracker Inter", ${CJK_FALLBACK}`
+    expect(player.font).toBe(font)
+    const width = measureWidth(ctx as unknown as CanvasRenderingContext2D, 'Skyler Fring', font)
+    const left = CX - (80 * u + width) / 2
+    expect(player.textAlign).toBe('left')
+    expect(player.args[1]).toBeCloseTo(left + 80 * u, 6)
+    expect(player.args[2]).toBeCloseTo(BAND_TOP + (48 + interBaselinePx(40, 64)) * u, 6)
+    // The icon's drawing, inset in its 56 px badge 4 down the row: 10.94% left and 15.57% top, 41.11 by 39.32.
+    const icon = ops.find((o) => o.op === 'drawImage')!
+    expect(icon.args[0]).toBe(ICON)
+    const [x, y, w, h] = icon.args.slice(1) as number[]
+    expect(x).toBeCloseTo(left + 56 * 0.1094 * u, 6)
+    expect(y).toBeCloseTo(BAND_TOP + (48 + 4 + 56 * 0.1557) * u, 6)
+    expect(w).toBeCloseTo(41.1129 * u, 6)
+    expect(h).toBeCloseTo(39.319 * u, 6)
+  })
+
+  it('fades in with the scorer', () => {
+    const { ops } = draw({ ...SCORER, intensity: 0.5 })
+    expect(bands(ops)[1]!.globalAlpha).toBeCloseTo(0.425, 9)
+    expect(text(ops, 'Skyler Fring')!.globalAlpha).toBeCloseTo(0.5, 9)
+  })
+
+  it('writes the team alone for a scorer with no name, and the player alone for one with no team', () => {
+    const team = draw({ ...SCORER, player: null }).ops
+    expect(text(team, 'Team Away')).toBeDefined()
+    expect(team.filter((o) => o.op === 'fillText')).toHaveLength(2)
+    expect(team.some((o) => o.op === 'drawImage')).toBe(false)
+    const player = draw({ ...SCORER, team: null }).ops
+    expect(text(player, 'Skyler Fring')).toBeDefined()
+    expect(player.filter((o) => o.op === 'fillText')).toHaveLength(2)
+  })
+
+  it('draws no band for a scorer with neither, nor for none, nor at zero', () => {
+    expect(bands(draw({ ...SCORER, player: null, team: null }).ops)).toHaveLength(1)
+    expect(bands(draw(undefined).ops)).toHaveLength(1)
+    expect(bands(draw({ ...SCORER, intensity: 0 }).ops)).toHaveLength(1)
+  })
+
+  it('keeps a long name inside the band', () => {
+    const long = 'Maximiliano Bartholomew Featherstonehaugh-Cholmondeley the Third'
+    const { ctx, ops } = draw({ ...SCORER, player: long })
+    const player = ops.find((o) => o.op === 'fillText' && String(o.args[0]).startsWith('Max'))!
+    const width = measureWidth(ctx as unknown as CanvasRenderingContext2D, String(player.args[0]), player.font)
+    expect(80 * u + width).toBeLessThanOrEqual(800 * u + 1e-6)
+  })
+
+  it('is not drawn under the reference card', () => {
+    const { ops } = draw(SCORER, { side: undefined })
+    expect(text(ops, 'Skyler Fring')).toBeUndefined()
   })
 })
 

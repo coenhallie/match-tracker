@@ -178,8 +178,8 @@ const INTER_CAP_HEIGHT = 1490 / 2048
 /** Each line's shadow: 0 2px 4px, black, at 50% under the team and 25% under the player. */
 const LINE_SHADOW_Y_PX = 2
 const LINE_SHADOW_BLUR_PX = 4
-const TEAM_SHADOW = 'rgba(0, 0, 0, 0.5)'
-const PLAYER_SHADOW = 'rgba(0, 0, 0, 0.25)'
+export const TEAM_SHADOW = 'rgba(0, 0, 0, 0.5)'
+export const PLAYER_SHADOW = 'rgba(0, 0, 0, 0.25)'
 
 /**
  * The substitution card's rows (Figma "Game Animation Visualizer", viewport/eventSubstitution), in
@@ -344,7 +344,7 @@ export function drawIconCard(ctx: CanvasRenderingContext2D, t: Transform2D, cx: 
 }
 
 /** The lines' shadow geometry, in the bitmap's pixels whatever the transform, and their white, on the baseline. */
-function setLineShadow(ctx: CanvasRenderingContext2D, u: number): void {
+export function setLineShadow(ctx: CanvasRenderingContext2D, u: number): void {
   const scale = ctx.getTransform().a * u
   ctx.shadowOffsetX = 0
   ctx.shadowOffsetY = LINE_SHADOW_Y_PX * scale

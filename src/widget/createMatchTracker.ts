@@ -72,6 +72,7 @@ import {
   type MomentAvailability,
 } from '../director/director.js'
 import { nextPlayback } from '../director/playback.js'
+import { SCORER_WAIT_S } from '../director/goal.js'
 import { LiveHistory } from '../history/liveHistory.js'
 import { parseRecord } from '../model/parseRecord.js'
 import type { ReplayLayerKey, ReplayLayers, ReplayMoment } from '../model/replayLayers.js'
@@ -324,7 +325,7 @@ class Tracker implements MatchTracker {
   private readonly mode: MatchTrackerOptions['mode']
   private options: MutableOptions
   private resolved: Resolved
-  private icons: RenderTheme['icons'] = { corner: null, freeKick: null, substitutionOut: null, substitutionIn: null, ...iconCardRecord(() => null) }
+  private icons: RenderTheme['icons'] = { corner: null, freeKick: null, substitutionOut: null, substitutionIn: null, scorer: null, ...iconCardRecord(() => null) }
   private layers: ReplayLayers
   private readonly doc: Document
   private readonly host: HTMLElement
@@ -437,10 +438,13 @@ class Tracker implements MatchTracker {
     // Frame size is a sane bitmap until the box arrives, as in the reference.
     if (this.renderer) sizeBitmap(this.canvas, null)
     // Only a live stream has invalid records; replay stays the reference's whatever its data carries.
+    // Live, a goal waits for its scorer's label (goal.ts, "The scorer"); a replay of an earlier moment,
+    // whose clip can end 2 s after it, plays the goal on its label, as replay does.
     this.director = new Director({
       layers: this.layers,
       ...directorOptions(this.resolved, this.reducedMotion),
       coverInvalidFrames: mode === 'live',
+      scorerWaitS: mode === 'live' ? SCORER_WAIT_S : 0,
     })
     this.flashback =
       mode === 'live' ? new FlashbackStage(() => ({ layers: this.layers, ...directorOptions(this.resolved, this.reducedMotion) })) : null
@@ -732,6 +736,7 @@ class Tracker implements MatchTracker {
         newest,
         state: newest && this.history.validityOf(newest),
         labelMoment: labelMomentShowing(live.layers),
+        goalWaiting: this.director.goalWaiting,
         layerOn: this.layers.flashback,
       },
       this.halves,

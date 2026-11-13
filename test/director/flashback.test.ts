@@ -70,7 +70,7 @@ class Driver {
     this.nowMs += STEP_MS
     if (newest) this.history.add(newest)
     const state = newest && this.history.validityOf(newest)
-    const frame = this.fb.step(this.nowMs, { newest, state, labelMoment: false, layerOn: true, ...live })
+    const frame = this.fb.step(this.nowMs, { newest, state, labelMoment: false, goalWaiting: false, layerOn: true, ...live })
     this.frames.push(frame)
     return frame
   }
@@ -172,6 +172,8 @@ describe('Flashback', () => {
     const d = make(store)
     expect(d.step(rec(200, longRun()), { layerOn: false }).events).toEqual([])
     expect(d.step(rec(200.04, longRun()), { labelMoment: true }).events).toEqual([])
+    // A live goal waiting for its scorer plays first: no clip starts meanwhile.
+    expect(d.step(rec(200.06, longRun()), { goalWaiting: true }).events).toEqual([])
     expect(store.next()).not.toBeNull()
     expect(d.step(rec(200.08, longRun())).events).toEqual([{ phase: 'start', at: 100 }])
     expect(store.next()).toBeNull()
@@ -253,6 +255,14 @@ describe('Flashback', () => {
     expect(cut.shot).toBeNull()
     expect(cut.events).toEqual([{ phase: 'end', at: 100 }])
     expect(d.fb.active).toBe(false)
+  })
+
+  it('plays on while a live goal waits for its scorer: the goal cuts it once it plays', () => {
+    const d = make(storeWith(100).store)
+    d.run(200, 2, () => longRun())
+    expect(d.fb.active).toBe(true)
+    expect(d.step(rec(202, longRun()), { goalWaiting: true }).events).toEqual([])
+    expect(d.fb.active).toBe(true)
   })
 
   it('cuts on a live label moment, the layer going off, or cut()', () => {
@@ -442,7 +452,7 @@ describe('Flashback', () => {
         history.add(newest)
       }
       const state = newest && history.validityOf(newest)
-      out.push({ nowMs, newest, frame: fb.step(nowMs, { newest, state, labelMoment: false, layerOn: true }) })
+      out.push({ nowMs, newest, frame: fb.step(nowMs, { newest, state, labelMoment: false, goalWaiting: false, layerOn: true }) })
     }
     return out
   }

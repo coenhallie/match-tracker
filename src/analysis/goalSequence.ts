@@ -1,6 +1,8 @@
 import { build2DTransform, FRAME_H, FRAME_W, NET_DEPTH_METRES, resolvePitchDimensions, worldToPx } from '../model/pitch.js'
 import type { Frame, PitchDimensions } from '../model/types.js'
 import { frameHasAction } from './actionLabels.js'
+import { labelTeam } from './cardLabels.js'
+import type { TeamId } from './teamPhase.js'
 
 /**
  * The goal sequence: when the pipeline labels a frame GOAL, the replay shows a
@@ -98,6 +100,14 @@ const GOAL_LABELS = [
  */
 export function isGoalFrame(frame: Frame): boolean {
   return GOAL_LABELS.some((name) => frameHasAction(frame, name))
+}
+
+/**
+ * The team a human's goal label on `frame` gives (`team_id`): the labelling tool sends the team
+ * with a goal since 2026-11. Null when none does.
+ */
+export function goalLabelTeam(frame: Frame): TeamId | null {
+  return labelTeam(frame, GOAL_LABELS)
 }
 
 /**
