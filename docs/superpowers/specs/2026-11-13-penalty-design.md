@@ -127,10 +127,13 @@ The kick, 700 ms:
   (400, 470) to the top corner (centre 566, 380; the ball 136:3191 at 529, 343, 74 × 74), easing
   out (cubic), shrinking from 128 to 74, turning one and a half times. Its shadow slides along the
   ground from (403, 898), 126 × 50, to the goal line (560, 551), 63 × 25 (136:3176).
-- Behind it, a trail: the curve travelled so far, 16 wide with round ends, white from fully clear at
-  the spot to 75% at the ball (`Line 1`, 136:3377, is Figma's).
+- Behind it, a trail as Figma's `Line 1` (136:3377 scored, 136:3456 missed) draws it: its width
+  (48), the stretch of the curve it covers behind the ball, and its fade (settled in the build, over
+  the mockup's thinner line from the spot).
 - The keeper commits late: from 15% to 85% of the kick (ease out) he moves from his standing
-  place to the dive (136:3192, 468, 348, 272 × 272), turning from -35° to 0°. Over the first
+  place to the dive (136:3192, centre (467, 484), 272 × 272: the frame is turned 45° in Figma, so its
+  listed corner (468, 348) is not its top left; Figma's scene export draws it from x 331), turning
+  from -35° to 0°. Over the first
   quarter of his move the standing keeper cross-fades into the diving one. His shadow stretches
   from 126 × 50 to 178 × 37 (136:3177).
 - When the kick ends, "SCORED!" (banner 136:3259, 302, 780, 996 × 240) rises 40 units into place
