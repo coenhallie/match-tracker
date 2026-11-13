@@ -1,13 +1,15 @@
 import type { PitchDimensions, Transform2D } from '../model/types.js'
 import type { CornerSide } from '../analysis/cornerLabel.js'
-import { CARD_MIDDLE_PX, drawCentreCard } from './eventBanner.js'
-import { tracePlayingArea } from './pitchGeometry.js'
+import { CARD_HEIGHT_PX, CARD_MIDDLE_PX, drawCentreCard } from './eventBanner.js'
+import { drawTeamUnderBand } from './labelCard.js'
+import { designUnit, tracePlayingArea } from './pitchGeometry.js'
 import { DEFAULT_THEME, type RenderTheme } from './theme.js'
 import { resolvePitchDimensions, worldToPx } from '../model/pitch.js'
 
 /**
  * The corner: "CORNER" and the corner icon on a dark card across the middle
- * of the pitch, everyone and the ball faded out, and the corner it is taken
+ * of the pitch, the team taking it under the card when its label says,
+ * everyone and the ball faded out, and the corner it is taken
  * from lit up as a cone of sections fanning out from the flag, each lighting
  * up after the one inside it, again and again while it shows.
  *
@@ -30,6 +32,11 @@ export interface CornerBanner {
    * shown alone.
    */
   corner: CornerSide | null
+  /**
+   * The name of the team taking it, written under the card, or null for none: its label names no
+   * team (cornerLabel).
+   */
+  team?: string | null | undefined
   /** 0 to 1 for each of the cone's sections, from the flag out: how strongly it is lit (cornerSections). */
   sections: readonly number[]
   /**
@@ -175,7 +182,12 @@ const CORNER_CARD = {
 
 /**
  * Draw the corner's card over everything else on the pitch, in frame units
- * through the context's current transform, in the theme's words, font and icon.
+ * through the context's current transform, in the theme's words, font and
+ * icon, and the team taking it under it (Figma "Game Animation Visualizer",
+ * viewport/eventCornerPulse): written as a player card's team is, Inter Black
+ * 48 px, centred, its baseline 84 design pixels below the band's foot. Under
+ * this band, 373 high, that is 270.5 below the pitch's middle, where the
+ * design has it.
  */
 export function drawCornerCard(
   ctx: CanvasRenderingContext2D,
@@ -189,5 +201,13 @@ export function drawCornerCard(
     font: theme.fonts.title,
     icon: banner.icon ?? theme.icons.corner,
   }
-  drawCentreCard(ctx, t, card, clamp01(banner.intensity))
+  const alpha = clamp01(banner.intensity)
+  drawCentreCard(ctx, t, card, alpha)
+  if (alpha <= 0 || !banner.team) return
+  const u = designUnit(t)
+  const [cx, cy] = worldToPx(0, 0, t)
+  ctx.save()
+  ctx.globalAlpha = alpha
+  drawTeamUnderBand(ctx, banner.team, cx, cy + (CARD_HEIGHT_PX / 2) * u, u, card.font)
+  ctx.restore()
 }

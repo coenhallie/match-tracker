@@ -6,6 +6,27 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+The corner names the team taking it.
+
+### What you see
+
+- **The team under the corner.** The corner now writes the name of the team
+  taking it under its card, as the yellow and red cards do: the labelling tool
+  sends the team with a corner label (`team_id`), and the widget names it by the
+  `teams` option's name, else "Red" or "Blue". A label without a team, as the
+  exports' are, shows the card as before.
+- **Played by hand** (`trigger('corner', team)`), the corner names the team the
+  label on screen gives, else `team`.
+- **In a replay of an earlier moment** (live mode's flashbacks), the corner
+  names its team too.
+
+### Fixed
+
+- **Cards and substitutions in a replay.** A yellow or red card, or a
+  substitution, labelled within a replay's clip played with no team and no
+  player, as the clips kept only a label's name. A replay now names them as
+  live play does.
+
 ## [0.17.0] - 2026-11-13
 
 The corner lights up the corner its label names.

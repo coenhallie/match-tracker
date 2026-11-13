@@ -14,7 +14,7 @@ import {
 import { LiveHistory } from '../../src/history/liveHistory'
 import type { FlashbackKind } from '../../src/model/flashback'
 import { parseRecord } from '../../src/model/parseRecord'
-import type { RecordValidity, TrackerRecord } from '../../src/model/types'
+import type { Frame, RecordValidity, TrackerRecord } from '../../src/model/types'
 import { createRenderer } from '../../src/render/renderer'
 import { fakeCanvas, stubOffscreenCanvas } from '../helpers/recordingCtx'
 
@@ -99,6 +99,14 @@ describe('slimRecord', () => {
     const carrier = staging.flatMap((r) => r.frame.teams.flatMap((t) => t.players)).find((p) => p.in_possession)!
     expect(slimRecord({ t: 0, frameCount: 0, frame: { teams: [{ team_id: 0, players: [carrier] }] } }).frame.teams[0]!.players[0]!.in_possession).toBe(true)
     expect(JSON.stringify(slim).length).toBeLessThan(JSON.stringify(staging[400]).length)
+  })
+
+  it('keeps what the moments read of a label: who a corner, a card or a substitution names', () => {
+    const corner = { action_type: 'Corner kick - Top left', action_origin: 'human', uuid: 'c', team_id: 1 }
+    const card = { action_type: 'Player yellow card', action_origin: 'human', uuid: 'y', team_id: 0, player_number: 9, player_name: 'Name' }
+    const sub = { action_type: 'Substitute', action_origin: 'human', uuid: 's', team_id: 1, from: 6, to: 12, player_name: 'On', player_name_out: 'Off' }
+    const frame = { teams: [], state: { actions: [corner, card, sub, { ...corner, action_id: 28, bbox: [1, 2] }] } } as unknown as Frame
+    expect(slimRecord({ t: 0, frameCount: 0, frame }).frame.state!.actions).toEqual([corner, card, sub, corner])
   })
 })
 

@@ -291,6 +291,23 @@ function setLineShadow(ctx: CanvasRenderingContext2D, u: number): void {
   ctx.fillStyle = '#ffffff'
 }
 
+/**
+ * The team's name under a centre card's band, whose foot is at `foot`, centred on `cx`, with its
+ * shadow, and nothing else: the corner's (corner.ts), as a player card's.
+ */
+export function drawTeamUnderBand(
+  ctx: CanvasRenderingContext2D,
+  name: string,
+  cx: number,
+  foot: number,
+  u: number,
+  family: string,
+): void {
+  setLineShadow(ctx, u)
+  drawTeamLine(ctx, name, cx, foot, u, family)
+  ctx.shadowColor = 'transparent'
+}
+
 /** The team's name under a card's band, whose foot is at `foot`, centred on `cx`; nothing for no team. */
 function drawTeamLine(ctx: CanvasRenderingContext2D, name: string | null, cx: number, foot: number, u: number, family: string): void {
   if (name === null) return

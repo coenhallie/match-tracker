@@ -67,8 +67,8 @@ interface Shape {
   ballX?: number
   /** The team with a player on the ball. */
   carrier?: 0 | 1
-  /** Human labels on the record. */
-  labels?: string[]
+  /** Human labels on the record: a name, or the label as a whole, with a team say. */
+  labels?: Array<string | Record<string, unknown>>
 }
 
 function rawData(state: Exclude<State, 'none'>) {
@@ -96,7 +96,13 @@ function msg(i: number, t: number, state: State, shape: Shape = {}): string {
     const team = parsed.match.teams.find((tm) => tm.team_id === shape.carrier)!
     team.players[1]!.in_possession = true
   }
-  if (shape.labels) parsed.match.state = { actions: shape.labels.map((action_type) => ({ action_type, action_origin: 'human' })) }
+  if (shape.labels) {
+    parsed.match.state = {
+      actions: shape.labels.map((label) =>
+        typeof label === 'string' ? { action_type: label, action_origin: 'human' } : { action_origin: 'human', ...label },
+      ),
+    }
+  }
   if (state !== 'none') parsed.raw_data = rawData(state)
   return JSON.stringify(parsed)
 }
@@ -199,6 +205,29 @@ describe('flashbacks in live mode', () => {
       `flashback:start@${stream.t(GOAL)}`,
       `flashback:end@${stream.t(GOAL)}`,
     ])
+  })
+
+  it('names who a label names in a replay, as live: the corner’s team, the card’s player', () => {
+    const { tracker } = mount({ teams: { home: { name: 'Ajax' }, away: { name: 'PSV' } } })
+    const stream = new Stream(tracker)
+    const CARD = GOAL - 50
+    // Play moves on, so the live corner, held while play is stopped, ends before the run.
+    const moving = (i: number): Shape => ({ ballX: -20 + (i % 200) * 0.2 })
+    stream.push(RUN, 'valid', (i) => ({
+      ...moving(i),
+      ...(i === GOAL
+        ? { labels: [{ action_type: 'Corner kick - Bottom right', uuid: 'c', team_id: 1 }] }
+        : i === CARD
+          ? { labels: [{ action_type: 'Player yellow card', uuid: 'y', team_id: 0, player_number: 9, player_name: 'Lando' }] }
+          : {}),
+    }))
+    const from = control.drawn.length
+    stream.push(200, 'long', moving)
+    const during = drawnSince(from).filter(({ frame }) => isClip(frame))
+    const card = during.find(({ layers }) => layers?.labelCard?.player)?.layers?.labelCard?.player
+    expect(card).toMatchObject({ team: 'Ajax', player: 'Lando' })
+    const corner = during.find(({ layers }) => layers?.corner)?.layers?.corner
+    expect(corner).toMatchObject({ corner: { x: 1, y: 1 }, team: 'PSV' })
   })
 
   it('shows the clip phase in the row above the pitch during a replay', () => {

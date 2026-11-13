@@ -1,6 +1,8 @@
 import type { Frame } from '../model/types.js'
 import { actionName, isHumanLabel } from './actionLabels.js'
+import { plainTeam } from './cardLabels.js'
 import type { ShownRecord } from './secondHalf.js'
+import type { TeamId } from './teamPhase.js'
 
 /**
  * A corner of the pitch, by the signs of its x and y in pitch metres: x -1 the
@@ -33,26 +35,38 @@ export function isCornerFrame(frame: Frame): boolean {
   return (frame.state?.actions ?? []).some((a) => isHumanLabel(a) && CORNER_LABELS.has(actionName(a.action_type)))
 }
 
+/** A corner as a human labelled it: the corner its label names, and the team taking it. */
+export interface CornerLabel {
+  /** Where the corner is on the pitch as shown, or null when the label names none. */
+  side: CornerSide | null
+  /**
+   * The team taking it, from the label's `team_id`, as the labelling tool sends it since 2026-11:
+   * 0 or 1, or null for a label without one (the exports', and older labels).
+   */
+  team: TeamId | null
+}
+
 /**
  * The corner a human labelled `record` with, or null when no human label on it
- * is a corner's. `side` is the corner the label names, where it is on the
- * pitch as shown, or null when the label names none. A label that names one
- * goes before one that does not.
+ * is a corner's. A label that names a corner goes before one that does not, and
+ * the team is the one on the label it goes by.
  *
  * The labeller names the corner as the camera sees it, and the camera stays on
  * its touchline at half time, so on a second-half record, which the widget
  * shows turned half round the centre spot (`turned`), the corner is turned
- * with it: the camera's bottom left is the turned pitch's top right.
+ * with it: the camera's bottom left is the turned pitch's top right. The team
+ * is the same team in either half.
  */
-export function cornerLabel(record: ShownRecord): { side: CornerSide | null } | null {
-  let found = false
+export function cornerLabel(record: ShownRecord): CornerLabel | null {
+  let first: CornerLabel | null = null
   for (const action of record.frame.state?.actions ?? []) {
     if (!isHumanLabel(action)) continue
     const name = actionName(action.action_type)
     if (!CORNER_LABELS.has(name)) continue
-    found = true
-    const side = CORNER_LABELS.get(name)
-    if (side) return { side: record.turned ? { x: side.x === 1 ? -1 : 1, y: side.y === 1 ? -1 : 1 } : side }
+    const side = CORNER_LABELS.get(name) ?? null
+    const team = plainTeam(action.team_id)
+    if (side) return { side: record.turned ? { x: side.x === 1 ? -1 : 1, y: side.y === 1 ? -1 : 1 } : side, team }
+    first ??= { side: null, team }
   }
-  return found ? { side: null } : null
+  return first
 }

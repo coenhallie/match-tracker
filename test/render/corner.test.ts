@@ -189,6 +189,52 @@ describe('corner card', () => {
   })
 })
 
+describe('the team under the corner card', () => {
+  // The corner's band: 373 px high, centred on the pitch.
+  const FOOT = CY + (373 / 2) * u
+
+  /** Draw the card with `team`, noting the shadow and alpha each text is written with. */
+  function draw(over: Partial<CornerBanner> = {}) {
+    const { ctx, ops } = recordingCtx()
+    const written = new Map<string, { color: string; blur: number; y: number; alpha: number }>()
+    const fillText = ctx.fillText.bind(ctx)
+    ctx.fillText = (...args: unknown[]) => {
+      written.set(String(args[0]), { color: ctx.shadowColor, blur: ctx.shadowBlur, y: ctx.shadowOffsetY, alpha: ctx.globalAlpha })
+      fillText(...args)
+    }
+    drawCornerCard(ctx as unknown as CanvasRenderingContext2D, T, banner({ team: 'Ajax', ...over }))
+    return { ops, written }
+  }
+
+  it('writes the team in Inter Black 48 px, centred, 270.5 px below the pitch\'s middle, as the design has it', () => {
+    const { ops, written } = draw()
+    const team = ops.find((o) => o.op === 'fillText' && o.args[0] === 'Ajax')!
+    expect((normalizeCalls([team])[0] as Op).font).toBe(`900 ${48 * u}px Inter, sans-serif`)
+    expect(team.textAlign).toBe('center')
+    expect(team.fillStyle).toBe('#ffffff')
+    expect(team.args[1]).toBeCloseTo(CX, 6)
+    // 84 below the band's foot, as a player card's team: the design's 774 px top of a 58 px line, on a 1100 px frame.
+    expect(team.args[2]).toBeCloseTo(FOOT + 84 * u, 6)
+    expect(team.args[2]).toBeCloseTo(CY + 270.5 * u, 6)
+    expect(written.get('Ajax')).toMatchObject({ color: 'rgba(0, 0, 0, 0.5)', blur: 4 * u, y: 2 * u })
+  })
+
+  it('fades with the card, and leaves no shadow behind', () => {
+    const { ops, written } = draw({ intensity: 0.3 })
+    expect(written.get('Ajax')!.alpha).toBeCloseTo(0.3, 6)
+    expect(ops[0]!.op).toBe('save')
+    expect(ops.at(-1)!.op).toBe('restore')
+    expect(draw({ intensity: 0 }).ops.some((o) => o.op === 'fillText')).toBe(false)
+  })
+
+  it('writes no team when it has none', () => {
+    for (const team of [null, undefined, '']) {
+      const texts = draw({ team }).ops.filter((o) => o.op === 'fillText').map((o) => o.args[0])
+      expect(texts).toEqual(['CORNER'])
+    }
+  })
+})
+
 describe('corner in the renderer', () => {
   let offscreen: ReturnType<typeof stubOffscreenCanvas>
   beforeEach(() => {

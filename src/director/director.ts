@@ -401,7 +401,8 @@ export class Director {
 
   /**
    * Play `moment` now, by hand (`triggerMoment`, `:1038-1063`); for an
-   * attack, `team`'s. It takes over from whatever is showing and runs as it
+   * attack, `team`'s, and a card, a substitution or a corner names `team`
+   * (a corner, the team the label on screen gives first). It takes over from whatever is showing and runs as it
    * would on its label, during playback or not, except the corner: with no
    * label or cutaway to wait on, it is on screen for CORNER_DEMO_MS, and a
    * label card, likewise for LABEL_CARD_DEMO_MS. A seek
@@ -435,7 +436,7 @@ export class Director {
     } else if (moment === 'corner') {
       this.stopSequences()
       this.memory.cornerLabelAt = now
-      this.corner.start(record, true)
+      this.corner.start(record, true, team)
       this.request(this.corner)
     } else if (isLabelCardKey(moment)) {
       const card = this.labelCards.find((c) => c.key === moment)!

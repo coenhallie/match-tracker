@@ -53,11 +53,27 @@ function slimBall(ball: Ball): Ball {
   return out
 }
 
+/**
+ * What the moments read of a label: its name and origin, and what a human's says about who. A
+ * corner or a card names its team, a card its player, a substitution who went off and who came on,
+ * in a clip as live; a card's `uuid` tells one label seen on several records from another.
+ */
+const ACTION_KEYS = [
+  'action_type',
+  'action_origin',
+  'uuid',
+  'team_id',
+  'player_number',
+  'player_name',
+  'player_name_out',
+  'from',
+  'to',
+] as const satisfies readonly (keyof FrameAction)[]
+
 function slimAction(action: FrameAction): FrameAction {
-  const out: FrameAction = {}
-  if (action.action_type !== undefined) out.action_type = action.action_type
-  if (action.action_origin !== undefined) out.action_origin = action.action_origin
-  return out
+  const out: Record<string, unknown> = {}
+  for (const key of ACTION_KEYS) if (action[key] !== undefined) out[key] = action[key]
+  return out as FrameAction
 }
 
 interface Kept {

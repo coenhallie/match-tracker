@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { TeamPhase } from '../../src/analysis/teamPhase'
-import type { Frame } from '../../src/model/types'
+import type { Frame, FrameAction } from '../../src/model/types'
 import { CORNER_DEMO_MS, CORNER_REARM_S, CORNER_SHOW_MS, CORNER_SECTION_METRES } from '../../src/render/corner'
 import { FakeReplay } from './harness'
 
@@ -8,8 +8,11 @@ import { FakeReplay } from './harness'
 // widget no longer shows, so its cases follow that one's (pipelineOutputSurface.test.ts :1159-1544), with
 // what is its own: which corner, and the cone. Whole animation frames, as there.
 
+/** A human's label: its name, or the label as a whole, a team on it say. */
+type Label = string | FrameAction
+
 /** A record: someone at `x`, the ball at `ball` unless it is lost, and the labels it carries. */
-const frameAt = (x: number, labels: string[] = [], ball: { x: number; y: number } | null = { x: 48, y: 30 }): Frame =>
+const frameAt = (x: number, labels: Label[] = [], ball: { x: number; y: number } | null = { x: 48, y: 30 }): Frame =>
   ({
     pitch_dimensions: { length: 105, width: 68 },
     teams: [
@@ -19,7 +22,11 @@ const frameAt = (x: number, labels: string[] = [], ball: { x: number; y: number 
       },
     ],
     balls: ball ? [{ projected_coordinates: ball }] : [],
-    state: { actions: labels.map((action_type) => ({ action_type, action_origin: 'human' })) },
+    state: {
+      actions: labels.map((label) =>
+        typeof label === 'string' ? { action_type: label, action_origin: 'human' } : { action_origin: 'human', ...label },
+      ),
+    },
     frame_data: [{ frame_count: 1 }],
   }) as Frame
 const CORNER = ['EventType.CORNER_KICK']
@@ -43,7 +50,7 @@ class Pitch {
 
   /** The next record by playback, 0.04 s on: play moving, unless `still`, when everyone is where they were. */
   record(
-    labels: string[] = [],
+    labels: Label[] = [],
     { still = false, ball = { x: 48, y: 30 } as { x: number; y: number } | null, phase = NOBODY, turned = undefined as true | undefined } = {},
   ) {
     if (!still) this.x += 0.1
@@ -113,6 +120,33 @@ describe('corner', () => {
     pitch.animate(100)
     // The camera stays on its touchline: its bottom left is the turned pitch's top right.
     expect(pitch.corner()?.corner).toEqual({ x: 1, y: -1 })
+  })
+
+  it('names the team taking it, as the host names it, when its label says which', () => {
+    for (const [team_id, team] of [[0, 'Red'], [1, 'Blue']] as const) {
+      const pitch = new Pitch()
+      pitch.record([{ action_type: 'Corner kick - Top left', team_id }])
+      pitch.animate(100)
+      expect(pitch.corner()).toMatchObject({ corner: { x: -1, y: -1 }, team })
+    }
+    // On a label that names no corner too, and in the second half, where the team is the same team.
+    const alone = new Pitch()
+    alone.record([{ action_type: 'Corner', team_id: 1 }])
+    alone.animate(100)
+    expect(alone.corner()).toMatchObject({ corner: null, team: 'Blue' })
+    const turned = new Pitch()
+    turned.record([{ action_type: 'Corner kick - Bottom left', team_id: 0 }], { turned: true })
+    turned.animate(100)
+    expect(turned.corner()).toMatchObject({ corner: { x: 1, y: -1 }, team: 'Red' })
+  })
+
+  it('names no team when its label does not say which, as the exports\' do not', () => {
+    for (const labels of [CORNER, [{ action_type: 'Corner kick - Top left', team_id: -1 }]]) {
+      const pitch = new Pitch()
+      pitch.record(labels)
+      pitch.animate(100)
+      expect(pitch.corner()!.team).toBeNull()
+    }
   })
 
   it('lights its sections one after another from the flag out', () => {
@@ -296,7 +330,7 @@ describe('corner', () => {
 })
 
 describe('corner played by hand', () => {
-  const ready = (ball: { x: number; y: number } | null = { x: -40, y: -20 }, labels: string[] = []) => {
+  const ready = (ball: { x: number; y: number } | null = { x: -40, y: -20 }, labels: Label[] = []) => {
     const replay = new FakeReplay()
     replay.set({ time: 10, frame: frameAt(0, labels, ball), phase: NOBODY })
     return replay
@@ -316,6 +350,19 @@ describe('corner played by hand', () => {
     replay.trigger('corner')
     replay.animate(600, true)
     expect(replay.last()!.corner).toMatchObject({ intensity: 1, corner: { x: 1, y: -1 } })
+  })
+
+  it('names the team the label on screen names, else the team it was played for', () => {
+    const labelled = ready({ x: -40, y: 20 }, [{ action_type: 'Corner kick - Top right', team_id: 1 }])
+    labelled.trigger('corner', 0)
+    labelled.animate(600, true)
+    expect(labelled.last()!.corner).toMatchObject({ corner: { x: 1, y: -1 }, team: 'Blue' })
+    for (const [team, name] of [[0, 'Red'], [1, 'Blue']] as const) {
+      const bare = ready()
+      bare.trigger('corner', team)
+      bare.animate(600, true)
+      expect(bare.last()!.corner).toMatchObject({ corner: null, team: name })
+    }
   })
 
   it('is on screen for CORNER_DEMO_MS, whatever play does, then fades out', () => {
