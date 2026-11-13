@@ -98,6 +98,21 @@ describe('loadIcons', () => {
     }
   })
 
+  it("keeps each of the penalty's shapes its own path, as exported", async () => {
+    const { loadIcons } = await import('../../src/assets/icons')
+    await loadIcons()
+    // The shapes' outlines wind both ways, so merged into one path (the default nonzero fill) they cancel where they
+    // overlap: a goal's bars would notch its frame. The export's counts: 16 in the card's icon, 11 in the goal, 2 in each keeper, 1 in the ball.
+    const counts = { 11: 16, 12: 11, 13: 2, 14: 2, 16: 1 } as const
+    for (const [index, count] of Object.entries(counts)) {
+      expect([...svgOf(images[Number(index)]!.src).matchAll(/<path /g)]).toHaveLength(count)
+    }
+    // Each of the goal's paths is a single outline: a second "M" would be a second subpath merged in.
+    for (const [, d] of svgOf(images[12]!.src).matchAll(/ d="([^"]*)"/g)) {
+      expect(d!.match(/M/g)).toHaveLength(1)
+    }
+  })
+
   it('draws the spinner ball as 48 wedges, dark at 12 o\'clock to white round clockwise, the first on top', async () => {
     const { loadIcons } = await import('../../src/assets/icons')
     await loadIcons()
