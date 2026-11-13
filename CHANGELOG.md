@@ -6,6 +6,8 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-11-13
+
 ### What you see
 
 - **A throw-in the camera cuts away from shows a card across the middle**, from
