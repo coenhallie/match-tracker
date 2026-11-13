@@ -434,16 +434,46 @@ describe('drawing the penalty', () => {
     const [keeper, ball] = ellipses.map((o) => o.args as number[])
     expect(keeper!.slice(0, 4)).toEqual([...D(402, 594), 63 * u, 25 * u].map((v) => expect.closeTo(v, 6)))
     expect(ball!.slice(0, 4)).toEqual([...D(403, 898), 63 * u, 25 * u].map((v) => expect.closeTo(v, 6)))
-    for (const o of ops.filter((o) => o.op === 'fill')) expect(o.fillStyle).toBe('rgba(0, 0, 0, 0.25)')
+    for (const o of ops.filter((o) => o.op === 'fill' && !o.fillStyle.startsWith('conic'))) expect(o.fillStyle).toBe('rgba(0, 0, 0, 0.25)')
   })
 
-  it('stands the keeper in his Figma frame and turns the spinner on its centre', () => {
+  it('stands the keeper in his Figma frame', () => {
     const [, kx, ky, kw, kh] = images(draw().ops, 'keeper')[0]!.args as number[]
     // The frame 136:2918 at (306, 400), 191 by 194; the picture its 192 by 194 export.
     expect([kx, ky]).toEqual(D(306, 400).map((v) => expect.closeTo(v, 6)))
     expect(kw).toBeCloseTo(192 * u, 6)
     expect(kh).toBeCloseTo(194 * u, 6)
-    const { ops } = draw({ waitMs: 200 })
+  })
+
+  /** The spinner as a conic gradient: its fill, the disc it fills, and the gradient's start angle and centre. */
+  function conicSpinner(ops: Op[]) {
+    const fill = ops.find((o) => o.op === 'fill' && o.fillStyle.startsWith('conic'))
+    if (!fill) return null
+    const disc = ops.slice(0, ops.indexOf(fill)).findLast((o) => o.op === 'arc')!
+    const [, start, x, y, stops] = /^conic\(([^,]+),([^,]+),([^|]+)\|(.*)\)$/.exec(fill.fillStyle)!
+    return { fill, disc: disc.args as number[], start: Number(start), centre: [Number(x), Number(y)], stops }
+  }
+
+  it('draws the spinner as Figma’s angular gradient: dark at 12 o’clock, round clockwise to white, turning', () => {
+    const { ops } = draw({ waitMs: 200, scene: 0.7 })
+    const spinner = conicSpinner(ops)!
+    // A quarter turn in 200 ms: the dark edge has gone round from 12 o'clock to 3.
+    expect(spinner.start).toBeCloseTo(-Math.PI / 2 + Math.PI / 2, 6)
+    expect(spinner.centre).toEqual(D(402, 835).map((v) => expect.closeTo(v, 6)))
+    expect(spinner.stops).toBe('0:#0a3327,1:#ffffff')
+    expect(spinner.disc).toEqual([...D(402, 835), 64 * u, 0, Math.PI * 2].map((v) => expect.closeTo(v, 6)))
+    expect(spinner.fill.globalAlpha).toBeCloseTo(0.7, 6)
+    expect(conicSpinner(draw({ waitMs: 0 }).ops)!.start).toBeCloseTo(-Math.PI / 2, 6)
+    // Not the wedge picture, nor the kicked ball.
+    expect(images(ops, 'ballSpin')).toHaveLength(0)
+    expect(images(ops, 'ball')).toHaveLength(0)
+  })
+
+  it('falls back on the wedge picture, turned on its centre, where there is no conic gradient', () => {
+    const { ctx, ops } = recordingCtx()
+    ;(ctx as { createConicGradient?: unknown }).createConicGradient = undefined
+    drawPenalty(ctx as unknown as CanvasRenderingContext2D, T, indicator({ waitMs: 200 }), THEME)
+    expect(conicSpinner(ops)).toBeNull()
     expect(images(ops, 'keeperDive')).toHaveLength(0)
     expect(images(ops, 'ball')).toHaveLength(0)
     const spinner = images(ops, 'ballSpin')[0]!
@@ -453,6 +483,18 @@ describe('drawing the penalty', () => {
     expect([a, b, c, d]).toEqual([0, 1, -1, 0].map((v) => expect.closeTo(v, 6)))
     expect([e, f]).toEqual(D(402, 835).map((v) => expect.closeTo(v, 6)))
     expect(spinner.args.slice(1)).toEqual([-64 * u, -64 * u, 128 * u, 128 * u].map((v) => expect.closeTo(v, 6)))
+  })
+
+  it('keeps the spinner, still turning, until the kick moves, then the kicked ball', () => {
+    for (const result of ['scored', 'missed'] as const) {
+      const before = draw({ result, kick: 0, waitMs: 200 }).ops
+      expect(conicSpinner(before)!.start).toBeCloseTo(0, 6)
+      expect(images(before, 'ball')).toHaveLength(0)
+      expect(penaltyPose(indicator({ result, kick: 0, waitMs: 200 })).ball.turnDeg).toBeCloseTo(90, 6)
+      const moving = draw({ result, kick: 0.01, waitMs: 200 }).ops
+      expect(conicSpinner(moving)).toBeNull()
+      expect(images(moving, 'ball')).toHaveLength(1)
+    }
   })
 
   it('cross-fades the standing keeper into the diving one, turned on his centre', () => {

@@ -55,9 +55,10 @@ export interface Ellipse {
 
 /**
  * Where everything that moves in the scene is, in design pixels, centres. The ball: its size across
- * (its circle's), its turn in degrees and its strength. Only the spinner is drawn turned: the kicked
- * ball is a plain disc with its drop shadow to one side, so the drawing ignores its `turnDeg`, which
- * would only swing the shadow round it. The keeper: his turn in degrees, the diving keeper's (the
+ * (its circle's), its turn in degrees and its strength. The ball is the spinner until the kick moves
+ * it (`kick` over 0), turning with `waitMs` as it waits; then the kicked ball. Only the spinner is
+ * drawn turned: the kicked ball is a plain disc with its drop shadow to one side, so the drawing
+ * ignores its `turnDeg`, which would only swing the shadow round it. The keeper: his turn in degrees, the diving keeper's (the
  * standing one is never turned), and `dive`, 0 to 1, how far the standing keeper has cross-faded into
  * the diving one. The trail: the stretch of the kick's curve it covers, `from` and `to` as the curve's
  * parameters (0 at the spot, 1 at the curve's end), and its strength; once a missed ball carries on
@@ -145,8 +146,10 @@ const CROSS_FADE = 0.25
 /** His sway while waiting, side to side: SWAY_PX * sin(waitMs / SWAY_MS). */
 const SWAY_PX = 10
 const SWAY_MS = 380
-/** The spinner turns once in SPIN_MS. */
+/** The spinner turns once in SPIN_MS. Its gradient, from Figma's (136:2913): #0A3327 to white. */
 const SPIN_MS = 800
+const SPIN_DARK = '#0a3327'
+const SPIN_LIGHT = '#ffffff'
 
 /** The pictures, each where its Figma frame is and as large as its export (a frame's width rounds up). */
 const GOAL = { left: 160, top: 304, w: 484, h: 242 }
@@ -244,10 +247,10 @@ export function penaltyPose(p: PenaltyIndicator): PenaltyPose {
   const sway = p.still ? 0 : SWAY_PX * Math.sin(p.waitMs / SWAY_MS)
   const standing = { x: KEEPER.x + sway, y: KEEPER.y }
   const standingShadow = { ...KEEPER_SHADOW, x: KEEPER_SHADOW.x + sway }
+  const spin = p.still ? 0 : ((p.waitMs * 360) / SPIN_MS) % 360
   if (p.result === null) {
-    const turnDeg = p.still ? 0 : ((p.waitMs * 360) / SPIN_MS) % 360
     return {
-      ball: { ...SPOT, size: SPINNER_PX, turnDeg, alpha: 1 },
+      ball: { ...SPOT, size: SPINNER_PX, turnDeg: spin, alpha: 1 },
       ballShadow: { ...SPOT_SHADOW },
       keeper: { ...standing, turnDeg: DIVE_FROM_DEG, dive: 0 },
       keeperShadow: standingShadow,
@@ -256,7 +259,8 @@ export function penaltyPose(p: PenaltyIndicator): PenaltyPose {
   }
   const kick = KICKS[p.result]
   const e = easeOutCubic(clamp01(p.kick))
-  let ball = { ...blossom(kick, e, e, e), size: lerp(SPINNER_PX, KICKED_PX, e), turnDeg: KICK_TURN_DEG * e, alpha: 1 }
+  const turnDeg = p.kick > 0 ? KICK_TURN_DEG * e : spin
+  let ball = { ...blossom(kick, e, e, e), size: lerp(SPINNER_PX, KICKED_PX, e), turnDeg, alpha: 1 }
   if (kick.on && p.kick >= 1) {
     const m = clamp01(p.afterKickMs / PENALTY_MISS_ON_MS)
     ball = { ...ball, x: lerp(kick.end.x, kick.on.at.x, m), y: lerp(kick.end.y, kick.on.at.y, m), size: lerp(KICKED_PX, kick.on.size, m), alpha: 1 - m }
@@ -381,11 +385,8 @@ function drawScene(ctx: CanvasRenderingContext2D, t: Transform2D, p: PenaltyIndi
   if (ball.alpha > 0) {
     ctx.globalAlpha = alpha * ball.alpha
     fillEllipse(pose.ballShadow)
-    if (p.result === null) {
-      if (icons.penaltyBallSpin) {
-        const half = -SPINNER_PX / 2
-        drawTurned(ctx, icons.penaltyBallSpin, X(ball.x), Y(ball.y), ball.turnDeg, half, half, SPINNER_PX, SPINNER_PX, u)
-      }
+    if (p.result === null || p.kick <= 0) {
+      drawSpinner(ctx, icons.penaltyBallSpin, X(ball.x), Y(ball.y), ball.turnDeg, u)
     } else if (icons.penaltyBall) {
       // Not turned (PenaltyPose).
       const s = ball.size / KICKED_PX
@@ -436,6 +437,34 @@ function grainOf(ctx: CanvasRenderingContext2D): CanvasPattern | null {
   }
   grains.set(ctx, pattern)
   return pattern
+}
+
+/**
+ * The spinner ball (136:2913), centred on (`cx`, `cy`) and turned `turnDeg`: Figma's angular gradient,
+ * dark green at 12 o'clock round clockwise to white, over the 128 px disc. Drawn as a conic gradient;
+ * where the context has none, `wedges`, the same gradient as 48 wedges, once loaded.
+ */
+function drawSpinner(
+  ctx: CanvasRenderingContext2D,
+  wedges: CanvasImageSource | null,
+  cx: number,
+  cy: number,
+  turnDeg: number,
+  u: number,
+): void {
+  if (typeof ctx.createConicGradient !== 'function') {
+    const half = -SPINNER_PX / 2
+    if (wedges) drawTurned(ctx, wedges, cx, cy, turnDeg, half, half, SPINNER_PX, SPINNER_PX, u)
+    return
+  }
+  // A conic gradient's angle is from 3 o'clock, clockwise on the canvas: 12 o'clock is a quarter turn back.
+  const spin = ctx.createConicGradient((turnDeg * Math.PI) / 180 - Math.PI / 2, cx, cy)
+  spin.addColorStop(0, SPIN_DARK)
+  spin.addColorStop(1, SPIN_LIGHT)
+  ctx.fillStyle = spin
+  ctx.beginPath()
+  ctx.arc(cx, cy, (SPINNER_PX / 2) * u, 0, Math.PI * 2)
+  ctx.fill()
 }
 
 /**

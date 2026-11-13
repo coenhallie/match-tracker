@@ -97,6 +97,17 @@ export function recordingCtx() {
         },
       }
     },
+    createConicGradient(...args: number[]) {
+      const stops: Array<[number, string]> = []
+      return {
+        addColorStop(offset: number, color: string) {
+          stops.push([offset, color])
+        },
+        toString() {
+          return `conic(${args.join(',')}|${stops.map(([o, c]) => `${o}:${c}`).join(',')})`
+        },
+      }
+    },
     createRadialGradient(...args: number[]) {
       const stops: Array<[number, string]> = []
       return {
