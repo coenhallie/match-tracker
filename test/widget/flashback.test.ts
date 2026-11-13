@@ -230,6 +230,28 @@ describe('flashbacks in live mode', () => {
     expect(corner).toMatchObject({ corner: { x: 1, y: 1 }, team: 'PSV' })
   })
 
+  it('plays no replay over a live free kick held through a cutaway, as for a corner, and keeps the clip for the next', () => {
+    const { tracker } = mount()
+    const log = events(tracker)
+    const stream = new Stream(tracker)
+    // A goal kept as a clip, then a free kick just before the camera goes away.
+    const KICK = RUN - 5
+    const moving = (i: number): Shape => ({ ballX: -20 + (i % 200) * 0.2 })
+    stream.push(RUN, 'valid', (i) => ({ ...moving(i), ...(i === GOAL ? { labels: ['goal'] } : i === KICK ? { labels: ['Freekick'] } : {}) }))
+    expect(control.drawn.at(-1)!.layers?.freeKick).toBeDefined()
+    log.length = 0
+    // Live play holds its last valid frame through the cutaway, so the free kick, held while play is
+    // stopped, stays: no replay plays over it, the whole run long.
+    stream.push(200, 'long', moving)
+    expect(control.drawn.at(-1)!.layers?.freeKick).toBeDefined()
+    expect(log.filter((e) => e.startsWith('flashback'))).toEqual([])
+    // Play back: the free kick goes, and the goal's clip plays at the next cutaway.
+    stream.push(100, 'valid', moving)
+    expect(log).toContain('moment:freeKick:end')
+    stream.push(50, 'long', moving)
+    expect(log.filter((e) => e.startsWith('flashback'))[0]).toBe(`flashback:start@${stream.t(GOAL)}`)
+  })
+
   it('shows the clip phase in the row above the pitch during a replay', () => {
     const { host, tracker } = mount()
     const stream = new Stream(tracker)

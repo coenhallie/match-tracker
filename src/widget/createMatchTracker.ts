@@ -167,6 +167,7 @@ const NOTHING_AVAILABLE: MomentAvailability = {
   goal: false,
   attack: { 0: false, 1: false },
   corner: false,
+  freeKick: false,
   throwIn: false,
   ...labelCardRecord(() => false),
 }
@@ -178,6 +179,7 @@ const sameAvailability = (a: MomentAvailability, b: MomentAvailability) =>
   a.attack[0] === b.attack[0] &&
   a.attack[1] === b.attack[1] &&
   a.corner === b.corner &&
+  a.freeKick === b.freeKick &&
   a.throwIn === b.throwIn &&
   LABEL_CARD_KEYS.every((key) => a[key] === b[key])
 
@@ -322,7 +324,7 @@ class Tracker implements MatchTracker {
   private readonly mode: MatchTrackerOptions['mode']
   private options: MutableOptions
   private resolved: Resolved
-  private icons: RenderTheme['icons'] = { corner: null, substitutionOut: null, substitutionIn: null, ...iconCardRecord(() => null) }
+  private icons: RenderTheme['icons'] = { corner: null, freeKick: null, substitutionOut: null, substitutionIn: null, ...iconCardRecord(() => null) }
   private layers: ReplayLayers
   private readonly doc: Document
   private readonly host: HTMLElement

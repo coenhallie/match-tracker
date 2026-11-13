@@ -263,10 +263,7 @@ export function drawLabelCard(
 
   ctx.save()
   ctx.globalAlpha = alpha
-  const band = ctx.createLinearGradient(left, 0, left + width, 0)
-  for (const [at, opacity] of BAND_STOPS) band.addColorStop(at, `rgba(${BAND_RGB}, ${opacity})`)
-  ctx.fillStyle = band
-  ctx.fillRect(left, top, width, CARD_HEIGHT_PX * u)
+  fillBand(ctx, left, top, width, CARD_HEIGHT_PX * u)
   const layout: TitleLayout = { word: null, leftPx: 0, centrePx: widthPx / 2, bandWidthPx: widthPx, insetPx: PADDING_X_PX }
   drawEventTitle(ctx, t, title, left, top + TITLE_BASELINE_PX * u, TITLE_PX, layout, font)
   if (spec.below === 'icon') {
@@ -294,6 +291,58 @@ export function drawLabelCard(
   ctx.restore()
 }
 
+/** A card's band, clear at each end and solid at its middle, at the context's alpha. */
+function fillBand(ctx: CanvasRenderingContext2D, left: number, top: number, width: number, height: number): void {
+  const band = ctx.createLinearGradient(left, 0, left + width, 0)
+  for (const [at, opacity] of BAND_STOPS) band.addColorStop(at, `rgba(${BAND_RGB}, ${opacity})`)
+  ctx.fillStyle = band
+  ctx.fillRect(left, top, width, height)
+}
+
+/** A card laid out as a label card with an icon is, for a moment of its own (the free kick's, freeKick.ts). */
+export interface IconCard {
+  title: string
+  /** The title's and the team's family list. */
+  font: string
+  /** Its icon once loaded; until then it is drawn without it. */
+  icon: CanvasImageSource | null | undefined
+  /** Where the icon's drawing goes in its 208 px slot, in design pixels from the slot's top left corner. */
+  iconBox: CardBox
+  /** Either side of the title, in design pixels. */
+  paddingXPx: number
+  /** The widest the band may be, in design pixels: a title too long for it is shrunk to fit. */
+  maxWidthPx: number
+  /** The team's name under the band, or nothing. */
+  team: string | null | undefined
+}
+
+/**
+ * Draw `card` centred on `cx` and on the pitch's middle, at `alpha`, in frame units through the
+ * context's current transform: the band, the title over the icon, and the team under the band,
+ * as a label card lays them out. The team is no wider than the band.
+ */
+export function drawIconCard(ctx: CanvasRenderingContext2D, t: Transform2D, cx: number, card: IconCard, alpha: number): void {
+  if (alpha <= 0) return
+  const u = designUnit(t)
+  const titleWidthPx = measureWidth(ctx, card.title, `italic 900 ${TITLE_PX * u}px ${card.font}`) / u
+  const widthPx = Math.min(card.maxWidthPx, Math.max(titleWidthPx, ICON_SLOT_PX) + 2 * card.paddingXPx)
+  const [, cy] = worldToPx(0, 0, t)
+  const left = cx - (widthPx / 2) * u
+  const top = cy - (CARD_HEIGHT_PX / 2) * u
+  ctx.save()
+  ctx.globalAlpha = alpha
+  fillBand(ctx, left, top, widthPx * u, CARD_HEIGHT_PX * u)
+  const layout: TitleLayout = { word: null, leftPx: 0, centrePx: widthPx / 2, bandWidthPx: widthPx, insetPx: card.paddingXPx }
+  drawEventTitle(ctx, t, card.title, left, top + TITLE_BASELINE_PX * u, TITLE_PX, layout, card.font)
+  if (card.icon) {
+    const box = card.iconBox
+    const slotLeft = cx - (ICON_SLOT_PX / 2) * u
+    ctx.drawImage(card.icon, slotLeft + box.left * u, top + (SLOT_TOP_PX + box.top) * u, box.width * u, box.height * u)
+  }
+  if (card.team) drawTeamUnderBand(ctx, card.team, cx, cy, u, card.font, widthPx * u)
+  ctx.restore()
+}
+
 /** The lines' shadow geometry, in the bitmap's pixels whatever the transform, and their white, on the baseline. */
 function setLineShadow(ctx: CanvasRenderingContext2D, u: number): void {
   const scale = ctx.getTransform().a * u
@@ -316,17 +365,29 @@ export function drawTeamUnderBand(
   cy: number,
   u: number,
   family: string,
+  maxWidth = FRAME_W - 2 * PADDING_X_PX * u,
 ): void {
   setLineShadow(ctx, u)
-  drawTeamLine(ctx, name, cx, cy + (CARD_HEIGHT_PX / 2) * u, u, family)
+  drawTeamLine(ctx, name, cx, cy + (CARD_HEIGHT_PX / 2) * u, u, family, maxWidth)
   ctx.shadowColor = 'transparent'
 }
 
-/** The team's name under a card's band, whose foot is at `foot`, centred on `cx`; nothing for no team. */
-function drawTeamLine(ctx: CanvasRenderingContext2D, name: string | null, cx: number, foot: number, u: number, family: string): void {
+/**
+ * The team's name under a card's band, whose foot is at `foot`, centred on `cx`, at most `maxWidth`
+ * wide: a longer one is drawn smaller, then cut short (fitText). Nothing for no team.
+ */
+function drawTeamLine(
+  ctx: CanvasRenderingContext2D,
+  name: string | null,
+  cx: number,
+  foot: number,
+  u: number,
+  family: string,
+  maxWidth = FRAME_W - 2 * PADDING_X_PX * u,
+): void {
   if (name === null) return
   const teamFont = (px: number) => `900 ${px}px ${family}`
-  const team = fitText(ctx, name, teamFont, TEAM_PX * u, FRAME_W - 2 * PADDING_X_PX * u)
+  const team = fitText(ctx, name, teamFont, TEAM_PX * u, maxWidth)
   ctx.font = teamFont(team.px)
   ctx.textAlign = 'center'
   ctx.fillStyle = '#ffffff'

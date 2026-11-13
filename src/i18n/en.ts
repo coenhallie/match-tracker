@@ -10,12 +10,14 @@ import type { TrackerText } from './text.js'
  * reference has no label on its canvas. The corner's words, on its card and in the layers menu, are the
  * widget's own too: the reference has no corner. So is the throw-in layer's
  * hint, as the widget's throw-in fades in where the reference's slides, and
+ * so are the free kick's, which is the widget's own since the reference's went in 0.2.0, and
  * so are the player loss's layer and debug badge. So are the label cards'
  * words, on the card and in the layers menu.
  */
 export const en: TrackerText = {
   goal: 'GOAL',
   corner: 'CORNER',
+  freeKick: 'FREE KICK',
   throwIn: 'THROW IN',
   varCheck: 'VAR CHECK',
   goalDisallowed: 'GOAL DISALLOWED',
@@ -70,6 +72,10 @@ export const en: TrackerText = {
       hint: 'An earlier goal, corner, shot or attack near goal, each played once, while the live camera is away for 5 s or more',
     },
     corner: { label: 'Corner', hint: 'A banner and the corner lit up on a corner label, held while play is stopped' },
+    freeKickBanner: {
+      label: 'Free kick',
+      hint: 'A banner, the ball\u2019s spot marked and the other half shaded, on a free kick label, held while play is stopped',
+    },
     throwInBanner: { label: 'Throw-in', hint: 'A banner along the bottom touchline on a throw-in label' },
     varCheck: { label: 'VAR check', hint: 'A banner across the middle of the pitch on a VAR check label' },
     goalDisallowed: { label: 'Goal disallowed', hint: 'A banner across the middle of the pitch on a goal disallowed label' },

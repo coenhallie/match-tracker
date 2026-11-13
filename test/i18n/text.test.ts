@@ -112,7 +112,7 @@ describe('the built-in text', () => {
     })).toBe('Red attacking, Blue defending')
     // The corner is the widget's own: the reference has none. So is the throw-in's hint, as the widget's
     // throw-in fades in where the reference's slides in from the ball's half. And so is the zoom near goal.
-    const { corner, throwInBanner, playerLoss, flashback, goalZoom, ballShadow, varCheck, goalDisallowed, halfTime, secondHalf, fullTime, foul, shotOnGoal, headerOnGoal, yellowCard, redCard, substitution, ...referenceLayers } = en.layers
+    const { corner, freeKickBanner, throwInBanner, playerLoss, flashback, goalZoom, ballShadow, varCheck, goalDisallowed, halfTime, secondHalf, fullTime, foul, shotOnGoal, headerOnGoal, yellowCard, redCard, substitution, ...referenceLayers } = en.layers
     expect(en.substitution).toBe('SUBSTITUTION')
     expect(substitution).toEqual({ label: 'Substitution', hint: 'A banner across the middle of the pitch on a substitution label, listing the team\u2019s substitutions' })
     // The player cards are the widget's own too.
@@ -125,6 +125,12 @@ describe('the built-in text', () => {
     expect(corner).toEqual({
       label: 'Corner',
       hint: 'A banner and the corner lit up on a corner label, held while play is stopped',
+    })
+    // So is the free kick, since the reference's went in 0.2.0.
+    expect(en.freeKick).toBe('FREE KICK')
+    expect(freeKickBanner).toEqual({
+      label: 'Free kick',
+      hint: 'A banner, the ball\u2019s spot marked and the other half shaded, on a free kick label, held while play is stopped',
     })
     expect(throwInBanner).toEqual({ label: 'Throw-in', hint: 'A banner along the bottom touchline on a throw-in label' })
     expect(goalZoom).toEqual({

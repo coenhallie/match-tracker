@@ -82,7 +82,7 @@ function reportError(error: unknown): void {
 }
 
 /** In the order the director stops them. */
-const MOMENTS: readonly ReplayMoment[] = ['goal', 'attack', 'corner', 'throwIn', ...LABEL_CARD_KEYS]
+const MOMENTS: readonly ReplayMoment[] = ['goal', 'attack', 'corner', 'freeKick', 'throwIn', ...LABEL_CARD_KEYS]
 
 /**
  * Whether a paint shows `moment`. Each moment's value is drawn from its
@@ -98,6 +98,8 @@ function shows(layers: FrameLayers, moment: ReplayMoment): boolean {
       return layers.attack !== undefined
     case 'corner':
       return layers.corner !== undefined
+    case 'freeKick':
+      return layers.freeKick !== undefined
     case 'throwIn':
       return layers.throwIn !== undefined
     default:
@@ -106,7 +108,7 @@ function shows(layers: FrameLayers, moment: ReplayMoment): boolean {
 }
 
 /**
- * Whether `layers` show a moment a label starts: a goal, a corner, a throw-in or a label card.
+ * Whether `layers` show a moment a label starts: a goal, a corner, a free kick, a throw-in or a label card.
  * The attack, which the phase or a player loss starts, does not count.
  */
 export function labelMomentShowing(layers: FrameLayers | null): boolean {
@@ -115,6 +117,7 @@ export function labelMomentShowing(layers: FrameLayers | null): boolean {
     layers.goal !== undefined ||
     layers.goalBanner !== undefined ||
     layers.corner !== undefined ||
+    layers.freeKick !== undefined ||
     layers.throwIn !== undefined ||
     layers.labelCard !== undefined ||
     layers.smallLabelCard !== undefined

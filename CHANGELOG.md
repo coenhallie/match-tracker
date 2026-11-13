@@ -6,6 +6,56 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+The free kick is back: the widget's own, from the match-summary design.
+
+### What you see
+
+- **The free kick.** On a human's free kick label (the labelling tool's
+  `Freekick`, or `Free kick` however it is written), the spot where the ball was
+  as the label came is marked by a pulse of three rings, lighting up one after
+  another from the middle out, and the half of the pitch without the ball is
+  shaded. "FREE KICK" and its icon show on a card in the middle of that half,
+  with the team the label gives under it. Everyone on the pitch, the ball and
+  its trail fade out, as for a corner.
+- **Where the ball was** is the ball on the labelled record, or, with none
+  tracked there, the last one tracked in the 5 s before it, as the throw-in goes
+  by. It stays put as play goes on. With no ball known, the card shows alone
+  across the middle, with nothing shaded.
+- **Held as the corner is:** at least 2 s, then for as long as the label is on
+  or play is stopped. A corner and a free kick take over from each other, the
+  latest showing; a goal takes over from both. The free kick takes over from an
+  attack, the attack over a player loss, a throw-in and the label cards, and
+  holds them off while it shows, as the corner does.
+- **Replays in live mode** wait for a free kick as they do for a corner: no
+  replay plays while one shows. Live play holds its last valid frame while the
+  camera is away, so a free kick labelled just before a cutaway stays up through
+  it, and that cutaway plays no replay; the clip is kept for the next one.
+- This is not video-annotation's free kick, a card across the middle with no
+  ball or shade, which the widget dropped in 0.2.0 and still doesn't show.
+
+### For pages that embed it
+
+- `'freeKick'` is a `ReplayMoment` again: `trigger('freeKick', team)` plays it
+  for 4 s at the ball on screen, and `availability()` has a `freeKick` field.
+  A free kick sends `moment` events as the other moments do.
+- Its layer is `freeKickBanner`, on by default. It is not `freeKick`, the key of
+  video-annotation's free kick layer: a browser that kept that switched off
+  would otherwise hide this one without anyone choosing to.
+- `TrackerText` has a `freeKick` title ("FREE KICK", 任意球) and a
+  `freeKickBanner` layer entry. The Chinese is a draft, as the rest of it is.
+- The free kick icon is bundled again, so `img-src data:` covers it.
+
+### Size
+
+- The widget is 53.2 kB gzipped (budget 60 kB), up from 50.4 kB, mostly the
+  free kick icon's path data.
+
+### Parity
+
+- The goldens are unchanged and still pass. The one that has free kick labels,
+  `layers-off`, records the layer off; `trigger-each-moment` is still compared
+  up to its free kick, which video-annotation drew as its own.
+
 ## [0.19.0] - 2026-11-13
 
 The goal disallowed names the team.

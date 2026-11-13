@@ -14,7 +14,7 @@ export type PersonRole = 'home' | 'away' | 'goalkeeper' | 'official' | 'unknown'
 export interface RenderTheme {
   colors: Record<PersonRole, PersonColors>
   /** The event cards' titles, and the word under the team's name in the attack's label. */
-  text: { goal: string; corner: string; throwIn: string; attack: string; flashback: string; flashbackAgo: string } & Record<LabelCardKey | LabelCardTextKey, string>
+  text: { goal: string; corner: string; freeKick: string; throwIn: string; attack: string; flashback: string; flashbackAgo: string } & Record<LabelCardKey | LabelCardTextKey, string>
   /**
    * Family lists, fallbacks included: `label` for the attack's label,
    * `title` for the event cards' titles.
@@ -23,6 +23,7 @@ export interface RenderTheme {
   /** The cards' icons, once loaded. A card is drawn without its icon until then. */
   icons: {
     corner: CanvasImageSource | null
+    freeKick: CanvasImageSource | null
     substitutionOut: CanvasImageSource | null
     substitutionIn: CanvasImageSource | null
   } & Record<IconCardKey, CanvasImageSource | null>
@@ -61,6 +62,7 @@ export const DEFAULT_THEME: Readonly<RenderTheme> = Object.freeze({
   text: Object.freeze({
     goal: 'GOAL',
     corner: 'CORNER',
+    freeKick: 'FREE KICK',
     throwIn: 'THROW IN',
     attack: 'Attack',
     flashback: 'REPLAY',
@@ -81,7 +83,7 @@ export const DEFAULT_THEME: Readonly<RenderTheme> = Object.freeze({
     substitution: 'SUBSTITUTION',
   }),
   fonts: Object.freeze({ label: familyList(LABEL_FAMILY), title: familyList(TITLE_FAMILY) }),
-  icons: Object.freeze({ corner: null, substitutionOut: null, substitutionIn: null, ...iconCardRecord(() => null) }),
+  icons: Object.freeze({ corner: null, freeKick: null, substitutionOut: null, substitutionIn: null, ...iconCardRecord(() => null) }),
   formatAction: (actionType: string) => actionType,
   aiLabels: false,
 })

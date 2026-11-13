@@ -1,14 +1,14 @@
 # @coenhallie/match-tracker
 
 A live 2D match tracker for football streams. It draws players, ball and the
-match's moments (goals, attacks, corners, throw-ins, fouls, shots and headers on goal, VAR checks, disallowed goals, half time, second half, full time) on a pitch, from the
+match's moments (goals, attacks, corners, free kicks, throw-ins, fouls, shots and headers on goal, VAR checks, disallowed goals, half time, second half, full time) on a pitch, from the
 tracking pipeline's frames, inside any element you give it. It is the 2D
 replay from video-annotation, taken out of Vue: the same picture, timing and
 behaviour for the same data, with the attacking/defending row and the layers
 menu. Unlike video-annotation's, the view has no zoom or pan of its own: only
 the animations (a goal's camera, the zoom near goal) move it. The corner is the widget's own, as video-annotation has none,
-and so are the VAR check, the goal disallowed, the half time, the second half, the full time, the foul, the shot and header on goal, the goal on a penalty scored and the attack shown over a player loss. video-annotation's free kick
-isn't shown.
+and so are the free kick, the VAR check, the goal disallowed, the half time, the second half, the full time, the foul, the shot and header on goal, the goal on a penalty scored and the attack shown over a player loss.
+video-annotation's own free kick, a card across the middle, isn't shown.
 
 - **Framework-free.** One function, `createMatchTracker`, and plain DOM. A thin
   Vue 3 component is a separate entry, `@coenhallie/match-tracker/vue`.
@@ -234,10 +234,10 @@ destroyed on can have a new one.
 | `push(message)` | Live: one websocket message. |
 | `present(state)` | Replay: `{ time, playing, record, lookback }` at the host's clock. |
 | `reset()` | Forget everything seen and end every moment. What comes next is a seek. The last picture stays until new data arrives. In live mode the clips kept for replays go too, and a replay playing ends, with a `flashback` `end` (see [Flashbacks](#flashbacks)). |
-| `trigger(moment, team?)` | Play `'goal'`, `'attack'`, `'corner'`, `'throwIn'`, `'varCheck'`, `'goalDisallowed'`, `'halfTime'`, `'secondHalf'`, `'fullTime'`, `'foul'`, `'shotOnGoal'`, `'headerOnGoal'`, `'yellowCard'`, `'redCard'` or `'substitution'` now, on the frame on screen. `team` (0 home, 1 away, default 0) is for an attack, and for a card, a substitution, a corner or a goal disallowed the team it names (a corner and a goal disallowed name the team their label on screen gives first). Returns false when the moment cannot be played on that frame (for example before the first frame, or a goal with no ball). |
+| `trigger(moment, team?)` | Play `'goal'`, `'attack'`, `'corner'`, `'freeKick'`, `'throwIn'`, `'varCheck'`, `'goalDisallowed'`, `'halfTime'`, `'secondHalf'`, `'fullTime'`, `'foul'`, `'shotOnGoal'`, `'headerOnGoal'`, `'yellowCard'`, `'redCard'` or `'substitution'` now, on the frame on screen. `team` (0 home, 1 away, default 0) is for an attack, and for a card, a substitution, a corner, a free kick or a goal disallowed the team it names (a corner, a free kick and a goal disallowed name the team their label on screen gives first). Returns false when the moment cannot be played on that frame (for example before the first frame, or a goal with no ball). |
 | `setOptions(options)` | Change any option but `mode` and `layersStorageKey`, which are fixed at mount. The HUD and the canvas follow at once, without a remount. Options that throw change nothing. |
 | `on(event, listener)` | Listen to an event. Returns a function that unsubscribes. |
-| `availability()` | Which moments `trigger` can play on the frame on screen: `{ goal, attack: { 0, 1 }, corner, throwIn, varCheck, goalDisallowed, halfTime, secondHalf, fullTime, foul, shotOnGoal, headerOnGoal, yellowCard, redCard, substitution }`, each a boolean (`MomentAvailability`). All false before the first frame and after a reset. A goal needs a ball, and an attack needs the direction that team attacks in, which needs the keepers. A fresh copy on every call. |
+| `availability()` | Which moments `trigger` can play on the frame on screen: `{ goal, attack: { 0, 1 }, corner, freeKick, throwIn, varCheck, goalDisallowed, halfTime, secondHalf, fullTime, foul, shotOnGoal, headerOnGoal, yellowCard, redCard, substitution }`, each a boolean (`MomentAvailability`). All false before the first frame and after a reset. A goal needs a ball, and an attack needs the direction that team attacks in, which needs the keepers. A fresh copy on every call. |
 | `overlay` | An element over the pitch, in the canvas's own box, for a host's drawing layer and anything it anchors to the pitch. It is a `div` child of the host, with `slot="overlay"`, so the page's CSS reaches it and its content. Its inline style fills the box and turns pointer events off. Pointer events pass through it unless you turn them on for your own elements. A press on it, or on anything in it, stops every moment, except inside an element in it marked `data-match-tracker-keep` (your transport, a frame badge). |
 | `box` | `{ left, top, width, height }`, the canvas's box in CSS px from the host's top-left corner, below the attacking/defending row (`TrackerBox`, frozen). Null until the widget has been laid out with a size, and after `destroy()`. |
 | `version` | The package version this tracker runs. |
@@ -271,12 +271,12 @@ Also exported:
 | `secondHalfFrom` | `number \| null` | `null` | When the second half starts, as the host knows it: a record time (`TrackerRecord.t`, the pipeline's own timestamp, in seconds), as the `secondHalf` event says it. From it on the teams are shown at the other ends, as from a half label the widget sees (see [The teams change ends](#the-teams-change-ends)). Kept through `reset()`. Anything but a finite number counts as `null`. Can be changed with `setOptions`. |
 | `debug` | `boolean` | `false` | Developer mode. A red badge, top left of the pitch, while fewer than 18 players are tracked on the frame on screen: how many are, and whose attack covers the loss when one does (see [Player loss](#player-loss)). In live mode it also says when the frame on screen is invalid (see [Invalid frames](#invalid-frames)), and which replay plays while one does (see [Flashbacks](#flashbacks)). For telling a real attack from one shown over lost players or invalid frames. Can be changed with `setOptions`. |
 
-The layers are `goal`, `goalZoom`, `attack`, `playerLoss`, `flashback`, `corner`, `throwInBanner`,
+The layers are `goal`, `goalZoom`, `attack`, `playerLoss`, `flashback`, `corner`, `freeKickBanner`, `throwInBanner`,
 `varCheck`, `goalDisallowed`, `halfTime`, `secondHalf`, `fullTime`, `foul`, `shotOnGoal`, `headerOnGoal`, `yellowCard`, `redCard`, `substitution`, `ballTrail`, `ballShadow`, `phaseLabels`, `nearbyRings`, `farFade` and `ringFades`.
 
 #### Labels
 
-The goal, the corner, the throw-in, the VAR check, the goal disallowed, the
+The goal, the corner, the free kick, the throw-in, the VAR check, the goal disallowed, the
 half time, the second half, the full time, the foul, the shot and header on goal, the yellow and red cards and the substitutions play when playback runs into the pipeline's label for them, in a frame's `state.actions`, and only when a
 human gave it: its `action_origin` is `"human"`. A label from the pipeline's
 AI (`"ai"`), or one from an older export with no `action_origin`, plays
@@ -303,6 +303,37 @@ the team (`team_id`), as the labelling tool's do: by its name in the `teams`
 option, else "Red" or "Blue". The exports' labels give none, and show no team.
 Played with `trigger('corner', team)`, it names the team the label on screen
 gives, else `team`.
+A free kick's label is the labelling tool's `Freekick`, or `Free kick` written in
+any of the ways above (`FREE_KICK`, `EventType.FREE_KICK`).
+
+#### Free kick
+
+On a free kick label (the `freeKickBanner` layer, on by default), the ball's spot
+is marked and the other half shaded, and "FREE KICK" and its icon show on a card
+in the middle of that half, with the team taking it under the card.
+- The spot is where the ball was as the label came: the ball on the labelled
+  record, or, with none tracked there, the last one tracked in the 5 s before it.
+  It stays there as play goes on, marked by three rings lighting up one after
+  another from the middle out. With no ball known, the card shows alone across
+  the middle of the pitch, with nothing shaded.
+- The half without the ball is shaded in the pitch's dark green, up to the
+  halfway line, and the card sits in the middle of that half.
+- The team is the one its label gives (`team_id`), as the labelling tool's do, by
+  its name in the `teams` option, else "Red" or "Blue". A label without one shows
+  no team.
+- Everyone on the pitch, the ball and its trail fade out as it fades in, as for a
+  corner, and back as it goes.
+- It is held as the corner is: it fades in over 0.4 s, stays for at least 2 s and
+  then for as long as the label is on or play is stopped, and fades out over 0.4
+  s. It plays once for each run of the label, which has to be off for 15 s of
+  replay time to count as a new one.
+- A goal takes over from it. A corner takes over from it, and it from a corner:
+  the latest shows. It takes over from an attack, the attack over a player loss, a
+  throw-in and a label card, and holds them off while it shows.
+- Played with `trigger('freeKick', team)`, it is on screen for 4 s, at the ball on
+  screen, and names the team the label on screen gives, else `team`.
+- The layer is `freeKickBanner`, not `freeKick`: video-annotation's free kick had
+  a `freeKick` layer, which a browser may still keep switched off.
 
 #### VAR check, goal disallowed and second half
 
@@ -318,8 +349,8 @@ written `second half`, `Start second half` or in any of the ways above
   for 4 s.
 - It plays once for each run of the label, however the label flickers: the
   label has to be off for 15 s of replay time to count as a new one.
-- A goal or a corner takes over from it, and it does not go over either. It
-  waits for them instead: if the label is still on when they end, it plays
+- A goal, a corner or a free kick takes over from it, and it does not go over
+  any of them. It waits for them instead: if the label is still on when they end, it plays
   then. It takes over from an attack, the attack over a player loss and a
   throw-in, and holds them off while it shows.
 - The latest card takes over from another: a goal disallowed replaces the VAR
@@ -369,7 +400,7 @@ as it does in the stadium. Their height is kept.
   so both labels, or one twice, turn it once. A label from the pipeline's AI, or
   one without an origin, turns nothing.
 - Everything goes by the turned frames: the attacking direction, the goal a goal
-  goes in, the throw-in's side, the ball trail and the zoom near goal. The corner
+  goes in, the throw-in's side, the free kick's spot, the ball trail and the zoom near goal. The corner
   a corner's label names is turned with them, as the camera that the labeller
   names it by stays on its touchline. A frame's phase and trail are worked out from its window turned as it is,
   so they never read across the turn.
@@ -404,11 +435,11 @@ player.
 - It fades in, stays at least 2 s and fades out as the VAR check does, with
   everyone on the pitch and the ball faded out.
 - Every card plays, however soon after another it comes: a card's label sits on
-  one record, so a card that cannot play yet (a goal, a corner or another centre
-  card on screen) waits its turn, and cards play one after the other in the
+  one record, so a card that cannot play yet (a goal, a corner, a free kick or
+  another centre card on screen) waits its turn, and cards play one after the other in the
   order they came, each fading out before the next fades in. A label seen on
   several records is one card: by its `uuid`, or, without one, by its card, team
-  and shirt number. A card cut short by a goal, a corner or a centre card before
+  and shirt number. A card cut short by a goal, a corner, a free kick or a centre card before
   its 2 s plays again after it.
 - A card landed on by a seek, or seen while paused, is not played. A seek, a
   pause, a press on the pitch, a moment played by hand or a `reset()` lets go of
@@ -454,8 +485,8 @@ on goal label (`headerOnGoal`), each on by default. Each is shown as a throw-in 
   time to count as a new one.
 - An attack shows alongside it. It takes over from a throw-in or another small
   card, and they from it, as they stand in one place.
-- A goal, a corner or a centre card takes over from it, and it does not go over
-  one, but waits: if its label is still on when they end, it plays then.
+- A goal, a corner, a free kick or a centre card takes over from it, and it does
+  not go over one, but waits: if its label is still on when they end, it plays then.
 
 #### Player loss
 
@@ -473,7 +504,7 @@ default):
   the ball keeps moving, ringed in the team's colour.
 - It stays while the loss lasts, and fades out once 18 or more players have
   been tracked again for 0.5 s.
-- A goal, a corner, or a VAR check, goal disallowed, half time, second half or full time takes over from it. An attack the team phase calls
+- A goal, a corner, a free kick, or a VAR check, goal disallowed, half time, second half or full time takes over from it. An attack the team phase calls
   during a loss isn't shown on top of it.
 - With `debug` on, a badge says when this is happening.
 
@@ -615,7 +646,7 @@ little more the nearer it gets (the `goalZoom` layer, on by default):
 - A goal has no zoom of its own: the view follows the goal's ball into the
   net and stays as close in as this goes. Without this layer a goal's camera
   lunges in over 400 ms and back out at the end, as video-annotation's does.
-- While a corner, a throw-in, a VAR check, a goal disallowed, a half time, a
+- While a corner, a free kick, a throw-in, a VAR check, a goal disallowed, a half time, a
   second half, a full time, a foul or an attack shows (the attack over a player
   loss or invalid frames too), it eases out to the whole pitch, as their cards
   and the attack's label are laid out on it, and back in once it has gone. A shot or a header on goal is what it is there for, so for those it stays
@@ -624,7 +655,7 @@ little more the nearer it gets (the `goalZoom` layer, on by default):
 - With reduced motion it does nothing.
 
 The `TrackerText` keys are:
-- on the canvas: `goal`, `corner`, `throwIn`, `varCheck`, `goalDisallowed`, `halfTime`, `halfTimeText`, `secondHalf`, `secondHalfText`, `fullTime`, `fullTimeText`, `foul`, `shotOnGoal`, `headerOnGoal`, `yellowCard`, `redCard`, `substitution`, `playerNumber` (a carded or substituted player with no name, with `{number}`), `attack`, and the replay's tab, `flashback` ("REPLAY") and `flashbackAgo` (with `{time}`);
+- on the canvas: `goal`, `corner`, `freeKick`, `throwIn`, `varCheck`, `goalDisallowed`, `halfTime`, `halfTimeText`, `secondHalf`, `secondHalfText`, `fullTime`, `fullTimeText`, `foul`, `shotOnGoal`, `headerOnGoal`, `yellowCard`, `redCard`, `substitution`, `playerNumber` (a carded or substituted player with no name, with `{number}`), `attack`, and the replay's tab, `flashback` ("REPLAY") and `flashbackAgo` (with `{time}`);
 - the row: `attacking`, `defending`, `versus`, `phaseTooltip`, `red` and `blue` (the default team names);
 - ARIA templates: `phaseAttackingAria` and `phaseDefendingAria` (with `{team}`), and `phaseAria` (with `{home}` and `{away}`);
 - the menu: `layersButton`, `layersTooltip`, `layersMenuLabel`, and `layers` (`{ label, hint }` per layer);
@@ -743,7 +774,7 @@ scripts and styles, several times on one page.
 ### Content Security Policy
 
 On a page with a Content Security Policy, the widget needs:
-- `img-src data:`, for the corner's, the VAR check's and the goal disallowed's icons, SVG `data:` URLs drawn
+- `img-src data:`, for the corner's, the free kick's, the VAR check's and the goal disallowed's icons, SVG `data:` URLs drawn
   through an `Image`. Without it the cards are drawn without their icons.
 - `font-src` for wherever the package's files are served from: the fonts are
   woff2 files next to `dist/index.js`, loaded with `FontFace`. Bundled into your app

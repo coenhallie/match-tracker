@@ -202,7 +202,7 @@ describe('canvas text fits its card', () => {
   const cardLeft = CX - 368 * u
   const cardInnerLeft = cardLeft + 13 * u
   const cardInnerRight = cardLeft + (736 - 13) * u
-  // The corner's card, without its cone: the reference's free kick card, which the widget no longer shows.
+  // The corner's card, without its cone: the reference's free kick card, which the widget does not show.
   const corner: FrameLayers = { corner: { intensity: 1, playersFade: 0, ballFade: 0, corner: null, sections: [] } }
   const goal: FrameLayers = { goalBanner: { intensity: 1 } }
   const throwIn: FrameLayers = { throwIn: { intensity: 1, slide: 1, side: null } }

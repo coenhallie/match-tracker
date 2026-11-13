@@ -23,15 +23,17 @@ of all of them, so keep dependencies pointing down towards `model`.
 - `analysis`: derived football facts (action labels, team phase, goal sequence, ball trail, player loss,
   the second half, which turns the frames round from a human half label on).
 - `render`: canvas drawing of the pitch, players, ball and cards.
-- `director`: moments (goal, attack, corner, throw-in, the label cards, and the attack over a
-  player loss), camera and playback. The two player cards (yellow, red) are label cards that
+- `director`: moments (goal, attack, corner, free kick, throw-in, the label cards, and the attack
+  over a player loss), camera and playback. The two player cards (yellow, red) are label cards that
   name the team and the player from the label; they wait their turn in a queue (`cardQueue.ts`),
   as their label sits on one record. So does the substitution card, which lists a team's
-  substitutions, a later one for the team joining it while it is up. The corner, the label cards, the player loss cover and the goal
-  on a penalty scored label are ours alone; video-annotation has none of them. A label card (`src/model/labelCards.ts`) is played
+  substitutions, a later one for the team joining it while it is up. The corner, the free kick, the label cards, the player loss cover and the goal
+  on a penalty scored label are ours alone; video-annotation has none of them. Its own free kick, a card
+  across the middle, is not shown, and its two goldens are retired. The corner and the free kick are set
+  pieces, held alike (`setPiece.ts`). A label card (`src/model/labelCards.ts`) is played
   by a label, either across the middle (a title over an icon or a short text, the pitch faded out) or small
   on the bottom touchline (the title alone, the pitch left as it is). A new one is a registry entry and its words,
-  plus its icon if it has one. Its free kick is not shown, and its two goldens are retired.
+  plus its icon if it has one.
 - `history`: the record buffer for live mode (capped to the lookback window).
 - `widget`: the shadow-root DOM, HUD, input, lifecycle. Public entry is `src/index.ts`.
 - `vue.ts`: the Vue component over the widget. Vue is an optional peer.

@@ -42,18 +42,20 @@ describe('loadIcons', () => {
     const { loadIcons } = await import('../../src/assets/icons')
     const icons = await loadIcons()
     expect(icons.corner).toBe(images[0])
-    expect(icons.varCheck).toBe(images[1])
-    expect(icons.goalDisallowed).toBe(images[2])
-    expect(icons.yellowCard).toBe(images[3])
-    expect(icons.redCard).toBe(images[4])
-    expect(icons.substitution).toBe(images[5])
-    expect(icons.substitutionOut).toBe(images[6])
-    expect(icons.substitutionIn).toBe(images[7])
-    expect(images).toHaveLength(8)
+    expect(icons.freeKick).toBe(images[1])
+    expect(icons.varCheck).toBe(images[2])
+    expect(icons.goalDisallowed).toBe(images[3])
+    expect(icons.yellowCard).toBe(images[4])
+    expect(icons.redCard).toBe(images[5])
+    expect(icons.substitution).toBe(images[6])
+    expect(icons.substitutionOut).toBe(images[7])
+    expect(icons.substitutionIn).toBe(images[8])
+    expect(images).toHaveLength(9)
     for (const image of images) expect(image.src).toMatch(/^data:image\/svg\+xml,/)
     expect(svgOf(images[0]!.src)).toContain('<g id="corner">')
-    expect(svgOf(images[1]!.src)).toContain('viewBox="0 0 175.5 94.25"')
-    expect(svgOf(images[2]!.src)).toContain('viewBox="0 0 149.5 149.5"')
+    expect(svgOf(images[1]!.src)).toContain('<g id="free_kick">')
+    expect(svgOf(images[2]!.src)).toContain('viewBox="0 0 175.5 94.25"')
+    expect(svgOf(images[3]!.src)).toContain('viewBox="0 0 149.5 149.5"')
     // The goal-net icon is drawn only by the parity test's reference card, so it is not loaded.
     expect(icons).not.toHaveProperty('goal')
     expect(images.some((image) => svgOf(image.src).includes('shot_on_goal'))).toBe(false)
@@ -82,6 +84,16 @@ describe('loadIcons', () => {
     expect(svg(icons.substitutionIn)).toContain('fill="#22C55E"')
   })
 
+  it('loads the free kick icon video-annotation had, which the design draws 3.25 times as large', async () => {
+    const { loadIcons } = await import('../../src/assets/icons')
+    await loadIcons()
+    const svg = svgOf(images[1]!.src)
+    expect(svg).toContain('viewBox="0 0 45.5 40.9498"')
+    // The ball's arrow in gold, the ball and the wall in the line colour, as the design has them.
+    expect(svg).toContain('fill="#FDE047"')
+    expect(svg.match(/fill="#E2E8F0"/g)).toHaveLength(3)
+  })
+
   it('draws the corner icon in the box the card gives its icon', async () => {
     const { loadIcons } = await import('../../src/assets/icons')
     await loadIcons()
@@ -92,18 +104,18 @@ describe('loadIcons', () => {
     const { loadIcons } = await import('../../src/assets/icons')
     const [a, b] = await Promise.all([loadIcons(), loadIcons()])
     expect(a).toBe(b)
-    expect(images).toHaveLength(8)
+    expect(images).toHaveLength(9)
   })
 
   it('gives null for an icon that fails to load', async () => {
     failing = true
     const { loadIcons } = await import('../../src/assets/icons')
-    expect(await loadIcons()).toEqual({ corner: null, varCheck: null, goalDisallowed: null, yellowCard: null, redCard: null, substitution: null, substitutionOut: null, substitutionIn: null })
+    expect(await loadIcons()).toEqual({ corner: null, freeKick: null, varCheck: null, goalDisallowed: null, yellowCard: null, redCard: null, substitution: null, substitutionOut: null, substitutionIn: null })
   })
 
   it('gives null for every icon where there is no Image', async () => {
     vi.stubGlobal('Image', undefined)
     const { loadIcons } = await import('../../src/assets/icons')
-    expect(await loadIcons()).toEqual({ corner: null, varCheck: null, goalDisallowed: null, yellowCard: null, redCard: null, substitution: null, substitutionOut: null, substitutionIn: null })
+    expect(await loadIcons()).toEqual({ corner: null, freeKick: null, varCheck: null, goalDisallowed: null, yellowCard: null, redCard: null, substitution: null, substitutionOut: null, substitutionIn: null })
   })
 })

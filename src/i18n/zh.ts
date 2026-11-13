@@ -3,12 +3,13 @@ import type { TrackerText } from './text.js'
 /**
  * Simplified Chinese. The canvas words, the phase row's words and the team
  * names were given; the rest is a draft for Coen to check before release,
- * the corner's words (角球, and its layer), the throw-in layer's hint, and
+ * the corner's words (角球, and its layer), the free kick's (任意球, and its layer), the throw-in layer's hint, and
  * the player loss's layer and debug badge among them.
  */
 export const zh: TrackerText = {
   goal: '进球',
   corner: '角球',
+  freeKick: '任意球',
   throwIn: '界外球',
   varCheck: 'VAR 检查',
   goalDisallowed: '进球无效',
@@ -59,6 +60,7 @@ export const zh: TrackerText = {
       hint: '镜头离开 5 秒或更久时，回放之前的进球、角球、射门或禁区附近的进攻，每个只播放一次',
     },
     corner: { label: '角球', hint: '出现角球标签时显示横幅并点亮角球区，比赛暂停期间一直显示' },
+    freeKickBanner: { label: '任意球', hint: '出现任意球标签时显示横幅，标出球的位置并压暗另一半场，比赛暂停期间一直显示' },
     throwInBanner: { label: '界外球', hint: '出现界外球标签时，在底边线上方显示横幅' },
     varCheck: { label: 'VAR 检查', hint: '出现 VAR 检查标签时，在球场中央显示横幅' },
     goalDisallowed: { label: '进球无效', hint: '出现进球无效标签时，在球场中央显示横幅' },

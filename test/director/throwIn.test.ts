@@ -126,7 +126,7 @@ describe('throw-in', () => {
     expect(lastThrowIn(replay)).toBeUndefined()
   })
 
-  // The reference's case gives way to a free kick, which the widget no longer shows; the corner takes its place.
+  // The reference's case gives way to its free kick, which the widget does not show; the corner takes its place.
   it('gives way to a corner, and does not start while one shows', () => {
     const replay = ready()
     record(replay, -30, THROW_IN)

@@ -174,6 +174,7 @@ export function themeFor(resolved: Resolved, icons: RenderTheme['icons']): Rende
     text: {
       goal: text.goal,
       corner: text.corner,
+      freeKick: text.freeKick,
       throwIn: text.throwIn,
       attack: text.attack,
       flashback: text.flashback,

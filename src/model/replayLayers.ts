@@ -15,6 +15,7 @@ export type ReplayLayerKey =
   | 'playerLoss'
   | 'flashback'
   | 'corner'
+  | 'freeKickBanner'
   | 'throwInBanner'
   | LabelCardKey
   | 'ballTrail'
@@ -31,7 +32,7 @@ export type ReplayLayers = Record<ReplayLayerKey, boolean>
  * label (or, for an attack, its phase) while its layer is on, and can be
  * played by hand with the tracker's `trigger()` whether or not it is.
  */
-export type ReplayMoment = 'goal' | 'attack' | 'corner' | 'throwIn' | LabelCardKey
+export type ReplayMoment = 'goal' | 'attack' | 'corner' | 'freeKick' | 'throwIn' | LabelCardKey
 
 /**
  * In the order the menu lists them (`liveOnly` ones in live mode only). Each layer's name and hint are text, in
@@ -45,6 +46,9 @@ export const REPLAY_LAYERS: ReadonlyArray<{ key: ReplayLayerKey; liveOnly?: true
   // Live mode only: replay mode has the whole match to hand and plays no flashbacks.
   { key: 'flashback', liveOnly: true },
   { key: 'corner' },
+  // Not "freeKick": that was the reference's free kick's key, removed in 0.2.0, which a browser may
+  // still keep switched off, and would hide this without anyone choosing to.
+  { key: 'freeKickBanner' },
   // Not "throwIn": that was the removed throw-in zoom's key, and a browser
   // that switched it off would hide this without anyone choosing to.
   { key: 'throwInBanner' },
@@ -64,6 +68,7 @@ export const DEFAULT_REPLAY_LAYERS: ReplayLayers = {
   playerLoss: true,
   flashback: true,
   corner: true,
+  freeKickBanner: true,
   throwInBanner: true,
   ...labelCardRecord(() => true),
   ballTrail: true,

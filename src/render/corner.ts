@@ -14,8 +14,8 @@ import { resolvePitchDimensions, worldToPx } from '../model/pitch.js'
  * up after the one inside it, again and again while it shows.
  *
  * The reference has no corner: this is the widget's own, built on the
- * reference's free kick card (vp-pitch-1, node 5:22), which the widget no
- * longer shows. A corner is usually prepared off camera, so it is held while
+ * reference's free kick card (vp-pitch-1, node 5:22), which the widget does
+ * not show. A corner is usually prepared off camera, so it is held while
  * play is stopped (setPiece.ts in director).
  */
 export interface CornerBanner {

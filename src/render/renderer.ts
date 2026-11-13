@@ -47,7 +47,10 @@
 //    the pitch shaded behind the attack, with a label, under the players,
 //    everyone faded out, and a pulsing ring round the ball (attackIndicator.ts).
 //  - the reference's free kick banner is gone: the widget does not show the
-//    free kick.
+//    reference's free kick. renderFrame takes an optional free kick of the
+//    widget's own instead: the half without the ball shaded and a pulse where
+//    the ball was, under the players, and its card in that half over
+//    everything, everyone and the ball faded out (freeKick.ts).
 //  - renderFrame takes an optional throw-in indicator along the bottom
 //    touchline, fading in where it stands, or as its inPlace says sliding in
 //    as the reference's does (throwIn.ts), and the goal's card over the goal
@@ -99,6 +102,7 @@ import { trailOpacity, type BallTrail, type TrailPoint } from '../analysis/ballT
 import { drawLabelCard, drawSmallLabelCard, type LabelCardIndicator } from './labelCard.js'
 import { drawThrowInIndicator, type ThrowInIndicator } from './throwIn.js'
 import { drawCornerCard, drawCornerCone, type CornerBanner } from './corner.js'
+import { drawFreeKickCard, drawFreeKickPulse, drawFreeKickShade, type FreeKickBanner } from './freeKick.js'
 import { drawFlashback, type FlashbackIndicator } from './flashback.js'
 import { drawGoalBanner, type GoalBanner } from './goalBanner.js'
 import { footballPatches, UPRIGHT, type Spin } from '../analysis/football.js'
@@ -189,6 +193,8 @@ export interface FrameLayers {
   attack?: AttackIndicator | undefined
   /** The corner: its cone under the players, its card over everything on the pitch. */
   corner?: CornerBanner | undefined
+  /** The free kick: the other half's shade and the ball's pulse under the players, its card over everything on the pitch. */
+  freeKick?: FreeKickBanner | undefined
   /** The throw-in indicator, over everything on the pitch, the players left as they are. */
   throwIn?: ThrowInIndicator | undefined
   /** The card a label plays (labelCard.ts), over everything on the pitch, everyone and the ball faded out. */
@@ -366,6 +372,12 @@ export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTh
     if (attack) drawAttackIndicator(ctx as CanvasRenderingContext2D, pd, transform2d, attack, theme)
     // The corner's cone lights the grass under everyone, as the attack's shade does.
     if (layers.corner) drawCornerCone(ctx as CanvasRenderingContext2D, pd, transform2d, layers.corner)
+    // The free kick's shade darkens the markings with the grass in the half without the ball, as
+    // the design's does, and its pulse marks where the ball was, under everyone.
+    if (layers.freeKick) {
+      drawFreeKickShade(ctx as CanvasRenderingContext2D, transform2d, layers.freeKick)
+      drawFreeKickPulse(ctx as CanvasRenderingContext2D, transform2d, layers.freeKick)
+    }
 
     // Goals, on every frame; a struck net bows out while it is hit.
     drawGoalNets(ctx as CanvasRenderingContext2D, pd, transform2d, overlay?.net)
@@ -397,16 +409,17 @@ export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTh
       if (rings && id != null) return rings.possession.get(id) ?? 0
       return p.player.in_possession ? 1 : 0
     }
-    // During an attack, a corner or a label card everyone fades out, players
+    // During an attack, a corner, a free kick or a label card everyone fades out, players
     // and officials alike. Everything drawn for a person goes through here. A
     // card fading out as a corner fades in adds up to all of it, with the same
     // 400 ms each way, so nobody shows through as one hands over to the other.
     const card = layers.labelCard?.intensity ?? 0
-    const fade = Math.max(attack?.playersFade ?? 0, (layers.corner?.playersFade ?? 0) + card)
+    const setPiece = (layers.corner?.playersFade ?? 0) + (layers.freeKick?.playersFade ?? 0)
+    const fade = Math.max(attack?.playersFade ?? 0, setPiece + card)
     const shown = 1 - Math.min(1, Math.max(0, fade))
-    // A corner or a label card fades out the ball and its trail too, leaving
+    // A corner, a free kick or a label card fades out the ball and its trail too, leaving
     // nothing of play under the card. An attack keeps the ball, which it holds.
-    const ballFade = (layers.corner?.ballFade ?? 0) + card
+    const ballFade = (layers.corner?.ballFade ?? 0) + (layers.freeKick?.ballFade ?? 0) + card
     const ballShown = 1 - Math.min(1, Math.max(0, ballFade))
     const alphaOf = (p: { faded: boolean }) => (p.faded && fadeFar ? DIMMED_PLAYER_ALPHA : 1) * shown
     // During an attack the ball is held where it was when the attack was
@@ -477,16 +490,17 @@ export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTh
       ctx.globalAlpha = 1
     }
 
-    // The throw-in's band, the corner's card and a label's card are laid out for the whole
+    // The throw-in's band, the corner's and the free kick's cards and a label's card are laid out for the whole
     // pitch. In a view zoomed or panned, by the user or the zoom near goal,
     // they stay on the frame where the whole pitch has them, as the goal's
     // card does, rather than going partly out of view. In the whole pitch the
     // view is the frame's own, and they are drawn as they always were.
-    const cards = layers.throwIn || layers.corner || layers.labelCard || layers.smallLabelCard
+    const cards = layers.throwIn || layers.corner || layers.freeKick || layers.labelCard || layers.smallLabelCard
     const moved = matrix.some((v, i) => v !== [sx, 0, 0, sy, 0, 0][i])
     if (cards && moved) ctx.setTransform(sx, 0, 0, sy, 0, 0)
     if (layers.throwIn) drawThrowInIndicator(ctx as CanvasRenderingContext2D, pd, transform2d, layers.throwIn, theme)
     if (layers.corner) drawCornerCard(ctx as CanvasRenderingContext2D, transform2d, layers.corner, theme)
+    if (layers.freeKick) drawFreeKickCard(ctx as CanvasRenderingContext2D, pd, transform2d, layers.freeKick, theme)
     if (layers.labelCard) drawLabelCard(ctx as CanvasRenderingContext2D, transform2d, layers.labelCard, theme)
     if (layers.smallLabelCard) {
       drawSmallLabelCard(ctx as CanvasRenderingContext2D, pd, transform2d, layers.smallLabelCard, theme)

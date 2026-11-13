@@ -302,18 +302,23 @@ describe('corner', () => {
       expect(last.attack).toBeUndefined()
     })
 
-    // The widget no longer shows the free kick: its label changes nothing.
-    it('leaves a free kick label alone, showing or not', () => {
+    // The free kick is a set piece as the corner is: the latest of the two shows.
+    it('takes over from a free kick, and a free kick from it', () => {
       const kick = new Pitch()
       kick.record(['Free kick'])
       kick.animate(100)
-      expect(kick.replay.last()).not.toHaveProperty('freeKick')
+      expect(kick.replay.last()!.freeKick).toBeDefined()
       kick.record(CORNER)
       kick.animate(100)
       expect(kick.replay.last()!.corner).toBeDefined()
-      kick.record(['Free kick'])
-      kick.animate(100)
-      expect(kick.replay.last()!.corner).toBeDefined()
+      expect(kick.replay.last()!.freeKick).toBeUndefined()
+      const corner = new Pitch()
+      corner.record(CORNER)
+      corner.animate(100)
+      corner.record(['Free kick'])
+      corner.animate(100)
+      expect(corner.replay.last()!.freeKick).toBeDefined()
+      expect(corner.replay.last()!.corner).toBeUndefined()
     })
 
     it('gives way to a goal', () => {

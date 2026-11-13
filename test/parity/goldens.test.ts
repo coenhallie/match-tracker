@@ -77,8 +77,8 @@ interface GoldenStep {
   lookback: number[]
   view: DirectorView
   userView: DirectorCamera
-  /** The reference's moments, which had a free kick the widget no longer shows. */
-  trigger?: { moment: ReplayMoment | 'freeKick'; team: TeamId }
+  /** The reference's moments, its free kick among them, which the widget does not show. */
+  trigger?: { moment: ReplayMoment; team: TeamId }
   input?: UserInput[]
   calls: unknown[]
 }
@@ -171,7 +171,7 @@ function replay(golden: GoldenFile) {
   const { ctx, ops } = recordingCtx()
   const canvas = { width: FRAME_W, height: FRAME_H, getContext: () => ctx } as unknown as HTMLCanvasElement
   // The parity theme: the reference's colours and English, its fonts, and no icons, as jsdom loads none.
-  const renderer = createRenderer(canvas, { ...DEFAULT_THEME, icons: { corner: null, varCheck: null, goalDisallowed: null, yellowCard: null, redCard: null, substitution: null, substitutionOut: null, substitutionIn: null } })
+  const renderer = createRenderer(canvas, { ...DEFAULT_THEME, icons: { corner: null, freeKick: null, varCheck: null, goalDisallowed: null, yellowCard: null, redCard: null, substitution: null, substitutionOut: null, substitutionIn: null } })
   const director = new Director({
     // The zoom near goal is the widget's own (CHANGELOG, "Zoom near goal"): the reference has none, so it is
     // off here, and the goal's camera is the reference's. So is the shadow under a high ball.
@@ -258,8 +258,9 @@ function replay(golden: GoldenFile) {
       check(group, outputs)
     } else if (group.kind === 'trigger') {
       const { moment, team } = first.trigger!
-      // The widget no longer shows the free kick (CHANGELOG 0.2.0): what the reference drew from here on
-      // is its free kick and what followed it, so the scenario is compared up to it.
+      // The widget does not show video-annotation's free kick (CHANGELOG 0.2.0), and its own, since
+      // 0.20.0, is drawn otherwise: what the reference drew from here on is its free kick and what
+      // followed it, so the scenario is compared up to it.
       if (moment === 'freeKick') break
       const output = director.trigger(moment, team, lastInput!, view())
       check(group, output ? [output] : [])
@@ -271,7 +272,7 @@ function replay(golden: GoldenFile) {
   }
 }
 
-/** Every fixture the recorder writes, but the two of the free kick. */
+/** Every fixture the recorder writes, but the two of video-annotation's free kick. */
 const FIXTURE_NAMES = [
   'goal',
   'goal-zoomed-takeover',
@@ -283,8 +284,8 @@ const FIXTURE_NAMES = [
   'attack-team0',
   'attack-team1',
   'pause-mid-attack',
-  // 'free-kick-held-through-cutaway' and 'real-free-kick' are retired: the widget no longer shows the
-  // free kick (CHANGELOG 0.2.0), which is all they recorded.
+  // 'free-kick-held-through-cutaway' and 'real-free-kick' are retired: the widget does not show
+  // video-annotation's free kick (CHANGELOG 0.2.0), which is all they recorded.
   'throw-in-left',
   'throw-in-right',
   'throw-in-no-ball',

@@ -48,10 +48,12 @@ export interface LabelRun {
   shown: boolean
 }
 
-/** What a seek forgets (`:574-579`), shared by the corner, throw-in and label card modules. */
+/** What a seek forgets (`:574-579`), shared by the corner, free kick, throw-in and label card modules. */
 export interface MomentMemory {
   /** The replay time the corner label was last seen at, or null. */
   cornerLabelAt: number | null
+  /** The replay time the free kick label was last seen at, or null. */
+  freeKickLabelAt: number | null
   /** The replay time the throw-in label was last seen at, or null. */
   throwInLabelAt: number | null
   /** Each label card's label. */

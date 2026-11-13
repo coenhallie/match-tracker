@@ -17,6 +17,8 @@ export interface TrackerText extends Record<LabelCardKey | LabelCardTextKey, str
   goal: string
   /** The corner card's title. */
   corner: string
+  /** The free kick card's title. */
+  freeKick: string
   /** The throw-in band's title. */
   throwIn: string
   /** The word under the team's name in the attack's label. */
