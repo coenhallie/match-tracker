@@ -1,13 +1,13 @@
 # @coenhallie/match-tracker
 
 A live 2D match tracker for football streams. It draws players, ball and the
-match's moments (goals, attacks, corners, free kicks, throw-ins, fouls, shots and headers on goal, VAR checks, disallowed goals, half time, second half, full time) on a pitch, from the
+match's moments (goals, attacks, corners, free kicks, throw-ins, penalties, fouls, shots and headers on goal, VAR checks, disallowed goals, half time, second half, full time) on a pitch, from the
 tracking pipeline's frames, inside any element you give it. It is the 2D
 replay from video-annotation, taken out of Vue: the same picture, timing and
 behaviour for the same data, with the attacking/defending row and the layers
 menu. Unlike video-annotation's, the view has no zoom or pan of its own: only
 the animations (a goal's camera, the zoom near goal) move it. The corner is the widget's own, as video-annotation has none,
-and so are the free kick, the VAR check, the goal disallowed, the half time, the second half, the full time, the foul, the shot and header on goal, the goal on a penalty scored, the goal's scorer and the attack shown over a player loss.
+and so are the free kick, the VAR check, the goal disallowed, the half time, the second half, the full time, the penalty, the foul, the shot and header on goal, the goal on a penalty scored (with the penalty's layer off), the goal's scorer and the attack shown over a player loss.
 video-annotation's own free kick, a card across the middle, isn't shown.
 
 - **Framework-free.** One function, `createMatchTracker`, and plain DOM. A thin
@@ -271,12 +271,12 @@ Also exported:
 | `secondHalfFrom` | `number \| null` | `null` | When the second half starts, as the host knows it: a record time (`TrackerRecord.t`, the pipeline's own timestamp, in seconds), as the `secondHalf` event says it. From it on the teams are shown at the other ends, as from a half label the widget sees (see [The teams change ends](#the-teams-change-ends)). Kept through `reset()`. Anything but a finite number counts as `null`. Can be changed with `setOptions`. |
 | `debug` | `boolean` | `false` | Developer mode. A red badge, top left of the pitch, while fewer than 18 players are tracked on the frame on screen: how many are, and whose attack covers the loss when one does (see [Player loss](#player-loss)). In live mode it also says when the frame on screen is invalid (see [Invalid frames](#invalid-frames)), and which replay plays while one does (see [Flashbacks](#flashbacks)). For telling a real attack from one shown over lost players or invalid frames. Can be changed with `setOptions`. |
 
-The layers are `goal`, `goalZoom`, `attack`, `playerLoss`, `flashback`, `corner`, `freeKickBanner`, `throwInBanner`,
+The layers are `goal`, `goalZoom`, `attack`, `playerLoss`, `flashback`, `corner`, `freeKickBanner`, `throwInBanner`, `penalty`,
 `varCheck`, `goalDisallowed`, `halfTime`, `secondHalf`, `fullTime`, `foul`, `shotOnGoal`, `headerOnGoal`, `yellowCard`, `redCard`, `substitution`, `ballTrail`, `ballShadow`, `phaseLabels`, `nearbyRings`, `farFade` and `ringFades`.
 
 #### Labels
 
-The goal, the corner, the free kick, the throw-in, the VAR check, the goal disallowed, the
+The goal, the corner, the free kick, the throw-in, the penalty, the VAR check, the goal disallowed, the
 half time, the second half, the full time, the foul, the shot and header on goal, the yellow and red cards and the substitutions play when playback runs into the pipeline's label for them, in a frame's `state.actions`, and only when a
 human gave it: its `action_origin` is `"human"`. A label from the pipeline's
 AI (`"ai"`), or one from an older export with no `action_origin`, plays
@@ -294,10 +294,12 @@ A label matches however it is written: case is ignored, spaces, underscores
 and hyphens count the same, and a dotted prefix is dropped. `VAR check`,
 `var check`, `VAR_CHECK` and `EventType.VAR_CHECK` are all the VAR check's label.
 A label is matched whole, so no goal plays on a `Goal disallowed`.
-A penalty scored is a goal: the goal plays on `Penalty scored` (as the
-labelling tool sends it, or `PENALTY_SCORED`, `PenaltyScored`), `Penalty goal`,
-`Penalty kick scored`, `Penalty kick goal` and `Scored penalty` as on `Goal`.
-`Penalty` alone is a penalty given and plays nothing.
+A penalty has a label for the penalty given, `Penalty`, matched whole, and one for
+its result: `Penalty scored` (as the labelling tool sends it, or `PENALTY_SCORED`,
+`PenaltyScored`), `Penalty goal`, `Penalty kick scored`, `Penalty kick goal` or
+`Scored penalty`, and `Penalty missed` (or `Missed penalty`, `Penalty kick missed`).
+They play the penalty (see [The penalty](#the-penalty)). With the `penalty` layer
+off, a penalty scored is a goal, and the goal plays on it as on `Goal`.
 A corner's label names the corner it lights up, as the labelling tool sends it:
 `Corner kick - Top left`, `Corner kick - Top right`, `Corner kick - Bottom left`
 and `Corner kick - Bottom right`, the corner as the camera sees it from its
@@ -314,9 +316,9 @@ any of the ways above (`FREE_KICK`, `EventType.FREE_KICK`).
 
 #### A label's team
 
-The cards, the substitutions, the corner, the free kick, the goal disallowed and
-the goal's scorer name the team their label gives, as the labelling tool sends
-it with each label since 2026-11.
+The cards, the substitutions, the corner, the free kick, the goal disallowed, the
+penalty and the goal's scorer name the team their label gives, as the labelling
+tool sends it with each label since 2026-11.
 
 - **Its side**, home or away, is the label's `is_home` (`1` or `0` on a label
   about a player, `"home"` or `"away"` on a game label), on a label that names a
@@ -334,8 +336,9 @@ it with each label since 2026-11.
 
 #### The scorer
 
-The labelling tool labels a goal twice: `Goal` (or `Penalty scored`), which gives
-the team (`team_id`), and a few seconds later `Player scored`, from the scorer's
+The labelling tool labels a goal twice: `Goal` (or, with the penalty's layer off,
+`Penalty scored`), which gives the team (`team_id`), and a few seconds later
+`Player scored`, from the scorer's
 row, which gives the player (`team_id`, `player_number` and, in the label's
 `raw_data`, `player_name`). Once the scorer is known, the goal names them under
 its banner, in a band across the foot of the pitch: the scorer's icon and name,
@@ -363,7 +366,8 @@ the "GOAL" banner. video-annotation has no scorer.
   shown. Live, that leaves the labeller about 8.6 s from the goal's label: the
   6 s wait, and 2.6 s into the goal; in replay, 2.6 s.
 - A scorer is only ever shown under a goal: one with no goal waiting or playing
-  plays nothing, as the labelling tool gives a scorer only after a goal.
+  plays nothing, as the labelling tool gives a scorer only after a goal. So does
+  one after a penalty scored that the penalty played.
 - A scorer is the scorer of the goal they follow, whatever team the goal's label
   gives, and is named with the team on their own label. The labeller picks them
   from their team's row, but not the goal's team: production has given a goal
@@ -391,13 +395,74 @@ in the middle of that half, with the team taking it under the card.
   then for as long as the label is on or play is stopped, and fades out over 0.4
   s. It plays once for each run of the label, which has to be off for 15 s of
   replay time to count as a new one.
-- A goal takes over from it. A corner takes over from it, and it from a corner:
-  the latest shows. It takes over from an attack, the attack over a player loss, a
+- A goal or the penalty takes over from it. A corner takes over from it, and it
+  from a corner: the latest shows. It takes over from an attack, the attack over a player loss, a
   throw-in and a label card, and holds them off while it shows.
 - Played with `trigger('freeKick', team)`, it is on screen for 4 s, at the ball on
   screen, and names the team the label on screen gives, else `team`.
 - The layer is `freeKickBanner`, not `freeKick`: video-annotation's free kick had
   a `freeKick` layer, which a browser may still keep switched off.
+
+#### The penalty
+
+On a penalty label (the `penalty` layer, on by default), the widget follows the
+penalty from the moment it is given to the moment it is decided, from the
+match-summary design (viewport/eventPenalty and the frames after it). The
+widget's own: video-annotation has none.
+- **The card.** On `Penalty`, "PENALTY" and its icon, a goal with a keeper and
+  a ball, show on the dark band across the middle of the pitch, with the team
+  taking it under the band, as the VAR check's card shows, everyone on the pitch
+  and the ball faded out. It is up for 2.4 s.
+- **Waiting.** Then a scene of its own fades in over the card, over 0.5 s, and
+  covers the pitch in green, with the design's fine grain and no markings: the
+  goal, the keeper swaying from side to side on his line, and the ball turning
+  on the spot, with "PENALTY.." and the team at the top right. It waits there for the kick. Viewers see no countdown.
+- **The kick.** On `Penalty scored`, the ball curls into the top corner past the
+  keeper's late dive, and "SCORED!" rises in at the foot. On `Penalty missed`,
+  the keeper dives as the ball curls over the bar and on, fading out, and
+  "MISSED!" rises in: the label does not say whether the keeper saved it or it
+  went wide, so a miss always goes over. The kick takes 0.7 s; the scene holds
+  for 3 s after the banner is in, then fades out over 0.6 s, and the live pitch
+  is back.
+- A result that comes during the card waits for it, and the scene goes straight
+  into the kick. A result with no penalty showing (it came after the wait below,
+  or the widget joined after the `Penalty`) brings the scene in with no card,
+  kicks as soon as it is in, and names the result's team.
+- **It waits 20 s** of the stream's clock for the result (of replay time, in
+  replay), then fades out. The clock stands still while the stream stalls, so
+  it also goes 40 s after it started, whatever the clock. The labelling tool's
+  Cancel sends nothing, so a penalty given and taken back runs out its 20 s.
+- **The team** is the one the `Penalty` label gives (see [A label's
+  team](#a-labels-team)), whatever team its result gives: production has given
+  the two different teams. A label without one shows no team.
+- A second `Penalty` while one shows starts it again from the card, with its
+  team and a new 20 s. A second result is ignored.
+- **A penalty scored plays no goal** while the layer is on: not the goal, nor
+  the wait for the goal's scorer, and a `Player scored` after it plays nothing.
+  With the layer off, it plays the goal, as on `Goal`. Switching the layer off
+  while the penalty shows ends it at once.
+- A goal takes over from it, and a `Penalty` does not start while a goal is
+  showing (a goal waiting for its scorer does not hold it back). It takes over
+  from an attack, the attack over a player loss, a corner, a free kick, a
+  throw-in and any label card, and none of them starts while it shows; the
+  yellow and red cards and the substitutions wait their turn. Live, a replay
+  playing ends, and none starts while it shows. The zoom near goal eases out to
+  the whole pitch while it shows, and back in after.
+- It plays the labels as they come, live and in replay alike. A pause, a seek,
+  a step or a press on the pitch ends it, as it ends every moment.
+- **In a replay** (see [Flashbacks](#flashbacks)) none of its labels plays
+  anything: the viewer saw the penalty live, and the clip shows the kick as it
+  was played on the pitch. With the layer on, a `Penalty scored` in a clip plays
+  no goal either; with it off, it plays the goal, as live.
+- **Played by hand**, `trigger('penalty', team)` plays the card and the scene
+  waiting, which goes after 4 s; `trigger('penaltyScored', team)` and
+  `trigger('penaltyMissed', team)` play the scene with that kick at once, with no
+  card. Each names `team`.
+- **With reduced motion** nothing fades, the ball does not turn and the keeper
+  does not sway: the card shows whole, then the scene whole, and a result shows
+  the kick's end, the keeper diving and the banner in, for 3 s, then goes.
+- The `moment` events are `penalty`, from its start to its end, and
+  `penaltyScored` or `penaltyMissed`, from its result's label to the same end.
 
 #### Throw-in
 
@@ -419,7 +484,7 @@ in one of two ways.
 - Replay data says nothing of which frames are valid, so in replay mode the
   throw-in is always the band, as video-annotation's is.
 - It plays once for each run of the label, which has to be off for 5 s to count
-  as a new one. A goal or a corner takes over from it.
+  as a new one. A goal, a corner or the penalty takes over from it.
 
 #### VAR check, goal disallowed and second half
 
@@ -435,8 +500,8 @@ written `second half`, `Start second half` or in any of the ways above
   for 4 s.
 - It plays once for each run of the label, however the label flickers: the
   label has to be off for 15 s of replay time to count as a new one.
-- A goal, a corner or a free kick takes over from it, and it does not go over
-  any of them. It waits for them instead: if the label is still on when they end, it plays
+- A goal, a corner, a free kick or the penalty takes over from it, and it does
+  not go over any of them. It waits for them instead: if the label is still on when they end, it plays
   then. It takes over from an attack, the attack over a player loss and a
   throw-in, and holds them off while it shows.
 - The latest card takes over from another: a goal disallowed replaces the VAR
@@ -520,12 +585,12 @@ player.
 - It fades in, stays at least 2 s and fades out as the VAR check does, with
   everyone on the pitch and the ball faded out.
 - Every card plays, however soon after another it comes: a card's label sits on
-  one record, so a card that cannot play yet (a goal, a corner, a free kick or
-  another centre card on screen) waits its turn, and cards play one after the other in the
+  one record, so a card that cannot play yet (a goal, a corner, a free kick, the
+  penalty or another centre card on screen) waits its turn, and cards play one after the other in the
   order they came, each fading out before the next fades in. A label seen on
   several records is one card: by its `uuid`, or, without one, by its card, team
-  and shirt number. A card cut short by a goal, a corner, a free kick or a centre card before
-  its 2 s plays again after it.
+  and shirt number. A card cut short by a goal, a corner, a free kick, the penalty or a centre card
+  before its 2 s plays again after it.
 - A card landed on by a seek, or seen while paused, is not played. A seek, a
   pause, a press on the pitch, a moment played by hand or a `reset()` lets go of
   the cards waiting.
@@ -572,8 +637,8 @@ on goal label (`headerOnGoal`), each on by default. Each is shown as a throw-in 
   none starts while it shows: a human's label goes before them, as a throw-in's
   does. It takes over from a throw-in or another small card, and they from it,
   as they stand in one place.
-- A goal, a corner, a free kick or a centre card takes over from it, and it does
-  not go over one, but waits: if its label is still on when they end, it plays then.
+- A goal, a corner, a free kick, the penalty or a centre card takes over from
+  it, and it does not go over one, but waits: if its label is still on when they end, it plays then.
 
 #### Player loss
 
@@ -591,7 +656,7 @@ default):
   the ball keeps moving, ringed in the team's colour.
 - It stays while the loss lasts, and fades out once 18 or more players have
   been tracked again for 0.5 s.
-- A goal, a corner, a free kick, or a VAR check, goal disallowed, half time, second half or full time takes over from it, as do a throw-in, a foul, a shot or a header on goal and a goal waiting for its scorer: a human's label goes before it. An attack the team phase calls
+- A goal, a corner, a free kick, the penalty, or a VAR check, goal disallowed, half time, second half or full time takes over from it, as do a throw-in, a foul, a shot or a header on goal and a goal waiting for its scorer: a human's label goes before it. An attack the team phase calls
   during a loss isn't shown on top of it.
 - With `debug` on, a badge says when this is happening.
 
@@ -644,8 +709,9 @@ earlier moment of the match in place of the held frame (the `flashback` layer,
 "Replays while the camera is away", on by default). The layers menu lists it in
 live mode only.
 - What counts, from valid frames only: a goal, a corner, or a shot or header on
-  goal that a human labelled (see [Labels](#labels)), and the ball going into the
-  penalty area of the goal the team with the ball attacks. A label counts once
+  goal that a human labelled (see [Labels](#labels)), a penalty scored counting
+  as a goal and a penalty missed as a shot, whatever the layers, and the ball
+  going into the penalty area of the goal the team with the ball attacks. A label counts once
   for each run of it, as for the moments, and the penalty area again only after
   the ball has been out of it for 15 s. AI labels never count.
 - Each clip is 8 s of play before the moment and 4 s after, of valid frames
@@ -691,7 +757,8 @@ live mode only.
   over live play as the last ends, and stay from one clip to the next. With
   reduced motion they do not fade.
 - The clip is drawn as live play is, its own moments, cards and zoom near goal
-  included, and starts from the viewer's own zoom. The row above the pitch
+  included, but for the penalty, which plays nothing in it (see [The
+  penalty](#the-penalty)), and starts from the viewer's own zoom. The row above the pitch
   shows the clip's phase. Its moments send no `moment` events. As a replay
   starts, the moments on screen in live play send their `end`, and those still
   on when live play is back, their `start`. `trigger()` and `availability()`
@@ -735,7 +802,7 @@ little more the nearer it gets (the `goalZoom` layer, on by default):
 - A goal has no zoom of its own: the view follows the goal's ball into the
   net and stays as close in as this goes. Without this layer a goal's camera
   lunges in over 400 ms and back out at the end, as video-annotation's does.
-- While a corner, a free kick, a throw-in, a VAR check, a goal disallowed, a half time, a
+- While a corner, a free kick, a throw-in, the penalty, a VAR check, a goal disallowed, a half time, a
   second half, a full time, a foul or an attack shows (the attack over a player
   loss or invalid frames too), it eases out to the whole pitch, as their cards
   and the attack's label are laid out on it, and back in once it has gone. A shot or a header on goal is what it is there for, so for those it stays
@@ -744,7 +811,7 @@ little more the nearer it gets (the `goalZoom` layer, on by default):
 - With reduced motion it does nothing.
 
 The `TrackerText` keys are:
-- on the canvas: `goal`, `corner`, `freeKick`, `throwIn`, `varCheck`, `goalDisallowed`, `halfTime`, `halfTimeText`, `secondHalf`, `secondHalfText`, `fullTime`, `fullTimeText`, `foul`, `shotOnGoal`, `headerOnGoal`, `yellowCard`, `redCard`, `substitution`, `playerNumber` (a carded or substituted player with no name, with `{number}`), `attack`, and the replay's tab, `flashback` ("REPLAY") and `flashbackAgo` (with `{time}`);
+- on the canvas: `goal`, `corner`, `freeKick`, `throwIn`, `penalty`, `penaltyWaiting`, `penaltyScored`, `penaltyMissed`, `varCheck`, `goalDisallowed`, `halfTime`, `halfTimeText`, `secondHalf`, `secondHalfText`, `fullTime`, `fullTimeText`, `foul`, `shotOnGoal`, `headerOnGoal`, `yellowCard`, `redCard`, `substitution`, `playerNumber` (a carded or substituted player with no name, with `{number}`), `attack`, and the replay's tab, `flashback` ("REPLAY") and `flashbackAgo` (with `{time}`);
 - the row: `attacking`, `defending`, `versus`, `phaseTooltip`, `red` and `blue` (the default team names);
 - ARIA templates: `phaseAttackingAria` and `phaseDefendingAria` (with `{team}`), and `phaseAria` (with `{home}` and `{away}`);
 - the menu: `layersButton`, `layersTooltip`, `layersMenuLabel`, and `layers` (`{ label, hint }` per layer);
@@ -863,8 +930,8 @@ scripts and styles, several times on one page.
 ### Content Security Policy
 
 On a page with a Content Security Policy, the widget needs:
-- `img-src data:`, for the corner's, the free kick's, the VAR check's and the goal disallowed's icons, SVG `data:` URLs drawn
-  through an `Image`. Without it the cards are drawn without their icons.
+- `img-src data:`, for the corner's, the free kick's, the VAR check's and the goal disallowed's icons, and the penalty's pictures, SVG `data:` URLs drawn
+  through an `Image`. Without it the cards are drawn without their icons, and the penalty's scene without its goal, keeper and ball.
 - `font-src` for wherever the package's files are served from: the fonts are
   woff2 files next to `dist/index.js`, loaded with `FontFace`. Bundled into your app
   that is usually `'self'`; from a CDN, that CDN's origin. Without it the text falls

@@ -23,12 +23,12 @@ of all of them, so keep dependencies pointing down towards `model`.
 - `analysis`: derived football facts (action labels, team phase, goal sequence, ball trail, player loss,
   the second half, which turns the frames round from a human half label on).
 - `render`: canvas drawing of the pitch, players, ball and cards.
-- `director`: moments (goal, attack, corner, free kick, throw-in, the label cards, and the attack
+- `director`: moments (goal, attack, corner, free kick, throw-in, the penalty, the label cards, and the attack
   over a player loss), camera and playback. The two player cards (yellow, red) are label cards that
   name the team and the player from the label; they wait their turn in a queue (`cardQueue.ts`),
   as their label sits on one record. So does the substitution card, which lists a team's
-  substitutions, a later one for the team joining it while it is up. The corner, the free kick, the label cards, the player loss cover, the goal
-  on a penalty scored label and the goal's scorer (waited for live, `goal.ts`) are ours alone; video-annotation has none of them. Its own free kick, a card
+  substitutions, a later one for the team joining it while it is up. The corner, the free kick, the label cards, the player loss cover, the penalty (`penalty.ts`), the goal
+  on a penalty scored label (with the penalty's layer off) and the goal's scorer (waited for live, `goal.ts`) are ours alone; video-annotation has none of them. Its own free kick, a card
   across the middle, is not shown, and its two goldens are retired. The corner and the free kick are set
   pieces, held alike (`setPiece.ts`). A label card (`src/model/labelCards.ts`) is played
   by a label, either across the middle (a title over an icon or a short text, the pitch faded out) or small

@@ -6,6 +6,72 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+The penalty, from the match-summary design.
+
+### What you see
+
+- **The penalty.** On a human's `Penalty` label, "PENALTY" and its icon show on
+  a card across the middle, with the team taking it under the band, everyone on
+  the pitch and the ball faded out (viewport/eventPenalty). After 2.4 s a scene
+  of its own fades in over the pitch (viewport/eventPenaltyWaiting): a green
+  with the design's fine grain and no markings, the goal, the keeper swaying on
+  his line, the ball turning on the spot, and "PENALTY.." with the team at the
+  top right.
+- **The kick.** On `Penalty scored`, the ball curls into the top corner past the
+  keeper's late dive and "SCORED!" rises in at the foot
+  (viewport/eventPenaltyScored); on `Penalty missed`, it curls over the bar and
+  "MISSED!" rises in (viewport/eventPenaltyMissed). The scene holds for 3 s,
+  then fades back to the live pitch. A result that comes with no penalty showing
+  plays the scene and its kick with no card.
+- **It waits 20 s** of the stream's clock for the result, then fades back to the
+  live pitch. As the clock stands still while the stream stalls, it also goes
+  40 s after it started, whatever the clock. Viewers see no countdown.
+- **The team** is the one the `Penalty` gives, whatever team its result gives.
+- **"Penalty scored" no longer plays the goal** while the penalty's layer is on:
+  it plays the penalty's kick, and no goal, no wait for the goal's scorer, and a
+  `Player scored` after it plays nothing. With the layer off it plays the goal,
+  as before. A penalty missed, which played nothing, plays the kick over the
+  bar.
+- A goal takes over from the penalty, and a `Penalty` does not start while a
+  goal shows. The penalty takes over from an attack, the attack over a player
+  loss, a corner, a free kick, a throw-in and the label cards, and none of them
+  starts while it shows; the yellow and red cards and the substitutions wait
+  their turn. Live, a replay playing ends, and none starts while it shows. The
+  zoom near goal eases out to the whole pitch for it, and back in after.
+- **In a replay** in live mode none of the penalty's labels plays anything: the
+  clip shows the kick as it was played. A penalty scored in a clip plays no goal
+  either, unless the layer is off. A human's `Penalty missed` is now kept for a
+  replay as a shot on goal is.
+- With reduced motion nothing fades and nothing turns or sways: the card, then
+  the scene, then the kick's end with its banner, each whole.
+
+### For pages that embed it
+
+- `trigger('penalty', team)` plays the card and the scene waiting, for 4 s;
+  `trigger('penaltyScored', team)` and `trigger('penaltyMissed', team)` play the
+  scene with that kick. `availability()` has `penalty`, `penaltyScored` and
+  `penaltyMissed`, and the three send `moment` events: `penalty` while it shows,
+  and `penaltyScored` or `penaltyMissed` from its result's label to its end.
+- Its layer is `penalty`, on by default, "Penalty" in the layers menu.
+- `TrackerText` has `penalty` ("PENALTY", 点球), `penaltyWaiting` ("PENALTY..",
+  点球……), `penaltyScored` ("SCORED!", 罚进了！) and `penaltyMissed` ("MISSED!",
+  罚丢了！), and a `penalty` layer entry. The Chinese is a draft, as the rest of
+  it is.
+- The penalty's pictures (its card's icon, the goal, both keepers and both
+  balls) are bundled as SVG, drawn through `data:` URLs, so `img-src data:`
+  covers them.
+
+### Size
+
+- The widget is 66.4 kB gzipped (budget 65 kB), up from 59.1 kB, about half of
+  it the penalty's pictures.
+
+### Parity
+
+- The goldens and baseline snapshots have no penalty labels, and are unchanged.
+  The goal's tests that used `Penalty scored` as a goal's label now use it with
+  the penalty's layer off, or expect the penalty: a deliberate change.
+
 ## [0.22.0] - 2026-11-13
 
 ### What you see
