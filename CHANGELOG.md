@@ -6,6 +6,8 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.21.2] - 2026-11-13
+
 ### What you see
 
 - **A scorer is named under the goal they follow, whatever team the goal's
