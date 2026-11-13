@@ -5,7 +5,9 @@
  * paints what it gives back in place of live play while a clip plays.
  *
  * The clip director is made on the first clip, so a widget that never plays one has one director,
- * as before flashbacks. It never covers invalid frames, and it is driven as replay mode drives its
+ * as before flashbacks. It never covers invalid frames, nor plays the penalty: the viewer saw that
+ * live, and the clip shows the kick as it was played (`flashbackClip`), so a "Penalty scored" plays
+ * no goal in it either, unless the penalty's layer is off. It is driven as replay mode drives its
  * director: the clip record at the clip's own clock, playing, with the phase and the trail worked
  * out over the clip's own records. Its records never go through the halves' `see`: `shown` turns
  * them for the second half by their own time, so a clip from the first half shows that half's ends.
@@ -159,7 +161,7 @@ export class FlashbackStage {
     return director ? director.setView({ ...cameraOf(director.view), renderedWidth }) : null
   }
 
-  setOptions(options: Partial<Omit<DirectorOptions, 'layers' | 'coverInvalidFrames'>>): void {
+  setOptions(options: Partial<Omit<DirectorOptions, 'layers' | 'coverInvalidFrames' | 'flashbackClip'>>): void {
     this.director?.setOptions(options)
   }
 
@@ -212,7 +214,7 @@ export class FlashbackStage {
   }
 
   private clipDirector(): Director {
-    this.director ??= new Director({ ...this.options(), coverInvalidFrames: false })
+    this.director ??= new Director({ ...this.options(), coverInvalidFrames: false, flashbackClip: true })
     return this.director
   }
 }

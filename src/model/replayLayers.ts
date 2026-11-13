@@ -31,9 +31,20 @@ export type ReplayLayers = Record<ReplayLayerKey, boolean>
 /**
  * The moments the replay plays over the data. Each plays by itself on its
  * label (or, for an attack, its phase) while its layer is on, and can be
- * played by hand with the tracker's `trigger()` whether or not it is.
+ * played by hand with the tracker's `trigger()` whether or not it is. The
+ * penalty's three share its layer, `penalty`: the penalty given, waiting for
+ * the kick, and the kick scored or missed.
  */
-export type ReplayMoment = 'goal' | 'attack' | 'corner' | 'freeKick' | 'throwIn' | LabelCardKey
+export type ReplayMoment =
+  | 'goal'
+  | 'attack'
+  | 'corner'
+  | 'freeKick'
+  | 'throwIn'
+  | 'penalty'
+  | 'penaltyScored'
+  | 'penaltyMissed'
+  | LabelCardKey
 
 /**
  * In the order the menu lists them (`liveOnly` ones in live mode only). Each layer's name and hint are text, in

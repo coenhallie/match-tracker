@@ -97,8 +97,8 @@
  * nothing. It leaves the view to a goal's camera (the reference's, which a
  * goal has only with the layer off as it started), and does nothing with
  * reduced motion, where it puts the whole pitch back. While a corner, a
- * throw-in, most label cards or an attack shows, it eases out to the whole
- * pitch their cards and the attack's label are laid out for (the renderer
+ * throw-in, the penalty, most label cards or an attack shows, it eases out to
+ * the whole pitch their cards and the attack's label are laid out for (the renderer
  * keeps the cards whole on the frame meanwhile), and back in once they have
  * gone. It steps once in each
  * animation frame, after the moments, and its move goes through the view's
@@ -251,6 +251,12 @@ export interface DirectorOptions {
    * label, as the reference does. Default 0. Read once, when the director is made.
    */
   scorerWaitS?: number
+  /**
+   * A flashback clip's director (flashbackStage.ts): the penalty's labels play nothing in it, as the
+   * viewer saw the penalty live, and with the penalty's layer on a "Penalty scored" plays no goal
+   * either. Default false. Read once, when the director is made.
+   */
+  flashbackClip?: boolean
 }
 
 /** Which moments can be played by hand on the frame on screen (`momentAvailability`, `:1020-1036`). */
@@ -262,6 +268,9 @@ export interface MomentAvailability extends Record<LabelCardKey, boolean> {
   corner: boolean
   freeKick: boolean
   throwIn: boolean
+  penalty: boolean
+  penaltyScored: boolean
+  penaltyMissed: boolean
 }
 
 /** The reference's refs as the surface mounts: the clock at 0, paused, nothing on screen. */
@@ -374,7 +383,7 @@ export class Director {
     this.throwIn = new ThrowIn(this.context)
     this.labelCards = LABEL_CARDS.map((card) => new LabelCard(this.context, card))
     this.playerLoss = new PlayerLoss(this.context, options.coverInvalidFrames)
-    this.penalty = new Penalty(this.context, true)
+    this.penalty = new Penalty(this.context, !options.flashbackClip)
   }
 
   /** Whether a goal's label is waiting for its scorer's (goal.ts, "The scorer"): it plays when they come, or the wait is over. */
@@ -428,14 +437,16 @@ export class Director {
 
   /**
    * Play `moment` now, by hand (`triggerMoment`, `:1038-1063`); for an
-   * attack, `team`'s, and a card, a substitution, a corner, a free kick or a
-   * goal disallowed names `team` (a corner, a free kick and a goal disallowed,
-   * the team the label on screen gives first). It takes over from whatever is
-   * showing and runs as it would on its label, during playback or not, except
-   * the corner and the free kick: with no label or cutaway to wait on, they are
-   * on screen for CORNER_DEMO_MS, and a
-   * label card, likewise for LABEL_CARD_DEMO_MS. A seek
-   * or a step ends any of them, as it ends the others.
+   * attack, `team`'s, and a card, a substitution, a corner, a free kick, a
+   * goal disallowed or the penalty's three names `team` (a corner, a free kick
+   * and a goal disallowed, the team the label on screen gives first). It takes
+   * over from whatever is showing and runs as it would on its label, during
+   * playback or not, except the corner and the free kick: with no label or
+   * cutaway to wait on, they are on screen for CORNER_DEMO_MS, and a label
+   * card, likewise for LABEL_CARD_DEMO_MS. The penalty waits
+   * LABEL_CARD_DEMO_MS for a kick, and a penalty scored or missed plays the
+   * scene and its kick, as with no penalty showing (penalty.ts). A seek or a
+   * step ends any of them, as it ends the others.
    *
    * `input` and `view` are the replay and the view as they are now, taken in
    * first as an update would, but not as an animation frame. Null when there
@@ -489,6 +500,11 @@ export class Director {
             : {}
       card.start(now, frame, true, strength, about)
       this.request(card)
+    } else if (moment === 'penalty' || moment === 'penaltyScored' || moment === 'penaltyMissed') {
+      this.stopSequences()
+      const kind = moment === 'penalty' ? 'penalty' : moment === 'penaltyScored' ? 'scored' : 'missed'
+      this.penalty.play(kind, teamWords(this.context, { team, teamName: null }), now)
+      this.request(this.penalty)
     } else {
       this.stopSequences()
       this.memory.throwInLabelAt = now
@@ -510,6 +526,9 @@ export class Director {
       corner: ready,
       freeKick: ready,
       throwIn: ready,
+      penalty: ready,
+      penaltyScored: ready,
+      penaltyMissed: ready,
       ...labelCardRecord(() => ready),
     }
   }
@@ -538,6 +557,7 @@ export class Director {
     if (before.corner && !layers.corner) this.stopMoment(this.corner)
     if (before.freeKickBanner && !layers.freeKickBanner) this.stopMoment(this.freeKick)
     if (before.throwInBanner && !layers.throwInBanner) this.stopMoment(this.throwIn)
+    if (before.penalty && !layers.penalty) this.stopMoment(this.penalty)
     for (const card of this.labelCards) if (before[card.key] && !layers[card.key]) this.stopMoment(card)
     for (const card of this.labelCards) {
       if ((isPlayerCardKey(card.key) || isSubstitutionKey(card.key)) && !layers[card.key]) this.cardQueue.drop(card.key)
@@ -550,7 +570,7 @@ export class Director {
   }
 
   /** Everything but the layers, which go through setLayers. Read at the next paint. */
-  setOptions(options: Partial<Omit<DirectorOptions, 'layers' | 'coverInvalidFrames'>>): void {
+  setOptions(options: Partial<Omit<DirectorOptions, 'layers' | 'coverInvalidFrames' | 'flashbackClip'>>): void {
     this.options = { ...this.options, ...options }
   }
 
@@ -667,22 +687,30 @@ export class Director {
         this.stopMoment(this.corner)
         this.stopMoment(this.freeKick)
         this.stopMoment(this.throwIn)
+        this.stopMoment(this.penalty)
         this.stopLabelCards(true)
         if (this.goal.start(goal.frame, goal)) this.request(this.goal)
       }
       // A penalty's labels start it, or move it on: one request for its frames, however often they do.
-      if (this.penalty.detect(frame, time)) {
+      // As a goal does, it takes over from every other moment, and does not start over a goal.
+      if (this.penalty.detect(frame, time, this.goal.active)) {
+        this.stopMoment(this.attack)
+        this.stopMoment(this.playerLoss)
+        this.stopMoment(this.corner)
+        this.stopMoment(this.freeKick)
+        this.stopMoment(this.throwIn)
+        this.stopLabelCards(true)
         this.cancel(this.penalty)
         this.request(this.penalty)
       }
       // A set piece takes over from an attack, the attack over a player loss, a throw-in, a label
       // card and the other set piece: the latest of a corner and a free kick shows.
-      if (this.corner.detect(frame, before.record?.frame ?? null, time, this.goal.active)) {
+      if (this.corner.detect(frame, before.record?.frame ?? null, time, this.goal.active || this.penalty.active)) {
         this.stopForSetPiece(this.freeKick)
         this.corner.start(record)
         this.request(this.corner)
       }
-      if (this.freeKick.detect(record, time, this.goal.active)) {
+      if (this.freeKick.detect(record, time, this.goal.active || this.penalty.active)) {
         this.stopForSetPiece(this.corner)
         this.freeKick.start(record, time)
         this.request(this.freeKick)
@@ -691,7 +719,7 @@ export class Director {
         // The player cards and substitutions play from their queue, below.
         if (isPlayerCardKey(card.key) || isSubstitutionKey(card.key)) continue
         // A small card does not go over a centre one.
-        const blocked = this.goal.active || this.setPieceActive || (card.small && this.centreCardHoldsBack())
+        const blocked = this.goal.active || this.penalty.active || this.setPieceActive || (card.small && this.centreCardHoldsBack())
         if (card.detect(frame, time, blocked)) {
           // The latest card takes over from another of its size, as a goal disallowed answers the VAR check
           // before it, from the strength that one had, so the band does not blink.
@@ -711,7 +739,7 @@ export class Director {
         }
       }
       this.queueCards(frame, time)
-      const setPiece = this.goal.active || this.setPieceActive || this.centreCardHoldsBack()
+      const setPiece = this.goal.active || this.penalty.active || this.setPieceActive || this.centreCardHoldsBack()
       if (this.throwIn.detect(frame, time, setPiece)) {
         // In the same place as a small card, which it takes over from.
         this.stopSmallCards()
@@ -848,7 +876,7 @@ export class Director {
 
   /**
    * The player cards and substitutions on `frame`, into their queue, and the first waiting played
-   * if nothing holds it back: a goal, a corner, or a centre card on screen, fading out included,
+   * if nothing holds it back: a goal, the penalty, a set piece, or a centre card on screen, fading out included,
    * so one card goes before the next comes in. A label sits on one record, so it waits its turn
    * rather than being missed (cardQueue.ts). A substitution for the team of the substitution card
    * up joins its list instead, while there is room; one taken from the queue takes the team's
@@ -868,7 +896,7 @@ export class Director {
       else this.cardQueue.push(label)
     }
     const centreCardUp = this.labelCards.some((card) => !card.small && card.active)
-    if (!playing || this.goal.active || this.setPieceActive || centreCardUp) return
+    if (!playing || this.goal.active || this.penalty.active || this.setPieceActive || centreCardUp) return
     const label = this.cardQueue.take()
     if (!label) return
     const card = this.labelCards.find((c) => c.key === label.key)!
@@ -981,12 +1009,14 @@ export class Director {
       this.flushView()
       return
     }
-    // The corner's card, the throw-in's banner, most label cards and the attack, its own or over a player loss or
-    // invalid frames, are laid out for the whole pitch: the small cards sit on the touchline, and a centre card and
-    // the attack's label sit in the middle of it, the attack's fading out what the view would be following.
+    // The corner's card, the throw-in's banner, the penalty, most label cards and the attack, its own or over a
+    // player loss or invalid frames, are laid out for the whole pitch: the small cards sit on the touchline, and a
+    // centre card, the penalty and the attack's label sit in the middle of it, the attack's fading out what the
+    // view would be following.
     const makeWay =
       this.setPieceActive ||
       this.throwIn.active ||
+      this.penalty.active ||
       this.attack.active ||
       this.playerLoss.active ||
       this.labelCards.some((card) => card.active && card.makesWay)

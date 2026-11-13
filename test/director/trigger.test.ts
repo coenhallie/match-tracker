@@ -3,6 +3,8 @@ import type { TeamPhase } from '../../src/analysis/teamPhase'
 import { Director } from '../../src/director/director'
 import { DEFAULT_REPLAY_LAYERS } from '../../src/model/replayLayers'
 import type { Frame } from '../../src/model/types'
+import { LABEL_CARD_DEMO_MS } from '../../src/render/labelCard'
+import { PENALTY_CARD_MS, PENALTY_HOLD_MS, PENALTY_KICK_MS, PENALTY_OUT_MS, PENALTY_RESULT_IN_MS, PENALTY_SCENE_IN_MS } from '../../src/render/penalty'
 import { FakeReplay, VIEW } from './harness'
 
 // The cases of 'playing moments by hand' from pipelineOutputSurface.test.ts (:2133-2345), with the
@@ -99,6 +101,9 @@ describe('playing moments by hand', () => {
       yellowCard: true,
       redCard: true,
       substitution: true,
+      penalty: true,
+      penaltyScored: true,
+      penaltyMissed: true,
     })
 
     const without = ready(null, { possession: null, attacks: { 0: null, 1: null }, states: { 0: null, 1: null } })
@@ -108,6 +113,74 @@ describe('playing moments by hand', () => {
     animate(without, 300)
     expect(last(without).goal).toBeUndefined()
     expect(last(without).attack).toBeUndefined()
+  })
+
+  // The penalty's three, each a moment of its own by hand (docs/superpowers/specs/2026-11-13-penalty-design.md,
+  // "Played by hand"): the penalty has no result to wait for, and a result is one with no penalty showing.
+  it('plays each of the three by hand', () => {
+    const replay = ready()
+    replay.trigger('penalty', 1)
+    expect(replay.director.penaltyPhase).toBe('card')
+    expect(last(replay).penalty).toMatchObject({ team: 'PSG', result: null })
+    animate(replay, PENALTY_CARD_MS + LABEL_CARD_DEMO_MS - 50)
+    expect(replay.director.penaltyPhase).toBe('waiting')
+    animate(replay, 100)
+    expect(replay.director.penaltyPhase).toBe('leaving')
+    animate(replay, PENALTY_OUT_MS)
+    expect(replay.director.penaltyPhase).toBeNull()
+    expect(last(replay).penalty).toBeUndefined()
+
+    for (const [moment, result] of [
+      ['penaltyScored', 'scored'],
+      ['penaltyMissed', 'missed'],
+    ] as const) {
+      replay.trigger(moment)
+      expect(replay.director.penaltyPhase).toBe('kick')
+      expect(last(replay).penalty).toMatchObject({ team: 'Manchester City', result, card: 0 })
+      animate(replay, PENALTY_SCENE_IN_MS + PENALTY_KICK_MS + PENALTY_RESULT_IN_MS + 100)
+      expect(replay.director.penaltyPhase).toBe('holding')
+      expect(last(replay).penalty).toMatchObject({ scene: 1, kick: 1, banner: 1 })
+      animate(replay, PENALTY_HOLD_MS + PENALTY_OUT_MS)
+      expect(replay.director.penaltyPhase).toBeNull()
+    }
+  })
+
+  it('plays the penalty by hand over another moment, and a seek ends it', () => {
+    const replay = ready()
+    replay.trigger('corner')
+    animate(replay, 300)
+    replay.trigger('penaltyMissed')
+    expect(last(replay).corner).toBeUndefined()
+    expect(last(replay).penalty).toBeDefined()
+    animate(replay, 300)
+    replay.set({ time: 60 })
+    expect(replay.director.penaltyPhase).toBeNull()
+    expect(last(replay).penalty).toBeUndefined()
+  })
+
+  it('plays the penalty by hand with its layer off', () => {
+    const replay = new FakeReplay({ penalty: false })
+    replay.set({ time: 10, frame: frameAt(20) })
+    replay.trigger('penalty')
+    animate(replay, 100)
+    expect(last(replay).penalty).toBeDefined()
+  })
+
+  it('is available once a frame is on screen', () => {
+    const director = new Director({
+      layers: { ...DEFAULT_REPLAY_LAYERS, goalZoom: false, penalty: false },
+      reducedMotion: () => false,
+      teamName: () => 'Red',
+      playerName: (_team, number) => `#${number}`,
+      substitutionName: (_team, number) => (number === null ? null : `#${number}`),
+      teamColor: () => '#e51a1a',
+    })
+    const none = { nowMs: 1000, time: 0, playing: false, playback: false, record: null, phase: null, trail: null }
+    director.update(none, VIEW)
+    expect(director.availability()).toMatchObject({ penalty: false, penaltyScored: false, penaltyMissed: false })
+    // Its layer off, as by hand every moment plays whether or not its layer is on.
+    director.update({ ...none, nowMs: 1020, time: 10, record: { t: 10, frameCount: 1, frame: frameAt(null) } }, VIEW)
+    expect(director.availability()).toMatchObject({ penalty: true, penaltyScored: true, penaltyMissed: true })
   })
 
   it('is ended by a seek, as the others are', () => {
@@ -149,6 +222,9 @@ describe('playing moments by hand', () => {
         yellowCard: false,
         redCard: false,
         substitution: false,
+        penalty: false,
+        penaltyScored: false,
+        penaltyMissed: false,
       })
     })
 

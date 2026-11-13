@@ -82,13 +82,24 @@ function reportError(error: unknown): void {
 }
 
 /** In the order the director stops them. */
-const MOMENTS: readonly ReplayMoment[] = ['goal', 'attack', 'corner', 'freeKick', 'throwIn', ...LABEL_CARD_KEYS]
+const MOMENTS: readonly ReplayMoment[] = [
+  'goal',
+  'attack',
+  'corner',
+  'freeKick',
+  'throwIn',
+  'penalty',
+  'penaltyScored',
+  'penaltyMissed',
+  ...LABEL_CARD_KEYS,
+]
 
 /**
  * Whether a paint shows `moment`. Each moment's value is drawn from its
  * start to its end (the reference's `xValue()` is defined exactly while its
  * state is), and a stop paints without it, so a paint shows a moment exactly
- * while the moment runs.
+ * while the moment runs. The penalty shows from its start to its end, and its
+ * result, scored or missed, from the label that gave it to the same end.
  */
 function shows(layers: FrameLayers, moment: ReplayMoment): boolean {
   switch (moment) {
@@ -102,13 +113,19 @@ function shows(layers: FrameLayers, moment: ReplayMoment): boolean {
       return layers.freeKick !== undefined
     case 'throwIn':
       return layers.throwIn !== undefined || layers.throwInCard !== undefined
+    case 'penalty':
+      return layers.penalty !== undefined
+    case 'penaltyScored':
+      return layers.penalty?.result === 'scored'
+    case 'penaltyMissed':
+      return layers.penalty?.result === 'missed'
     default:
       return layers.labelCard?.key === moment || layers.smallLabelCard?.key === moment
   }
 }
 
 /**
- * Whether `layers` show a moment a label starts: a goal, a corner, a free kick, a throw-in or a label card.
+ * Whether `layers` show a moment a label starts: a goal, a corner, a free kick, a throw-in, the penalty or a label card.
  * The attack, which the phase or a player loss starts, does not count.
  */
 export function labelMomentShowing(layers: FrameLayers | null): boolean {
@@ -120,6 +137,7 @@ export function labelMomentShowing(layers: FrameLayers | null): boolean {
     layers.freeKick !== undefined ||
     layers.throwIn !== undefined ||
     layers.throwInCard !== undefined ||
+    layers.penalty !== undefined ||
     layers.labelCard !== undefined ||
     layers.smallLabelCard !== undefined
   )

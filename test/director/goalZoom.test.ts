@@ -304,6 +304,24 @@ describe('the zoom near goal making way', () => {
     expect(camera(replay).zoom).toBeCloseTo(zoomedIn, 2)
   })
 
+  // The penalty's card and scene are laid out for the whole pitch, fixed to the frame, as a centre card is.
+  it('eases the zoom near goal out while the penalty shows, and back in after', () => {
+    const replay = playing({ x: 40, y: 0 })
+    settle(replay)
+    const zoomedIn = camera(replay).zoom
+    expect(zoomedIn).toBeGreaterThan(1.3)
+    replay.set({ time: replay.time + 0.04, frame: ballFrame({ x: 40, y: 0 }, ['Penalty']) })
+    expect(replay.last()?.penalty).toBeDefined()
+    const cameras = [camera(replay), ...frames(replay, 120)]
+    expect(cameras.at(-1)!.zoom).toBeLessThan(1.03)
+    expect(Math.max(...zoomSteps(cameras))).toBeLessThan(0.02)
+    replay.set({ time: replay.time + 0.04, frame: ballFrame({ x: 40, y: 0 }, ['Penalty missed']) })
+    settle(replay)
+    expect(replay.last()?.penalty).toBeUndefined()
+    settle(replay)
+    expect(camera(replay).zoom).toBeCloseTo(zoomedIn, 2)
+  })
+
   it('eases out to the whole pitch for the attack over invalid frames', () => {
     const replay = new FakeReplay({ goalZoom: true, playerLoss: true }, { coverInvalidFrames: true })
     const phase = { possession: null, attacks: { 0: 1 as const, 1: -1 as const }, states: { 0: null, 1: null } }

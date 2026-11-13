@@ -252,6 +252,20 @@ describe('flashbacks in live mode', () => {
     expect(since()).toEqual([`flashback:end@${stream.t(GOAL)}`, 'moment:goal:start'])
   })
 
+  it('cuts a replay playing as a penalty is labelled: a human label goes first', () => {
+    const { tracker } = mount()
+    const stream = new Stream(tracker)
+    const log = events(tracker)
+    goalThenRun(stream, 25)
+    const from = log.length
+    const since = () => log.slice(from).filter((e) => e.startsWith('flashback') || e.startsWith('moment:penalty'))
+    expect(log.filter((e) => e.startsWith('flashback'))).toEqual([`flashback:start@${stream.t(GOAL)}`])
+    // The camera still away, a penalty is labelled on the held frame.
+    stream.push(1, 'long', () => ({ labels: ['Penalty'] }))
+    stream.push(1, 'long')
+    expect(since()).toEqual([`flashback:end@${stream.t(GOAL)}`, 'moment:penalty:start'])
+  })
+
   it('shows the throw-in card through a cutaway after a throw-in, with no replay over it, and goes as the camera is back', () => {
     const { tracker } = mount()
     const stream = new Stream(tracker)
@@ -327,6 +341,30 @@ describe('flashbacks in live mode', () => {
     expect(log).toContain('moment:freeKick:end')
     stream.push(50, 'long', moving)
     expect(log.filter((e) => e.startsWith('flashback'))[0]).toBe(`flashback:start@${stream.t(GOAL)}`)
+  })
+
+  // The viewer saw the penalty live; a replay is there for the play (docs/superpowers/specs/2026-11-13-penalty-design.md,
+  // "In a replay"). A "Penalty scored" is spotted as a goal's clip, but in the clip neither the penalty nor the goal plays.
+  it('plays nothing in a flashback clip, nor a goal for a penalty scored', () => {
+    const { tracker } = mount()
+    const log = events(tracker)
+    const stream = new Stream(tracker)
+    stream.push(RUN, 'valid', (i) =>
+      i === GOAL - 25 ? { labels: ['Penalty'] } : i === GOAL ? { labels: ['Penalty scored'] } : i === GOAL + 1 ? { labels: ['Player scored'] } : {},
+    )
+    // Live, it played.
+    expect(log).toContain('moment:penalty:start')
+    expect(log).toContain('moment:penaltyScored:end')
+    expect(log.some((e) => e.startsWith('moment:goal'))).toBe(false)
+    const from = control.drawn.length
+    stream.push(200, 'long')
+    expect(log.filter((e) => e.startsWith('flashback'))[0]).toBe(`flashback:start@${stream.t(GOAL)}`)
+    const clip = drawnSince(from).filter(({ frame }) => isClip(frame))
+    // The clip's own records, the penalty's labels on them.
+    expect(clip.some(({ frame }) => frameNo(frame) === FIRST_FRAME + GOAL)).toBe(true)
+    expect(clip.some(({ frame }) => frameNo(frame) === FIRST_FRAME + GOAL - 25)).toBe(true)
+    expect(clip.filter(({ layers }) => layers?.penalty !== undefined)).toEqual([])
+    expect(clip.filter(({ layers }) => layers?.goal !== undefined || layers?.goalBanner !== undefined)).toEqual([])
   })
 
   it('shows the clip phase in the row above the pitch during a replay', () => {

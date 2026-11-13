@@ -235,6 +235,25 @@ describe('a label card through the widget', () => {
     expect(env.queued()).toBe(0)
   })
 
+  it.each([
+    ['Penalty scored', 'penaltyScored'],
+    ['Penalty missed', 'penaltyMissed'],
+  ])("emits the penalty's start and end, and its result's: %s", (label, result) => {
+    const { tracker, log } = mount()
+    playing(tracker)
+    tracker.push(labelled(5, 'Penalty'))
+    env.frame()
+    env.frame()
+    expect(log).toEqual(['penalty:start'])
+    tracker.push(labelled(6, label))
+    env.frame()
+    env.frame()
+    expect(log).toEqual(['penalty:start', `${result}:start`])
+    env.settle()
+    expect(log).toEqual(['penalty:start', `${result}:start`, 'penalty:end', `${result}:end`])
+    expect(env.queued()).toBe(0)
+  })
+
   it('stays off for a label the AI gave', () => {
     const { tracker, log } = mount()
     playing(tracker)

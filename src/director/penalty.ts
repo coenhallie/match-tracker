@@ -23,14 +23,18 @@
  * animation frames with no result, whatever the clock.
  *
  * Each label counts on the record it first comes on, as the goal's does. They are noted on every
- * record, but play only during playback, with the layer on, and in a director that plays it
- * (`plays`: a flashback clip's never does). Anything that means someone wants the real frame ends it
- * at once, as it ends every moment. Under reduced motion nothing fades: the card whole, then the
- * scene whole, and a result shows the kick's last frame, the banner in, for PENALTY_HOLD_MS, then goes.
+ * record, but play only during playback, with the layer on, with no goal showing, and in a director
+ * that plays it (`plays`: a flashback clip's never does). Anything that means someone wants the real
+ * frame ends it at once, as it ends every moment. Under reduced motion nothing fades: the card whole,
+ * then the scene whole, and a result shows the kick's last frame, the banner in, for PENALTY_HOLD_MS,
+ * then goes.
+ *
+ * Played by hand (`play`), the penalty has no result to wait for: it leaves after LABEL_CARD_DEMO_MS
+ * of waiting. A result by hand is one with nothing showing.
  */
 import { penaltyLabels, type PenaltyResult } from '../analysis/penaltyLabels.js'
 import type { Frame } from '../model/types.js'
-import { LABEL_CARD_IN_MS } from '../render/labelCard.js'
+import { LABEL_CARD_DEMO_MS, LABEL_CARD_IN_MS } from '../render/labelCard.js'
 import {
   PENALTY_CARD_MS,
   PENALTY_HOLD_MS,
@@ -61,6 +65,8 @@ interface Showing {
   elapsedMs: number
   /** When it started to fade out, in ms from the start; null until then. */
   leavingFromMs: number | null
+  /** Played by hand: waiting lasts LABEL_CARD_DEMO_MS, as there is no result to wait for. */
+  byHand: boolean
 }
 
 const clamp01 = (k: number) => Math.min(1, Math.max(0, k))
@@ -99,15 +105,15 @@ export class Penalty implements Moment {
   /**
    * On each new record, at `time` on the clock: true when its labels start it or move it on, so it
    * needs animation frames. Notes what is labelled either way. A Penalty and its result on one
-   * record play the card, then the kick.
+   * record play the card, then the kick. `blocked`: a goal is showing, and nothing starts over it.
    */
-  detect(frame: Frame, time: number): boolean {
+  detect(frame: Frame, time: number, blocked = false): boolean {
     const { penalty, result } = penaltyLabels(frame)
     const newPenalty = penalty !== null && !this.penaltySeen
     const newResult = result !== null && !this.resultSeen
     this.penaltySeen = penalty !== null
     this.resultSeen = result !== null
-    if (!this.plays || !this.ctx.layers().penalty || !this.ctx.playback()) return false
+    if (!this.plays || blocked || !this.ctx.layers().penalty || !this.ctx.playback()) return false
     let moved = false
     if (newPenalty) {
       this.startCard(teamWords(this.ctx, penalty), time)
@@ -131,6 +137,17 @@ export class Penalty implements Moment {
     // Reduced motion coming on as it fades out: it goes at once, as it would have.
     if (m.leavingFromMs !== null && (still || m.elapsedMs - m.leavingFromMs >= PENALTY_OUT_MS)) return 'stop'
     return 'paint'
+  }
+
+  /**
+   * Play it by hand, for `team` in the words drawn, at `time` on the clock: `penalty`, the card and
+   * the scene waiting, which leaves after LABEL_CARD_DEMO_MS of waiting; a result, the scene and its
+   * kick, as a result with nothing showing plays.
+   */
+  play(kind: 'penalty' | PenaltyResult, team: string | null, time: number): void {
+    if (kind === 'penalty') this.startCard(team, time)
+    else this.showing = { ...this.fresh(team, time), result: kind }
+    this.showing!.byHand = true
   }
 
   /** End it at once, back to the frame as it is. */
@@ -195,7 +212,18 @@ export class Penalty implements Moment {
   }
 
   private fresh(team: string | null, time: number): Showing {
-    return { team, card: false, fromIntensity: 0, penaltyAt: time, result: null, kickFromMs: null, startedMs: null, elapsedMs: 0, leavingFromMs: null }
+    return {
+      team,
+      card: false,
+      fromIntensity: 0,
+      penaltyAt: time,
+      result: null,
+      kickFromMs: null,
+      startedMs: null,
+      elapsedMs: 0,
+      leavingFromMs: null,
+      byHand: false,
+    }
   }
 
   /** When the kick starts, in ms from the start: once the result is in and the scene is in, whichever is later. */
@@ -203,9 +231,10 @@ export class Penalty implements Moment {
     return m.kickFromMs ?? Math.max(m.elapsedMs, sceneFrom(m) + (still ? 0 : PENALTY_SCENE_IN_MS))
   }
 
-  /** Whether it is time to go: the hold over after a result, or with none, the wait. */
+  /** Whether it is time to go: the hold over after a result, or with none, the wait (by hand, the demo's). */
   private over(m: Showing, still: boolean): boolean {
     if (m.kickFromMs !== null) return m.elapsedMs >= m.kickFromMs + (still ? 0 : PENALTY_KICK_MS + PENALTY_RESULT_IN_MS) + PENALTY_HOLD_MS
+    if (m.byHand) return m.elapsedMs - sceneFrom(m) >= LABEL_CARD_DEMO_MS
     return this.ctx.shown().time - m.penaltyAt >= PENALTY_WAIT_S || m.elapsedMs >= 2 * PENALTY_WAIT_S * 1000
   }
 

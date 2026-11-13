@@ -170,6 +170,9 @@ const NOTHING_AVAILABLE: MomentAvailability = {
   corner: false,
   freeKick: false,
   throwIn: false,
+  penalty: false,
+  penaltyScored: false,
+  penaltyMissed: false,
   ...labelCardRecord(() => false),
 }
 
@@ -182,6 +185,9 @@ const sameAvailability = (a: MomentAvailability, b: MomentAvailability) =>
   a.corner === b.corner &&
   a.freeKick === b.freeKick &&
   a.throwIn === b.throwIn &&
+  a.penalty === b.penalty &&
+  a.penaltyScored === b.penaltyScored &&
+  a.penaltyMissed === b.penaltyMissed &&
   LABEL_CARD_KEYS.every((key) => a[key] === b[key])
 
 const samePublicBox = (a: TrackerBox, b: TrackerBox | null) =>
