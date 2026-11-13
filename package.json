@@ -1,6 +1,6 @@
 {
   "name": "@coenhallie/match-tracker",
-  "version": "0.21.3",
+  "version": "0.22.0",
   "description": "A framework-free live 2D match tracker widget for football streams.",
   "license": "UNLICENSED",
   "repository": {
