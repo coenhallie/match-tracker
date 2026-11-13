@@ -6,6 +6,8 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-11-13
+
 The free kick is back: the widget's own, from the match-summary design.
 
 ### What you see
