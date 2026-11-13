@@ -6,6 +6,19 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### What you see
+
+- **A human's label goes before an attack and a replay.** A goal waiting for its
+  scorer took over from neither: the attack (and the attack over a player loss)
+  stayed up, a new one could start, and a replay of an earlier moment played on,
+  until the goal played, up to 6 s later. Now, as the goal is labelled, the
+  attack showing goes, none starts while it waits, and a replay playing ends.
+- **A throw-in, a foul, a shot or a header on goal** takes over from an attack,
+  and from the attack over a player loss, and none starts while it shows, as for
+  every other label. This is a deliberate change from video-annotation, whose
+  throw-in shows alongside an attack: on perspecto.ai too, an attack no longer
+  shows during a throw-in.
+
 ## [0.21.2] - 2026-11-13
 
 ### What you see

@@ -183,7 +183,8 @@ describe('a label card among the other moments', () => {
     replay.set({ time: replay.time + 0.04, frame: frameAt(['Throw in'], -40), phase: BLUE_ATTACKING })
     animate(replay, 100)
     expect(replay.last()?.throwIn).toBeDefined()
-    expect(replay.last()?.attack).toBeDefined()
+    // The throw-in holds the attack back: a human's label goes before it.
+    expect(replay.last()?.attack).toBeUndefined()
     record(replay, VAR, 0.04, -40)
     expect(replay.last()?.throwIn).toBeUndefined()
     expect(replay.last()?.attack).toBeUndefined()
@@ -872,7 +873,8 @@ describe('the foul card, a small card', () => {
     expect(small(replay)?.key).toBe('foul')
   })
 
-  it('leaves an attack showing, and lets one start beside it', () => {
+  // A human's label goes before an attack (test/director/labelPriority.test.ts).
+  it('takes over from an attack showing, and lets none start while it shows', () => {
     const showing = ready()
     showing.set({ time: showing.time + 0.04, frame: frameAt([], -40), phase: BLUE_ATTACKING })
     animate(showing, 100)
@@ -880,7 +882,7 @@ describe('the foul card, a small card', () => {
     record(showing, FOUL, 0.04, -40)
     animate(showing, 100)
     expect(small(showing)?.key).toBe('foul')
-    expect(showing.last()?.attack).toBeDefined()
+    expect(showing.last()?.attack).toBeUndefined()
 
     const beside = ready()
     record(beside, FOUL, 0.04, -40)
@@ -888,7 +890,7 @@ describe('the foul card, a small card', () => {
     beside.set({ time: beside.time + 0.04, frame: frameAt([], -40), phase: BLUE_ATTACKING })
     animate(beside, 100)
     expect(small(beside)?.key).toBe('foul')
-    expect(beside.last()?.attack).toBeDefined()
+    expect(beside.last()?.attack).toBeUndefined()
   })
 
   it('takes over from a throw-in, and a throw-in from it, as they stand in one place', () => {

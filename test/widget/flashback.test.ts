@@ -235,6 +235,23 @@ describe('flashbacks in live mode', () => {
     expect(shown().slice(0, 3)).toEqual(['moment:goal:start', 'moment:goal:end', `flashback:start@${stream.t(GOAL)}`])
   })
 
+  it('cuts a replay playing as a goal is labelled, before its scorer comes: a human label goes first', () => {
+    const { tracker } = mount()
+    const stream = new Stream(tracker)
+    const log = events(tracker)
+    goalThenRun(stream, 25)
+    const from = log.length
+    const since = () => log.slice(from).filter((e) => e.startsWith('flashback') || e.startsWith('moment:goal'))
+    expect(log.filter((e) => e.startsWith('flashback'))).toEqual([`flashback:start@${stream.t(GOAL)}`])
+    // The camera still away, a goal is labelled on the held frame, and no scorer comes.
+    stream.push(1, 'long', () => ({ labels: [{ action_type: 'Goal', team_id: 0 }] }))
+    stream.push(1, 'long')
+    expect(since()).toEqual([`flashback:end@${stream.t(GOAL)}`])
+    // It plays once its wait is over, on the live frame.
+    stream.push(Math.round(SCORER_WAIT_S / 0.04) + 5, 'long')
+    expect(since()).toEqual([`flashback:end@${stream.t(GOAL)}`, 'moment:goal:start'])
+  })
+
   it('names who a label names in a replay, as live: the corner’s team, the card’s player', () => {
     const { tracker } = mount({ teams: { home: { name: 'Ajax' }, away: { name: 'PSV' } } })
     const stream = new Stream(tracker)

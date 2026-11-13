@@ -704,15 +704,23 @@ export class Director {
         this.throwIn.start(time)
         this.request(this.throwIn)
       }
-      // An attack shows alongside a throw-in, but not over a goal, a corner or a label card,
-      // nor over the attack covering a player loss: the one there is stands in for it.
-      const attack = this.attack.detect(frame, setPiece || this.playerLoss.active)
+      // A human's label goes before an attack and the attack over a player loss: whatever it plays,
+      // a throw-in, a small card and a goal waiting for its scorer included, the attack showing
+      // goes, and none starts while it shows. The reference's throw-in shows alongside an attack;
+      // ours does not.
+      const labelShowing = setPiece || this.goal.waiting || this.smallCardShowing() || this.throwIn.active
+      if (labelShowing) {
+        this.stopMoment(this.attack)
+        this.stopMoment(this.playerLoss)
+      }
+      // Nor does an attack show over the attack covering a player loss: the one there is stands in for it.
+      const attack = this.attack.detect(frame, labelShowing || this.playerLoss.active)
       if (attack) {
         this.attack.start(attack.target, attack.ball)
         this.request(this.attack)
       }
-      // A player loss is covered when nothing but a throw-in is showing.
-      const cover = this.playerLoss.detect(record, time, setPiece || this.attack.active)
+      // A player loss is covered when no label's moment is showing.
+      const cover = this.playerLoss.detect(record, time, labelShowing || this.attack.active)
       if (cover) {
         this.playerLoss.start(cover)
         this.request(this.playerLoss)
@@ -885,6 +893,11 @@ export class Director {
       player: team === null || number === null ? label.name : this.options.playerName(team, number, label.name),
       color: playerCardColor(label.key),
     }
+  }
+
+  /** Whether a small card, a foul, a shot or a header on goal, is showing, fading out included. */
+  private smallCardShowing(): boolean {
+    return this.labelCards.some((card) => card.small && card.active)
   }
 
   private stopSmallCards(): void {

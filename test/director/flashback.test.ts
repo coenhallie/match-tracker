@@ -257,12 +257,12 @@ describe('Flashback', () => {
     expect(d.fb.active).toBe(false)
   })
 
-  it('plays on while a live goal waits for its scorer: the goal cuts it once it plays', () => {
+  it('cuts on a live goal waiting for its scorer: a human label goes before a replay', () => {
     const d = make(storeWith(100).store)
     d.run(200, 2, () => longRun())
     expect(d.fb.active).toBe(true)
-    expect(d.step(rec(202, longRun()), { goalWaiting: true }).events).toEqual([])
-    expect(d.fb.active).toBe(true)
+    expect(d.step(rec(202, longRun()), { goalWaiting: true }).events).toEqual([{ phase: 'end', at: 100 }])
+    expect(d.fb.active).toBe(false)
   })
 
   it('cuts on a live label moment, the layer going off, or cut()', () => {

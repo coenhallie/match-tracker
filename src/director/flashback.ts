@@ -71,7 +71,8 @@ export interface FlashbackLive {
   labelMoment: boolean
   /**
    * Whether a live goal is waiting for its scorer's label (goal.ts, "The scorer"): it is about to
-   * play, and plays before any clip, so none starts meanwhile. One playing plays on until it does.
+   * play, and a human's label goes before a replay, so it cuts the clip playing, and none starts
+   * meanwhile, as for a label moment showing.
    */
   goalWaiting: boolean
   /** Whether the `flashback` layer is on. */
@@ -291,13 +292,14 @@ export class Flashback {
   }
 
   /**
-   * Whether the clip playing is cut off now: by a live label moment, the layer going off, or a
+   * Whether the clip playing is cut off now: by a live label moment or a live goal waiting for its
+   * scorer, the layer going off, or a
    * record that says it is valid outside a short gap. A carried guess that the run ended never
    * cuts it on its own: the next record that says decides, and if none has by MERGE_GAP_S after
    * the guess, it ends then.
    */
   private cuts(nowMs: number, live: FlashbackLive): boolean {
-    if (live.labelMoment || !live.layerOn) return true
+    if (live.labelMoment || live.goalWaiting || !live.layerOn) return true
     if (this.guessMs !== null && nowMs - this.guessMs >= MERGE_GAP_S * 1000) return true
     return runEnded(this.stated)
   }

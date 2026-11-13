@@ -284,6 +284,12 @@ nothing. The bottom-left action text follows the same rule: it lists only the
 human labels, unless `aiLabels` is on, when it lists every label as the export
 has it. A moment played with `trigger` needs no label at all.
 
+A human's label goes before the attack, the attack over a player loss and a
+replay: whatever moment it plays, the attack showing goes and none starts while
+it shows, and in live mode a replay playing ends and none starts. A goal waiting
+for its scorer counts as showing. video-annotation's throw-in shows alongside an
+attack; the widget's does not.
+
 A label matches however it is written: case is ignored, spaces, underscores
 and hyphens count the same, and a dotted prefix is dropped. `VAR check`,
 `var check`, `VAR_CHECK` and `EventType.VAR_CHECK` are all the VAR check's label.
@@ -348,7 +354,9 @@ the "GOAL" banner. video-annotation has no scorer.
 - **Live, a goal waits for its scorer**, up to 6 s of the stream's clock, and
   plays when they come, with them under it. With no scorer by then, it plays
   without. The shot is the one on the goal's record: by the scorer's, the ball
-  has gone on. No replay starts while a goal waits (see [Flashbacks](#flashbacks)).
+  has gone on. As it is labelled, a human's label going first, the attack (and
+  the attack over a player loss) showing goes and none starts while it waits,
+  and a replay playing ends and none starts (see [Flashbacks](#flashbacks)).
 - **In replay** the goal plays on its label, as video-annotation's does.
 - Either way, a scorer whose label comes while their goal plays, before it
   starts to close, is named under it, fading in. One that comes later is not
@@ -538,8 +546,10 @@ on goal label (`headerOnGoal`), each on by default. Each is shown as a throw-in 
   whatever its label does.
 - It plays once for each run of the label, which has to be off for 5 s of replay
   time to count as a new one.
-- An attack shows alongside it. It takes over from a throw-in or another small
-  card, and they from it, as they stand in one place.
+- It takes over from an attack, and from the attack over a player loss, and
+  none starts while it shows: a human's label goes before them, as a throw-in's
+  does. It takes over from a throw-in or another small card, and they from it,
+  as they stand in one place.
 - A goal, a corner, a free kick or a centre card takes over from it, and it does
   not go over one, but waits: if its label is still on when they end, it plays then.
 
@@ -559,7 +569,7 @@ default):
   the ball keeps moving, ringed in the team's colour.
 - It stays while the loss lasts, and fades out once 18 or more players have
   been tracked again for 0.5 s.
-- A goal, a corner, a free kick, or a VAR check, goal disallowed, half time, second half or full time takes over from it. An attack the team phase calls
+- A goal, a corner, a free kick, or a VAR check, goal disallowed, half time, second half or full time takes over from it, as do a throw-in, a foul, a shot or a header on goal and a goal waiting for its scorer: a human's label goes before it. An attack the team phase calls
   during a loss isn't shown on top of it.
 - With `debug` on, a badge says when this is happening.
 
@@ -638,8 +648,9 @@ live mode only.
   frame saying more, so no further replay starts on it. Such a frame never ends
   a replay: when the countdown it is taken by runs out, the replay waits for
   the next frame that says, for 1.5 s at most. It also ends when a
-  moment a human label started comes on in live play (the next may start once
-  that ends), when the widget comes back after being hidden or scrolled away
+  moment a human label started comes on in live play, or a goal is labelled
+  and waits for its scorer: a human's label goes before a replay (the next may
+  start once that ends), when the widget comes back after being hidden or scrolled away
   (the next may start at once), when the layer is switched off, and on
   `reset()`. A press on the pitch or the overlay or `trigger()` ends it too,
   and then no replay starts again until the camera is back.

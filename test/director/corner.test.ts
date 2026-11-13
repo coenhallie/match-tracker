@@ -281,7 +281,8 @@ describe('corner', () => {
       pitch.record(['Throw in'], { phase: BLUE_ATTACKING, ball: LEFT })
       pitch.animate(100)
       expect(pitch.replay.last()!.throwIn).toBeDefined()
-      expect(pitch.replay.last()!.attack).toBeDefined()
+      // The throw-in holds the attack back: a human's label goes before it.
+      expect(pitch.replay.last()!.attack).toBeUndefined()
       pitch.record(CORNER, { phase: BLUE_ATTACKING, ball: LEFT })
       pitch.animate(100)
       const last = pitch.replay.last()!

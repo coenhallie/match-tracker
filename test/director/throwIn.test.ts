@@ -163,8 +163,9 @@ describe('throw-in', () => {
     expect(lastThrowIn(replay)).toBeUndefined()
   })
 
-  // Beyond the reference's cases: attack and throw-in can show together.
-  it('shows alongside an attack', () => {
+  // Beyond the reference's cases, where an attack and a throw-in show together: a human's label goes
+  // before an attack (test/director/labelPriority.test.ts).
+  it('takes over from an attack, and holds one back while it shows', () => {
     const replay = ready()
     const attacking: TeamPhase = { possession: 0, attacks: { 0: 1, 1: -1 }, states: { 0: 'attacking', 1: 'defending' } }
     replay.set({ time: replay.time + 0.04, frame: frameAt(20), phase: attacking })
@@ -172,25 +173,10 @@ describe('throw-in', () => {
     expect(replay.last()?.attack).toBeDefined()
     replay.set({ time: replay.time + 0.04, frame: frameAt(20, THROW_IN), phase: attacking })
     animate(replay, 100)
-    expect(replay.last()?.attack).toBeDefined()
+    expect(replay.last()?.attack).toBeUndefined()
     expect(lastThrowIn(replay)?.side).toBe(1)
-  })
-
-  // The browser calls animation frames in the order they were asked for, and a running moment asks for
-  // its next frame as its callback runs: one started by the replay's tick, earlier in the same frame, goes
-  // first from then on.
-  it('takes its animation frame before an attack that was already running, when the tick started it', () => {
-    const replay = ready()
-    const attacking: TeamPhase = { possession: 0, attacks: { 0: 1, 1: -1 }, states: { 0: 'attacking', 1: 'defending' } }
     replay.set({ time: replay.time + 0.04, frame: frameAt(20), phase: attacking })
     animate(replay, 100)
-    const started = replay.frame({ time: replay.time + 0.04, frame: frameAt(20, THROW_IN), phase: attacking })
-    const before = started.paints.at(-1)!.layers.attack!.pulse
-    const [frame] = animate(replay, 1)
-    const [first, second] = frame!.paints
-    // The throw-in's callback paints first, with the attack as it was on the frame before.
-    expect(first!.layers.throwIn).toBeDefined()
-    expect(first!.layers.attack!.pulse).toBe(before)
-    expect(second!.layers.attack!.pulse).not.toBe(before)
+    expect(replay.last()?.attack).toBeUndefined()
   })
 })
