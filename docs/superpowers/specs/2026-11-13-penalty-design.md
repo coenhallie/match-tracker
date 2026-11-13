@@ -150,9 +150,11 @@ the live pitch".
 
 ### Fitting the frame to the canvas
 
-The scene is designed for a 1600 × 1100 frame; the widget's canvas has the pitch's aspect. Fit
-the frame whole into the canvas, centred, at the larger scale that keeps it all in (my call),
-and fill the rest with the scene's green. The banners and text are the widget's own, drawn as its
+Laid out as every Figma frame is in the widget (freeKick.ts and labelCard.ts in render): design
+pixels through `designUnit`, the design's middle (800, 550) on the pitch's middle, fixed to the
+frame while the view zooms, as the cards are. The green fills the whole frame. So placed, the
+scene's pieces, from the top banner (y 64) to the result banner's foot (y 1020), fall inside the
+widget's 1280 × 720 frame (settled while planning, over an earlier "fit the frame whole"). The banners and text are the widget's own, drawn as its
 other banners and its team lines are, not images.
 
 ### Words
@@ -178,7 +180,9 @@ One moment, the penalty, with these phases: card, waiting, kick, holding, leavin
 - **A result with no penalty showing** (it came after the 20 s, or the widget joined after the
   Penalty): the scene fades in already in place (no card) and the kick plays at once, with the
   result's own team (my call).
-- **20 s with no result:** leaving, from wherever it is (card or waiting).
+- **20 s with no result:** leaving, from wherever it is (card or waiting). The 20 s are on the
+  clock, which stands still when the live stream stalls, so the scene also leaves after 40 s of
+  waiting on screen whatever the clock (settled while planning, so a stall cannot hang it).
 - **A second Penalty** while one shows starts it again from the card, with the new team and a
   new 20 s (my call).
 - **A second result** while one is playing is ignored (my call).
@@ -207,7 +211,8 @@ The countdown in the brainstorm's mockup was for testing: viewers see no countdo
 
 The same in both. In replay the result is on a later record and could be known ahead, but the
 penalty plays as the labels come, as it does live (my call). Like every moment it plays only during
-playback; the 20 s are on the clock, so they stand still while playback does.
+playback: a pause, a seek or a step ends it, as it ends every moment (`stopSequences`; settled while
+planning, over an earlier "the 20 s stand still").
 
 ### In a replay (the flashback)
 
