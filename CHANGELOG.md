@@ -6,6 +6,8 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-11-13
+
 The goal names its scorer, and every label names its team on production too.
 
 ### What you see
