@@ -6,6 +6,8 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.21.1] - 2026-11-13
+
 ### What you see
 
 - **A goal with its scorer lasts 6 s**, where it lasted 3.2 s, so the scorer
