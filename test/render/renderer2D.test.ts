@@ -12,6 +12,7 @@ import type { Frame } from '../../src/model/types'
 import { PERSON_COLORS, DIMMED_PLAYER_ALPHA, NEARBY_OUTLINE, PLAYER_RADIUS, BALL_RADIUS, CARRIER_GROWTH } from '../../src/render/constants'
 import { designUnit, PITCH_LINE_ALPHA } from '../../src/render/pitchGeometry'
 import { trailOpacity } from '../../src/analysis/ballTrail'
+import type { PenaltyIndicator } from '../../src/render/penalty'
 import { UPRIGHT, footballPatches, rolled } from '../../src/analysis/football'
 import { fakeCanvas, stubOffscreenCanvas, type Op } from '../helpers/recordingCtx'
 import { build2DTransform, NET_DEPTH_METRES, worldToPx } from '../../src/model/pitch'
@@ -1312,5 +1313,82 @@ describe('a frame on another pitch', () => {
     expect(offscreen.ops.length).toBe(drawnFor105)
     renderer.renderFrame(onPitch(120, 80, 0, 0))
     expect(offscreen.ops.length).toBeGreaterThan(drawnFor105)
+  })
+})
+
+describe('the penalty over the pitch', () => {
+  /** Close to the ball, so not faint for being far from it. */
+  const PLAYER = { x: 15, y: -5 }
+  const BALL = { x: 20, y: -10 }
+  const T = build2DTransform(PITCH)
+  const [PX, PY] = worldToPx(PLAYER.x, PLAYER.y, T)
+  const [BX, BY] = worldToPx(BALL.x, BALL.y, T)
+  const frame = {
+    pitch_dimensions: PITCH,
+    teams: [{ team_id: 0, players: [{ track_id: 4, person_type: 'PersonType.PLAYER', projected_coordinates: PLAYER }] }],
+    balls: [{ projected_coordinates: BALL }],
+    state: { actions: [{ action_type: 'Penalty', action_origin: 'human' }] },
+  } as unknown as Frame
+  const penalty = (over: Partial<PenaltyIndicator> = {}): PenaltyIndicator => ({
+    card: 0,
+    scene: 1,
+    team: 'Team Away',
+    waitMs: 0,
+    result: null,
+    kick: 0,
+    afterKickMs: 0,
+    banner: 0,
+    still: false,
+    ...over,
+  })
+  function render(over: Partial<PenaltyIndicator> | null, zoomed = false) {
+    const { canvas, ops } = fakeCanvas()
+    const renderer = createRenderer(canvas)
+    if (zoomed) renderer.setView({ zoom: 2, panX: -300, panY: 120, renderedWidth: 1280 })
+    renderer.renderFrame(frame, over === null ? {} : { penalty: penalty(over) })
+    return ops
+  }
+  /** Every op drawn at this point: the player or the ball. */
+  const at = (ops: Op[], x: number, y: number) =>
+    ops.filter((o) => o.op === 'arc' && Math.abs((o.args[0] as number) - x) < 1e-6 && Math.abs((o.args[1] as number) - y) < 1e-6)
+
+  it('fades the players and the ball under the card', () => {
+    const ops = render({ card: 0.25, scene: 0 })
+    expect(at(ops, PX, PY)[0]!.globalAlpha).toBeCloseTo(0.75, 6)
+    expect(at(ops, BX, BY)[0]!.globalAlpha).toBeCloseTo(0.75, 6)
+    const gone = render({ card: 1, scene: 0 })
+    expect(at(gone, PX, PY)).toHaveLength(0)
+    expect(at(gone, BX, BY)).toHaveLength(0)
+  })
+
+  it('keeps them faded as the card hands over to the scene, and back as the scene leaves', () => {
+    const handing = render({ card: 0.4, scene: 0.6 })
+    expect(at(handing, PX, PY)).toHaveLength(0)
+    expect(at(handing, BX, BY)).toHaveLength(0)
+    const leaving = render({ scene: 0.3 })
+    expect(at(leaving, PX, PY)[0]!.globalAlpha).toBeCloseTo(0.7, 6)
+    expect(at(leaving, BX, BY)[0]!.globalAlpha).toBeCloseTo(0.7, 6)
+    expect(at(render(null), PX, PY)[0]!.globalAlpha).toBeCloseTo(1, 6)
+  })
+
+  it('draws the scene fixed to the frame in a zoomed view', () => {
+    const green = (ops: Op[]) => ops.find((o) => o.op === 'fillRect' && o.fillStyle.includes('#086046'))!
+    const plain = render({ result: 'scored', kick: 1, banner: 1 })
+    const zoomed = render({ result: 'scored', kick: 1, banner: 1 }, true)
+    expect(green(zoomed).args).toEqual(green(plain).args)
+    const texts = (ops: Op[]) => ops.filter((o) => o.op === 'fillText' && o.args[0] !== 'Penalty').map((o) => o.args)
+    expect(texts(zoomed)).toEqual(texts(plain))
+    // Drawn with the bitmap's scale only, not the view's, and the view put back after.
+    const from = zoomed.indexOf(green(zoomed))
+    expect(zoomed.slice(0, from).findLast((o) => o.op === 'setTransform')!.args).toEqual([1, 0, 0, 1, 0, 0])
+    expect(zoomed.slice(from).find((o) => o.op === 'setTransform')!.args).not.toEqual([1, 0, 0, 1, 0, 0])
+  })
+
+  it('draws the HUD over the scene', () => {
+    const ops = render({ result: 'scored', kick: 1, banner: 1 })
+    const scene = ops.findIndex((o) => o.op === 'fillText' && o.args[0] === 'SCORED!')
+    const hud = ops.findIndex((o) => o.op === 'fillText' && o.args[0] === 'Penalty')
+    expect(scene).toBeGreaterThanOrEqual(0)
+    expect(hud).toBeGreaterThan(scene)
   })
 })

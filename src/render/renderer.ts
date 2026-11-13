@@ -63,6 +63,10 @@
 //    have: a title over an icon or a short text across the middle of the pitch,
 //    everyone and the ball faded out, or a small one with the title alone along
 //    the bottom touchline, the players left as they are (labelCard.ts).
+//  - renderFrame takes an optional penalty, which the reference does not have:
+//    its card over everything, everyone and the ball faded out, then its scene,
+//    a green over the whole frame with the goal, the keeper and the kick, fixed
+//    to the frame under the HUD (penalty.ts).
 //  - renderFrame takes an optional ball trail, drawn over the players: the
 //    path the tracked ball took, with a dot wherever it turned (ballTrail.ts).
 //  - players are not labelled with their tracking id: it is the tracker's
@@ -106,6 +110,7 @@ import { drawCornerCard, drawCornerCone, type CornerBanner } from './corner.js'
 import { drawFreeKickCard, drawFreeKickPulse, drawFreeKickShade, type FreeKickBanner } from './freeKick.js'
 import { drawFlashback, type FlashbackIndicator } from './flashback.js'
 import { drawGoalBanner, type GoalBanner } from './goalBanner.js'
+import { drawPenalty, type PenaltyIndicator } from './penalty.js'
 import { footballPatches, UPRIGHT, type Spin } from '../analysis/football.js'
 import { computeViewMatrix, IDENTITY_VIEW, type PipelineView, type ViewMatrix } from './viewTransform.js'
 import { DEFAULT_THEME, type RenderTheme } from './theme.js'
@@ -209,6 +214,11 @@ export interface FrameLayers {
   smallLabelCard?: LabelCardIndicator | undefined
   /** The goal's card, over everything, fixed to the frame while the view zooms. */
   goalBanner?: GoalBanner | undefined
+  /**
+   * The penalty (penalty.ts): its card, then its scene over the whole frame, over everything but the
+   * HUD, fixed to the frame while the view zooms; everyone and the ball faded out under either.
+   */
+  penalty?: PenaltyIndicator | undefined
   /** The flashback's stroke and tab, over the goal's card and the action text, fixed to the frame while the view zooms. */
   flashback?: FlashbackIndicator | undefined
   /** Ring strengths, for a caller that fades the rings in and out. */
@@ -417,15 +427,17 @@ export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTh
       if (rings && id != null) return rings.possession.get(id) ?? 0
       return p.player.in_possession ? 1 : 0
     }
-    // During an attack, a corner, a free kick or a label card everyone fades out, players
+    // During an attack, a corner, a free kick, a label card or the penalty everyone fades out, players
     // and officials alike. Everything drawn for a person goes through here. A
     // card fading out as a corner fades in adds up to all of it, with the same
-    // 400 ms each way, so nobody shows through as one hands over to the other.
-    const card = layers.labelCard?.intensity ?? 0
+    // 400 ms each way, so nobody shows through as one hands over to the other;
+    // so do the penalty's card and its scene as one hands over to the other.
+    const penalty = layers.penalty ? layers.penalty.card + layers.penalty.scene : 0
+    const card = (layers.labelCard?.intensity ?? 0) + penalty
     const setPiece = (layers.corner?.playersFade ?? 0) + (layers.freeKick?.playersFade ?? 0) + (layers.throwInCard?.playersFade ?? 0)
     const fade = Math.max(attack?.playersFade ?? 0, setPiece + card)
     const shown = 1 - Math.min(1, Math.max(0, fade))
-    // A corner, a free kick or a label card fades out the ball and its trail too, leaving
+    // A corner, a free kick, a label card or the penalty fades out the ball and its trail too, leaving
     // nothing of play under the card. An attack keeps the ball, which it holds.
     const ballFade = (layers.corner?.ballFade ?? 0) + (layers.freeKick?.ballFade ?? 0) + (layers.throwInCard?.ballFade ?? 0) + card
     const ballShown = 1 - Math.min(1, Math.max(0, ballFade))
@@ -520,6 +532,12 @@ export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTh
       // behind it, and at that scale the card would cover the screen.
       ctx.setTransform(sx, 0, 0, sy, 0, 0)
       drawGoalBanner(ctx as CanvasRenderingContext2D, transform2d, layers.goalBanner, theme)
+      ctx.setTransform(...matrix)
+    }
+    if (layers.penalty) {
+      // Fixed to the frame, as the cards are: its scene covers the whole frame whatever the view.
+      ctx.setTransform(sx, 0, 0, sy, 0, 0)
+      drawPenalty(ctx as CanvasRenderingContext2D, transform2d, layers.penalty, theme)
       ctx.setTransform(...matrix)
     }
 

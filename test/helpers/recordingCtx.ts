@@ -63,8 +63,12 @@ export function recordingCtx() {
       ctx.snap('rect', args)
     },
     lineJoin: 'miter',
+    lineCap: 'butt',
     arc(...args: unknown[]) {
       ctx.snap('arc', args)
+    },
+    ellipse(...args: unknown[]) {
+      ctx.snap('ellipse', args)
     },
     fill() {
       ctx.snap('fill')
@@ -130,6 +134,10 @@ export function recordingCtx() {
     globalCompositeOperation: 'source-over',
     translate() {},
     scale() {},
+    // Recorded, unlike translate and scale, so a picture drawn turned shows where and how far.
+    transform(...args: unknown[]) {
+      ctx.snap('transform', args)
+    },
     fillText(...args: unknown[]) {
       ctx.snap('fillText', args)
     },
