@@ -30,7 +30,7 @@ export interface RenderTheme {
     scorer: CanvasImageSource | null
     /** On the throw-in's card (throwInCard.ts). */
     throwIn: CanvasImageSource | null
-    /** The penalty's card and scene (penalty.ts): its card icon, goal, keeper standing and diving, spinner ball and ball. */
+    /** The penalty's card and scene (render/penalty.ts): its card icon, goal, keeper standing and diving, spinner ball and ball. */
     penalty: CanvasImageSource | null
     penaltyGoal: CanvasImageSource | null
     penaltyKeeper: CanvasImageSource | null

@@ -84,6 +84,39 @@ describe('loadIcons', () => {
     }
   })
 
+  it("keeps the penalty's path numbers to the decimals each is drawn at", async () => {
+    const { loadIcons } = await import('../../src/assets/icons')
+    await loadIcons()
+    // The card's icon is drawn 3.25 times as large (208 px from 64), so it keeps two decimals; the scene's
+    // pictures are drawn at their own size, where one decimal is within 0.1 px.
+    const decimals = { 11: 2, 12: 1, 13: 1, 14: 1, 16: 1 } as const
+    for (const [index, places] of Object.entries(decimals)) {
+      const svg = svgOf(images[Number(index)]!.src)
+      const numbers = [...svg.matchAll(/ d="([^"]*)"/g)].flatMap((m) => m[1]!.match(/\d*\.\d+/g) ?? [])
+      expect(numbers.length).toBeGreaterThan(0)
+      for (const n of numbers) expect(n.split('.')[1]!.length, `${index}: ${n}`).toBeLessThanOrEqual(places)
+    }
+  })
+
+  it('draws the spinner ball as 48 wedges, dark at 12 o\'clock to white round clockwise, the first on top', async () => {
+    const { loadIcons } = await import('../../src/assets/icons')
+    await loadIcons()
+    const svg = svgOf(images[15]!.src)
+    const wedges = [...svg.matchAll(/<use href="#w"(?: transform="rotate\(([\d.]+) 64 64\)")? fill="#([0-9A-F]{6})"\/>/g)].map((m) => ({
+      angle: Number(m[1] ?? 0),
+      rgb: [0, 2, 4].map((i) => parseInt(m[2]!.slice(i, i + 2), 16)),
+    }))
+    expect(wedges).toHaveLength(48)
+    // In paint order the first wedge (angle 0) is last, so it covers the overlap of the one before it.
+    expect(wedges.map((w) => w.angle)).toEqual(Array.from({ length: 48 }, (_, i) => (47 - i) * 7.5))
+    expect(wedges.at(-1)!.rgb).toEqual([0x0d, 0x35, 0x29])
+    expect(wedges[0]!.rgb).toEqual([0xfc, 0xfd, 0xfd])
+    // Lighter every step clockwise.
+    const clockwise = wedges.toReversed()
+    for (let i = 1; i < clockwise.length; i++) expect(clockwise[i]!.rgb[0]).toBeGreaterThan(clockwise[i - 1]!.rgb[0]!)
+    expect(svg).not.toContain('foreignObject')
+  })
+
   it('loads one hand-and-card icon per card, filled in its colour', async () => {
     const { loadIcons } = await import('../../src/assets/icons')
     const icons = await loadIcons()
