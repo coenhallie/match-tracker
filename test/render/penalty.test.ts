@@ -142,8 +142,8 @@ describe('the penalty pose', () => {
     expect(pose.keeper.y).toBeCloseTo(484, 6)
     expect(pose.keeper.turnDeg).toBeCloseTo(0, 6)
     expect(pose.keeper.dive).toBe(1)
-    // The shadows: the ball's on the goal line (136:3176), the keeper's stretched (136:3177).
-    expect(pose.ballShadow).toEqual({ x: 560, y: 551, w: 63, h: 25 })
+    // The shadows: the ball's on the goal line (136:3176), under the ball; the keeper's stretched (136:3177).
+    expect(pose.ballShadow).toEqual({ x: 566, y: 551, w: 63, h: 25 })
     expect(pose.keeperShadow.x).toBeCloseTo(440, 6)
     expect(pose.keeperShadow.y).toBeCloseTo(587.5, 6)
     expect(pose.keeperShadow.w).toBeCloseTo(178, 6)
@@ -163,8 +163,10 @@ describe('the penalty pose', () => {
     expect(pose.trail.to).toBeCloseTo(e, 6)
     expect(pose.trail.from).toBeCloseTo(e - 0.66, 6)
     expect(pose.trail.alpha).toBe(1)
-    expect(pose.ballShadow.x).toBeCloseTo(403 + (560 - 403) * e, 6)
+    expect(pose.ballShadow.x).toBeCloseTo(x, 6)
+    expect(pose.ballShadow.y).toBeCloseTo(898 + (551 - 898) * e, 6)
     expect(pose.ballShadow.w).toBeCloseTo(126 + (63 - 126) * e, 6)
+    expect(pose.ballShadow.h).toBeCloseTo(50 + (25 - 50) * e, 6)
   })
 
   it('commits the keeper late', () => {
@@ -235,6 +237,21 @@ describe('the penalty pose', () => {
         expect(y).toBeLessThanOrEqual(last)
         last = y
       }
+    }
+  })
+
+  it('keeps the ball’s shadow under the ball through the kick and the miss’s carry-on', () => {
+    for (const result of ['scored', 'missed'] as const) {
+      for (const kick of [0, 0.1, 0.25, 0.4, 0.6, 0.8, 1]) {
+        const pose = penaltyPose(indicator({ result, kick }))
+        expect(pose.ballShadow.x).toBeCloseTo(pose.ball.x, 6)
+      }
+    }
+    for (const afterKickMs of [100, 250, 400]) {
+      const pose = penaltyPose(indicator({ result: 'missed', kick: 1, afterKickMs }))
+      expect(pose.ballShadow.x).toBeCloseTo(pose.ball.x, 6)
+      // On the ground: it stays on the goal line as the ball carries on over the bar.
+      expect(pose.ballShadow.y).toBe(551)
     }
   })
 

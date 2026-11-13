@@ -123,7 +123,7 @@ const KICKS: Record<PenaltyResult, { c1: Point; c2: Point; end: Point; trailFrom
     on: { at: { x: 616, y: 145 }, size: 54 },
   },
 }
-/** The ball's shadow on the goal line at the kick's end, either way (136:3176, 136:3438). */
+/** The ball's shadow at the kick's end, either way: on the goal line, its size as Figma's (136:3176, 136:3438); under the ball. */
 const LINE_SHADOW: Ellipse = { x: 560, y: 551, w: 63, h: 25 }
 
 /** The keeper standing (136:2918, 191 by 194) and his shadow (136:3142). */
@@ -257,12 +257,13 @@ export function penaltyPose(p: PenaltyIndicator): PenaltyPose {
   const kick = KICKS[p.result]
   const e = easeOutCubic(clamp01(p.kick))
   let ball = { ...blossom(kick, e, e, e), size: lerp(SPINNER_PX, KICKED_PX, e), turnDeg: KICK_TURN_DEG * e, alpha: 1 }
-  let ballShadow = lerpEllipse(SPOT_SHADOW, LINE_SHADOW, e)
   if (kick.on && p.kick >= 1) {
     const m = clamp01(p.afterKickMs / PENALTY_MISS_ON_MS)
     ball = { ...ball, x: lerp(kick.end.x, kick.on.at.x, m), y: lerp(kick.end.y, kick.on.at.y, m), size: lerp(KICKED_PX, kick.on.size, m), alpha: 1 - m }
-    ballShadow = { ...ballShadow, x: ballShadow.x + (ball.x - kick.end.x) }
   }
+  // On the ground under the ball: across with it, back from the spot's line to the goal line and
+  // smaller as the kick goes, as Figma's shadows are at either end.
+  const ballShadow = { ...lerpEllipse(SPOT_SHADOW, LINE_SHADOW, e), x: ball.x }
   const k = easeOutCubic(clamp01((p.kick - COMMIT_FROM) / COMMIT_OVER))
   return {
     ball,
