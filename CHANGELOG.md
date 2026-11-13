@@ -6,6 +6,18 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### What you see
+
+- **A throw-in the camera cuts away from shows a card across the middle**, from
+  the match-summary design (viewport/eventThrowInExclusive): "THROW IN" and its
+  icon, the team under it, and a pulse on the touchline where the ball went out,
+  as everyone on the pitch and the ball fade out. Live, it is the card when the
+  record the throw-in is labelled on is invalid, or its lookahead says an
+  invalid one is due within 3 s; otherwise the small band along the bottom
+  touchline shows, as before. The card stays for at least 2 s, and after that
+  while the camera is away, and fades out as it is back. In replay mode, whose
+  data says nothing of valid frames, the throw-in is always the band.
+
 ## [0.21.3] - 2026-11-13
 
 ### What you see

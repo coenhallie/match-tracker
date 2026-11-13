@@ -6,7 +6,7 @@ import { ICON_CARD_KEYS, iconCardRecord, playerCardColor, type IconCardKey } fro
  * corner (CORNER_SVG). The label cards' are their designs' (LABEL_CARD_ICONS).
  * The free kick's is video-annotation's src/assets/free-kick.svg at 6f14d1f,
  * copied byte for byte, which the free kick's design (viewport/eventFreeKickRightSide)
- * draws 3.25 times as large. The goal's scorer's is their design's (SCORER_SVG). The reference's goal card and its goal-net icon are
+ * draws 3.25 times as large. The goal's scorer's is their design's (SCORER_SVG), and so is the throw-in card's (THROW_IN_SVG). The reference's goal card and its goal-net icon are
  * drawn only by the parity test, which brings the card no icon, so that icon is
  * not loaded.
  */
@@ -134,6 +134,28 @@ const SCORER_SVG = `<svg preserveAspectRatio="none" overflow="visible" style="di
 </svg>
 `
 
+/**
+ * The throw-in card's icon, as Figma exports it for viewport/eventThrowInExclusive (banner 136:2337,
+ * throw_in), copied byte for byte: drawn in the card's icon slot (throwInCard.ts in render).
+ */
+const THROW_IN_SVG = `<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="123.5" height="156" viewBox="0 0 123.5 156" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="throw_in">
+<g id="Group">
+<path id="Vector" d="M60.775 104.325C28.925 104.325 2.925 89.7 2.925 71.5C2.925 53.3 10.075 51.025 25.35 45.175C28.6 43.875 28.275 40.3 27.95 35.1C27.95 33.15 27.625 31.2 27.625 29.25C27.625 26.325 30.875 23.075 31.85 22.425C39 20.475 52 19.5 60.125 19.5C68.25 19.5 79.3 19.825 88.075 22.425C89.05 23.4 92.3 26.65 92.625 29.575C92.95 32.175 91.975 35.425 91.325 37.7C90.675 39.65 89.7 42.9 92.95 44.2C109.2 50.375 118.625 60.45 118.625 71.5C118.625 89.7 92.625 104.325 60.775 104.325Z" fill="#156C52"/>
+<path id="Vector_2" d="M60.125 22.75C68.25 22.75 78.325 23.075 86.45 25.35C87.425 26.325 89.05 28.275 89.375 30.225C89.375 32.175 88.725 35.1 88.075 36.725C85.8 43.225 88.725 46.15 91.65 47.125C106.275 52.65 115.375 62.075 115.375 71.5C115.375 85.8 93.6 101.075 60.775 101.075C27.95 101.075 6.175 85.8 6.175 71.5C6.175 57.2 8.125 55.25 26.325 48.425C31.85 46.475 31.2 40.95 30.875 34.775C30.875 32.825 30.55 30.875 30.55 29.25C30.55 27.625 31.85 26.325 32.825 25.675C39.325 24.05 51.025 22.75 59.8 22.75M60.125 16.25C51.35 16.25 38.35 17.55 30.875 19.5C29.575 19.825 24.375 24.375 24.375 29.25C24.375 34.125 25.675 41.6 24.375 42.25C7.475 48.75 0 58.825 0 71.5C0 91.325 27.3 107.575 61.1 107.575C94.9 107.575 122.2 91.325 122.2 71.5C122.2 51.675 111.15 47.45 94.25 41.275C93.6 41.275 96.85 34.775 96.2 29.25C95.55 24.05 90.35 19.825 89.7 19.5C81.25 16.9 70.85 16.25 60.45 16.25H60.125Z" fill="#E2E8F0"/>
+</g>
+<path id="Vector_3" d="M30.55 146.9L23.075 109.525C23.075 107.575 21.775 105.95 20.15 104.65C13.65 100.425 0 95.55 0 91.325C0 87.1 14.625 71.5 20.8 65.975C22.1 64.675 23.725 64.35 25.675 64.35H95.875C97.175 64.35 98.475 64.675 99.775 65.325C105.95 68.9 123.5 84.5 123.5 89.05C123.5 93.6 111.15 97.175 105.625 102.05C104.325 103.025 103.35 104.65 103.35 106.275L95.875 146.9C95.55 150.15 75.725 156 63.7 156C51.675 156 31.525 150.15 30.875 146.9H30.55Z" fill="#E2E8F0"/>
+<path id="Vector_4" d="M60.125 58.5C76.2793 58.5 89.375 45.4043 89.375 29.25C89.375 13.0957 76.2793 0 60.125 0C43.9707 0 30.875 13.0957 30.875 29.25C30.875 45.4043 43.9707 58.5 60.125 58.5Z" fill="#156C52"/>
+<path id="Vector_5" d="M76.375 76.375C76.375 82.55 69.225 97.5 60.125 97.5C51.025 97.5 43.875 82.55 43.875 76.375C43.875 70.2 51.025 65 60.125 65C69.225 65 76.375 70.2 76.375 76.375Z" fill="#156C52"/>
+<path id="Vector_6" d="M82.875 29.25C82.875 41.925 72.8 52 60.125 52C47.45 52 37.375 41.925 37.375 29.25C37.375 16.575 47.45 6.5 60.125 6.5C72.8 6.5 82.875 16.575 82.875 29.25ZM78.65 29.25L76.375 31.2L70.525 26L72.15 18.2H75.4C73.125 15.275 69.875 13 66.3 11.7L67.6 14.625L60.775 18.525L53.95 14.625L55.25 11.7C51.675 13 48.425 15.275 46.15 18.525H49.4L51.025 26L45.175 31.2L42.9 29.25C42.9 33.15 44.2 37.05 46.475 39.975L47.125 36.725L54.925 37.7L58.175 44.85L55.575 46.475C59.15 47.775 63.375 47.775 66.95 46.475L64.35 44.85L67.6 37.7L75.4 36.725L76.05 39.975C78.325 36.725 79.625 33.15 79.625 29.25H78.65ZM55.575 35.75L52.975 27.3L60.125 22.1L67.275 27.3L64.675 35.75H55.9H55.575Z" fill="#FDE047"/>
+<g id="Group_2">
+<path id="Vector_7" d="M60.45 82.55C73.7324 82.55 84.5 71.7824 84.5 58.5C84.5 45.2176 73.7324 34.45 60.45 34.45C47.1676 34.45 36.4 45.2176 36.4 58.5C36.4 71.7824 47.1676 82.55 60.45 82.55Z" fill="#156C52"/>
+<path id="Vector_8" d="M60.45 37.7C72.15 37.7 81.25 47.125 81.25 58.5C81.25 69.875 71.825 79.3 60.45 79.3C49.075 79.3 39.65 69.875 39.65 58.5C39.65 47.125 49.075 37.7 60.45 37.7ZM60.45 31.2C45.175 31.2 33.15 43.55 33.15 58.5C33.15 73.45 45.5 85.8 60.45 85.8C75.4 85.8 87.75 73.45 87.75 58.5C87.75 43.55 75.4 31.2 60.45 31.2Z" fill="#E2E8F0"/>
+</g>
+</g>
+</svg>
+`
+
 /** Each label card's icon. Where it goes on the card is LABEL_CARD_ICON_BOXES (labelCard.ts in render). */
 const LABEL_CARD_ICONS: Record<IconCardKey, string> = {
   varCheck: VAR_CHECK_SVG,
@@ -153,10 +175,12 @@ export type CardIcons = {
   substitutionIn: HTMLImageElement | null
   /** Before the goal's scorer's name. */
   scorer: HTMLImageElement | null
+  /** On the throw-in's card, for a throw-in the camera cuts away from. */
+  throwIn: HTMLImageElement | null
 } & Record<IconCardKey, HTMLImageElement | null>
 
 /** No icon loaded yet: every card is drawn without its own. */
-export const NO_ICONS: CardIcons = { corner: null, freeKick: null, substitutionOut: null, substitutionIn: null, scorer: null, ...iconCardRecord(() => null) }
+export const NO_ICONS: CardIcons = { corner: null, freeKick: null, substitutionOut: null, substitutionIn: null, scorer: null, throwIn: null, ...iconCardRecord(() => null) }
 
 let loading: Promise<CardIcons> | null = null
 
@@ -183,6 +207,7 @@ export function loadIcons(): Promise<CardIcons> {
     load(SUBSTITUTION_OUT_SVG),
     load(SUBSTITUTION_IN_SVG),
     load(SCORER_SVG),
+    load(THROW_IN_SVG),
   ]).then(([corner, freeKick, ...rest]) => ({
     corner: corner ?? null,
     freeKick: freeKick ?? null,
@@ -190,6 +215,7 @@ export function loadIcons(): Promise<CardIcons> {
     substitutionOut: rest[ICON_CARD_KEYS.length] ?? null,
     substitutionIn: rest[ICON_CARD_KEYS.length + 1] ?? null,
     scorer: rest[ICON_CARD_KEYS.length + 2] ?? null,
+    throwIn: rest[ICON_CARD_KEYS.length + 3] ?? null,
   }))
   return loading
 }

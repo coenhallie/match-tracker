@@ -51,7 +51,8 @@ describe('loadIcons', () => {
     expect(icons.substitutionOut).toBe(images[7])
     expect(icons.substitutionIn).toBe(images[8])
     expect(icons.scorer).toBe(images[9])
-    expect(images).toHaveLength(10)
+    expect(icons.throwIn).toBe(images[10])
+    expect(images).toHaveLength(11)
     for (const image of images) expect(image.src).toMatch(/^data:image\/svg\+xml,/)
     expect(svgOf(images[0]!.src)).toContain('<g id="corner">')
     expect(svgOf(images[1]!.src)).toContain('<g id="free_kick">')
@@ -94,6 +95,15 @@ describe('loadIcons', () => {
     expect(svg).toContain('fill="#E2E8F0"')
   })
 
+  it("loads the throw-in card's icon as Figma exports it", async () => {
+    const { loadIcons } = await import('../../src/assets/icons')
+    const icons = await loadIcons()
+    const svg = svgOf((icons.throwIn as unknown as { src: string }).src)
+    // viewport/eventThrowInExclusive's banner icon (136:2337): 123.5 by 156, in its 208 px slot.
+    expect(svg).toContain('viewBox="0 0 123.5 156"')
+    expect(svg).toContain('<g id="throw_in">')
+  })
+
   it('loads the free kick icon video-annotation had, which the design draws 3.25 times as large', async () => {
     const { loadIcons } = await import('../../src/assets/icons')
     await loadIcons()
@@ -114,18 +124,18 @@ describe('loadIcons', () => {
     const { loadIcons } = await import('../../src/assets/icons')
     const [a, b] = await Promise.all([loadIcons(), loadIcons()])
     expect(a).toBe(b)
-    expect(images).toHaveLength(10)
+    expect(images).toHaveLength(11)
   })
 
   it('gives null for an icon that fails to load', async () => {
     failing = true
     const { loadIcons } = await import('../../src/assets/icons')
-    expect(await loadIcons()).toEqual({ corner: null, freeKick: null, varCheck: null, goalDisallowed: null, yellowCard: null, redCard: null, substitution: null, substitutionOut: null, substitutionIn: null, scorer: null })
+    expect(await loadIcons()).toEqual({ corner: null, freeKick: null, varCheck: null, goalDisallowed: null, yellowCard: null, redCard: null, substitution: null, substitutionOut: null, substitutionIn: null, scorer: null, throwIn: null })
   })
 
   it('gives null for every icon where there is no Image', async () => {
     vi.stubGlobal('Image', undefined)
     const { loadIcons } = await import('../../src/assets/icons')
-    expect(await loadIcons()).toEqual({ corner: null, freeKick: null, varCheck: null, goalDisallowed: null, yellowCard: null, redCard: null, substitution: null, substitutionOut: null, substitutionIn: null, scorer: null })
+    expect(await loadIcons()).toEqual({ corner: null, freeKick: null, varCheck: null, goalDisallowed: null, yellowCard: null, redCard: null, substitution: null, substitutionOut: null, substitutionIn: null, scorer: null, throwIn: null })
   })
 })

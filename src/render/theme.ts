@@ -28,6 +28,8 @@ export interface RenderTheme {
     substitutionIn: CanvasImageSource | null
     /** Before the goal's scorer's name (goalBanner.ts). */
     scorer: CanvasImageSource | null
+    /** On the throw-in's card (throwInCard.ts). */
+    throwIn: CanvasImageSource | null
   } & Record<IconCardKey, CanvasImageSource | null>
   /** The bottom-left text for one of the frame's actions, from its `action_type`. */
   formatAction: (actionType: string) => string
@@ -85,7 +87,7 @@ export const DEFAULT_THEME: Readonly<RenderTheme> = Object.freeze({
     substitution: 'SUBSTITUTION',
   }),
   fonts: Object.freeze({ label: familyList(LABEL_FAMILY), title: familyList(TITLE_FAMILY) }),
-  icons: Object.freeze({ corner: null, freeKick: null, substitutionOut: null, substitutionIn: null, scorer: null, ...iconCardRecord(() => null) }),
+  icons: Object.freeze({ corner: null, freeKick: null, substitutionOut: null, substitutionIn: null, scorer: null, throwIn: null, ...iconCardRecord(() => null) }),
   formatAction: (actionType: string) => actionType,
   aiLabels: false,
 })

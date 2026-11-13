@@ -399,6 +399,28 @@ in the middle of that half, with the team taking it under the card.
 - The layer is `freeKickBanner`, not `freeKick`: video-annotation's free kick had
   a `freeKick` layer, which a browser may still keep switched off.
 
+#### Throw-in
+
+On a throw-in label (the `throwInBanner` layer, on by default), "THROW IN" shows
+in one of two ways.
+
+- **Play goes on on camera:** the small band along the bottom touchline, for
+  2 s, the players left as they are.
+- **The camera cuts away:** live, when the record the throw-in is labelled on is
+  invalid, or its lookahead says an invalid one is due within 3 s, "THROW IN"
+  and its icon show on a card across the middle, with the team under it (see
+  [A label's team](#a-labels-team)), and a pulse on the touchline where the ball
+  went out, as everyone on the pitch and the ball fade out. Where it went out is
+  the ball on the labelled record, or the last one tracked in the 5 s before,
+  on the touchline nearest it; with no ball known, the card shows alone. It
+  stays for at least 2 s, and after that while the camera is away, or the
+  cutaway it was shown for is still to come, up to 3 s after the label; it
+  fades out as the camera is back. No replay plays while it shows.
+- Replay data says nothing of which frames are valid, so in replay mode the
+  throw-in is always the band, as video-annotation's is.
+- It plays once for each run of the label, which has to be off for 5 s to count
+  as a new one. A goal or a corner takes over from it.
+
 #### VAR check, goal disallowed and second half
 
 These are the same card, a title over an icon or a short text on a dark band

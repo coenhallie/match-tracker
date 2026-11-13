@@ -101,7 +101,7 @@ function shows(layers: FrameLayers, moment: ReplayMoment): boolean {
     case 'freeKick':
       return layers.freeKick !== undefined
     case 'throwIn':
-      return layers.throwIn !== undefined
+      return layers.throwIn !== undefined || layers.throwInCard !== undefined
     default:
       return layers.labelCard?.key === moment || layers.smallLabelCard?.key === moment
   }
@@ -119,6 +119,7 @@ export function labelMomentShowing(layers: FrameLayers | null): boolean {
     layers.corner !== undefined ||
     layers.freeKick !== undefined ||
     layers.throwIn !== undefined ||
+    layers.throwInCard !== undefined ||
     layers.labelCard !== undefined ||
     layers.smallLabelCard !== undefined
   )

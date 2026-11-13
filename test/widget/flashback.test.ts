@@ -252,6 +252,38 @@ describe('flashbacks in live mode', () => {
     expect(since()).toEqual([`flashback:end@${stream.t(GOAL)}`, 'moment:goal:start'])
   })
 
+  it('shows the throw-in card through a cutaway after a throw-in, with no replay over it, and goes as the camera is back', () => {
+    const { tracker } = mount()
+    const stream = new Stream(tracker)
+    const log = events(tracker)
+    // A goal kept as a clip, then a throw-in 0.4 s before the camera cuts away for 8 s.
+    stream.push(RUN - 10, 'valid', (i) => (i === GOAL ? { labels: ['goal'] } : {}))
+    const from = control.drawn.length
+    stream.push(1, { invalidIn: 0.4 }, () => ({ labels: [{ action_type: 'Throw in', team_id: 807, is_home: 'away', team_name: 'Australia' }] }))
+    stream.push(9, { invalidIn: 0.36 })
+    stream.push(200, { validIn: 8 })
+    const during = drawnSince(from)
+    expect(during.at(-1)?.layers?.throwInCard).toMatchObject({ intensity: 1 })
+    expect(during.some(({ layers }) => layers?.throwIn !== undefined)).toBe(false)
+    expect(log.filter((e) => e.startsWith('flashback'))).toEqual([])
+    // The camera back: it fades out.
+    stream.push(20, 'valid')
+    expect(control.drawn.at(-1)?.layers?.throwInCard).toBeUndefined()
+    expect(log.filter((e) => e.startsWith('moment:throwIn'))).toEqual(['moment:throwIn:start', 'moment:throwIn:end'])
+  })
+
+  it('shows the small throw-in band for a throw-in play goes on from on camera', () => {
+    const { tracker } = mount()
+    const stream = new Stream(tracker)
+    stream.push(100, 'valid')
+    const from = control.drawn.length
+    stream.push(1, 'valid', () => ({ labels: ['Throw in'] }))
+    stream.push(20, 'valid')
+    const during = drawnSince(from)
+    expect(during.some(({ layers }) => layers?.throwIn !== undefined)).toBe(true)
+    expect(during.some(({ layers }) => layers?.throwInCard !== undefined)).toBe(false)
+  })
+
   it('names who a label names in a replay, as live: the corner’s team, the card’s player', () => {
     const { tracker } = mount({ teams: { home: { name: 'Ajax' }, away: { name: 'PSV' } } })
     const stream = new Stream(tracker)

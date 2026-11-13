@@ -86,15 +86,29 @@ const PULSE_LINE_PX = 4
  * design's do.
  */
 export function drawFreeKickPulse(ctx: CanvasRenderingContext2D, t: Transform2D, banner: FreeKickBanner): void {
-  const alpha = clamp01(banner.intensity)
-  const ball = banner.ball
+  drawPulse(ctx, t, banner.ball, banner.rings, banner.intensity)
+}
+
+/**
+ * The pulse at `spot` on the pitch, in metres, its rings lit as `rings` says, at `intensity`: the
+ * free kick's, and the throw-in card's (throwIn.ts), whose design is the same. Nothing with no spot.
+ */
+export function drawPulse(
+  ctx: CanvasRenderingContext2D,
+  t: Transform2D,
+  spot: { x: number; y: number } | null,
+  rings: readonly number[],
+  intensity: number,
+): void {
+  const alpha = clamp01(intensity)
+  const ball = spot
   if (alpha <= 0 || !ball) return
   const u = designUnit(t)
   const [bx, by] = worldToPx(ball.x, ball.y, t)
   ctx.save()
   ctx.lineWidth = PULSE_LINE_PX * u
   for (let i = PULSE_RINGS.length - 1; i >= 0; i--) {
-    const k = alpha * clamp01(banner.rings[i] ?? 0)
+    const k = alpha * clamp01(rings[i] ?? 0)
     if (k <= 0) continue
     const ring = PULSE_RINGS[i]!
     ctx.fillStyle = `rgba(255, 255, 255, ${PULSE_FILL_ALPHA * k})`

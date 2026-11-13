@@ -101,6 +101,7 @@ import {
 import { trailOpacity, type BallTrail, type TrailPoint } from '../analysis/ballTrail.js'
 import { drawLabelCard, drawSmallLabelCard, type LabelCardIndicator } from './labelCard.js'
 import { drawThrowInIndicator, type ThrowInIndicator } from './throwIn.js'
+import { drawThrowInCard, drawThrowInPulse, type ThrowInCard } from './throwInCard.js'
 import { drawCornerCard, drawCornerCone, type CornerBanner } from './corner.js'
 import { drawFreeKickCard, drawFreeKickPulse, drawFreeKickShade, type FreeKickBanner } from './freeKick.js'
 import { drawFlashback, type FlashbackIndicator } from './flashback.js'
@@ -197,6 +198,11 @@ export interface FrameLayers {
   freeKick?: FreeKickBanner | undefined
   /** The throw-in indicator, over everything on the pitch, the players left as they are. */
   throwIn?: ThrowInIndicator | undefined
+  /**
+   * The card for a throw-in the camera cuts away from (throwInCard.ts): its pulse under the players,
+   * its card over everything on the pitch, everyone and the ball faded out.
+   */
+  throwInCard?: ThrowInCard | undefined
   /** The card a label plays (labelCard.ts), over everything on the pitch, everyone and the ball faded out. */
   labelCard?: LabelCardIndicator | undefined
   /** A small card a label plays (labelCard.ts), along the bottom touchline, the players left as they are. */
@@ -378,6 +384,8 @@ export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTh
       drawFreeKickShade(ctx as CanvasRenderingContext2D, transform2d, layers.freeKick)
       drawFreeKickPulse(ctx as CanvasRenderingContext2D, transform2d, layers.freeKick)
     }
+    // The throw-in card's pulse marks where the ball went out, on the touchline, under everyone.
+    if (layers.throwInCard) drawThrowInPulse(ctx as CanvasRenderingContext2D, transform2d, layers.throwInCard)
 
     // Goals, on every frame; a struck net bows out while it is hit.
     drawGoalNets(ctx as CanvasRenderingContext2D, pd, transform2d, overlay?.net)
@@ -414,12 +422,12 @@ export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTh
     // card fading out as a corner fades in adds up to all of it, with the same
     // 400 ms each way, so nobody shows through as one hands over to the other.
     const card = layers.labelCard?.intensity ?? 0
-    const setPiece = (layers.corner?.playersFade ?? 0) + (layers.freeKick?.playersFade ?? 0)
+    const setPiece = (layers.corner?.playersFade ?? 0) + (layers.freeKick?.playersFade ?? 0) + (layers.throwInCard?.playersFade ?? 0)
     const fade = Math.max(attack?.playersFade ?? 0, setPiece + card)
     const shown = 1 - Math.min(1, Math.max(0, fade))
     // A corner, a free kick or a label card fades out the ball and its trail too, leaving
     // nothing of play under the card. An attack keeps the ball, which it holds.
-    const ballFade = (layers.corner?.ballFade ?? 0) + (layers.freeKick?.ballFade ?? 0) + card
+    const ballFade = (layers.corner?.ballFade ?? 0) + (layers.freeKick?.ballFade ?? 0) + (layers.throwInCard?.ballFade ?? 0) + card
     const ballShown = 1 - Math.min(1, Math.max(0, ballFade))
     const alphaOf = (p: { faded: boolean }) => (p.faded && fadeFar ? DIMMED_PLAYER_ALPHA : 1) * shown
     // During an attack the ball is held where it was when the attack was
@@ -495,10 +503,11 @@ export function createRenderer(canvas: HTMLCanvasElement, initialTheme: RenderTh
     // they stay on the frame where the whole pitch has them, as the goal's
     // card does, rather than going partly out of view. In the whole pitch the
     // view is the frame's own, and they are drawn as they always were.
-    const cards = layers.throwIn || layers.corner || layers.freeKick || layers.labelCard || layers.smallLabelCard
+    const cards = layers.throwIn || layers.throwInCard || layers.corner || layers.freeKick || layers.labelCard || layers.smallLabelCard
     const moved = matrix.some((v, i) => v !== [sx, 0, 0, sy, 0, 0][i])
     if (cards && moved) ctx.setTransform(sx, 0, 0, sy, 0, 0)
     if (layers.throwIn) drawThrowInIndicator(ctx as CanvasRenderingContext2D, pd, transform2d, layers.throwIn, theme)
+    if (layers.throwInCard) drawThrowInCard(ctx as CanvasRenderingContext2D, transform2d, layers.throwInCard, theme)
     if (layers.corner) drawCornerCard(ctx as CanvasRenderingContext2D, transform2d, layers.corner, theme)
     if (layers.freeKick) drawFreeKickCard(ctx as CanvasRenderingContext2D, pd, transform2d, layers.freeKick, theme)
     if (layers.labelCard) drawLabelCard(ctx as CanvasRenderingContext2D, transform2d, layers.labelCard, theme)

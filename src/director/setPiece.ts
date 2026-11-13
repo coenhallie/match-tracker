@@ -41,15 +41,22 @@ export const startClock = (byHand: boolean): SetPieceClock => ({ startedMs: null
 
 /**
  * Move `clock` on to `ms`, for the set piece whose label was last seen at `labelAt`: whether it
- * goes on being drawn, or has ended.
+ * goes on being drawn, or has ended. `underWay` says whether it is still being taken, past
+ * CORNER_SHOW_MS: setPieceUnderWay unless another rule is given, as the throw-in's card's.
  */
-export function stepClock(ctx: MomentContext, clock: SetPieceClock, labelAt: number | null, ms: number): MomentStep {
+export function stepClock(
+  ctx: MomentContext,
+  clock: SetPieceClock,
+  labelAt: number | null,
+  ms: number,
+  underWay: () => boolean = () => setPieceUnderWay(ctx, labelAt),
+): MomentStep {
   if (clock.startedMs === null) clock.startedMs = ms
   clock.elapsedMs = ms - clock.startedMs
   const still = ctx.reducedMotion()
   const over = clock.byHand
     ? clock.elapsedMs >= CORNER_DEMO_MS - (still ? 0 : CORNER_OUT_MS)
-    : clock.elapsedMs >= CORNER_SHOW_MS && !setPieceUnderWay(ctx, labelAt)
+    : clock.elapsedMs >= CORNER_SHOW_MS && !underWay()
   if (clock.leavingFromMs === null && over) {
     if (still) return 'stop'
     clock.leavingFromMs = clock.elapsedMs

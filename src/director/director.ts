@@ -701,7 +701,7 @@ export class Director {
       if (this.throwIn.detect(frame, time, setPiece)) {
         // In the same place as a small card, which it takes over from.
         this.stopSmallCards()
-        this.throwIn.start(time)
+        this.throwIn.start(time, record)
         this.request(this.throwIn)
       }
       // A human's label goes before an attack and the attack over a player loss: whatever it plays,
@@ -1042,6 +1042,7 @@ export class Director {
       corner: this.corner.value(),
       freeKick: this.freeKick.value(),
       throwIn: this.throwIn.value(),
+      throwInCard: this.throwIn.cardValue(),
       labelCard: this.labelCards.find((card) => !card.small && card.active)?.value(),
       smallLabelCard: this.labelCards.find((card) => card.small && card.active)?.value(),
       goalBanner: this.goal.banner(),

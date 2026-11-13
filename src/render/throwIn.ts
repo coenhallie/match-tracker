@@ -48,12 +48,15 @@ export const THROW_IN_OUT_MS = 400
  */
 export const THROW_IN_REARM_S = 5
 
+/** A throw-in's labels, bare (actionName): "Throw in" and "EventType.THROW_IN" read as "throw in". */
+export const THROW_IN_LABELS = ['throw in'] as const
+
 /**
  * Whether the pipeline labelled this frame a throw-in, however the export
  * writes it ("Throw in", "EventType.THROW_IN"; see actionName).
  */
 export function isThrowInFrame(frame: Frame): boolean {
-  return frameHasAction(frame, 'throw in')
+  return THROW_IN_LABELS.some((name) => frameHasAction(frame, name))
 }
 
 /**
