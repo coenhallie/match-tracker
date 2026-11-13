@@ -83,8 +83,10 @@ export default defineConfig({
     // Lets go of what a test's DOM kept, between tests (see the file).
     setupFiles: ['test/helpers/setup.ts'],
     projects: [
-      // `npm test`: everything but test/dist, against the source.
-      { extends: true, test: { name: 'src', include: ['test/**/*.test.ts'], exclude: ['test/dist/**'] } },
+      // `npm test`: everything but test/dist, against the source. The widget's flashback tests play up to
+      // 30 s of a 25 Hz stream through a live widget: under 1 s each on their own, but 3 to 5 s in a full
+      // run with every worker busy, and up to 9 s on a busy machine, so the 5 s default is too tight.
+      { extends: true, test: { name: 'src', include: ['test/**/*.test.ts'], exclude: ['test/dist/**'], testTimeout: 30_000 } },
       // `npm run test:dist`, the last step of `npm run build`: the built dist against the source.
       // Each test plays real match data through two widgets and compares every draw: about
       // 3 s here and over 6 s on a CI runner for the longest, so the 5 s default is too tight.
