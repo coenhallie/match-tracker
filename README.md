@@ -432,9 +432,11 @@ widget's own: video-annotation has none.
 - **Any other human label ends the wait**, during the card or the scene: the
   penalty fades out over 0.6 s while that label's own moment comes in (a corner,
   a throw-in, a label card, the yellow and red cards and the substitutions
-  alike). A label on the `Penalty`'s own record, an AI label, or one that stays
-  on from before the `Penalty` does not count. The labelling tool's Cancel sends
-  nothing, so a penalty given and taken back waits until the next label.
+  alike). A yellow or red card or a substitution still waiting its turn from
+  before goes first, as such cards go before a throw-in or a small card
+  everywhere. A label on the `Penalty`'s own record, an AI label, or one that
+  stays on from before the `Penalty` does not count. The labelling tool's Cancel
+  sends nothing, so a penalty given and taken back waits until the next label.
 - **The team** is the one the `Penalty` label gives (see [A label's
   team](#a-labels-team)), whatever team its result gives: production has given
   the two different teams. A label without one shows no team.
@@ -448,10 +450,12 @@ widget's own: video-annotation has none.
   showing: a `Penalty`, `Penalty scored` or `Penalty missed` then plays nothing,
   then or after the goal (a goal waiting for its scorer does not hold them
   back). It takes over from an attack, the attack over a player loss, a corner,
-  a free kick, a throw-in and any label card. Once its result is in, it plays
-  out its kick and hold whatever comes: none of them starts over it, and the
-  yellow and red cards and the substitutions wait their turn. Live, a replay
-  playing ends, and none starts while it shows. The zoom near goal eases
+  a free kick, a throw-in and any label card. While it waits, no attack or
+  player loss cover starts. Once its result is in, it plays out its kick and
+  hold whatever comes: nothing starts over it, and the yellow and red cards and
+  the substitutions wait their turn. As it fades out at the end, whatever is due
+  comes in under it. Live, a replay playing ends, and none starts while it
+  shows. The zoom near goal eases
   out to the whole pitch while it shows, and back in after.
 - It plays the labels as they come, live and in replay alike. A pause, a seek,
   a step or a press on the pitch ends it, as it ends every moment.
@@ -460,7 +464,8 @@ widget's own: video-annotation has none.
   was played on the pitch. With the layer on, a `Penalty scored` in a clip plays
   no goal either; with it off, it plays the goal, as live.
 - **Played by hand**, `trigger('penalty', team)` plays the card and the scene
-  waiting, which goes after 4 s; `trigger('penaltyScored', team)` and
+  waiting, which goes after 4 s, or sooner on another label during playback;
+  `trigger('penaltyScored', team)` and
   `trigger('penaltyMissed', team)` play the scene with that kick at once, with no
   card. Each names `team`.
 - **With reduced motion** nothing fades, the ball does not turn and the keeper

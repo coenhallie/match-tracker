@@ -258,6 +258,16 @@ describe('the penalty', () => {
     expect(card.replay.outputs.some((output) => output.layers?.labelCard?.key === 'yellowCard')).toBe(true)
   })
 
+  it('ends a penalty played by hand on another label, before its 4 s', () => {
+    const pitch = new Pitch()
+    pitch.replay.trigger('penalty', 1)
+    pitch.animate(PENALTY_CARD_MS + PENALTY_SCENE_IN_MS + 100)
+    expect(pitch.phase()).toBe('waiting')
+    pitch.record([human('Throw in', 'Team Home')])
+    pitch.animate(1)
+    expect(pitch.phase()).toBe('leaving')
+  })
+
   it('plays out its kick over another label', () => {
     const pitch = new Pitch()
     pitch.toWaiting()
@@ -549,18 +559,30 @@ describe('the penalty under reduced motion', () => {
     return pitch
   }
 
-  it('waits however long, painting every frame, and goes at once on another label', () => {
+  // Review: with no wait to count down, the still scene painting every frame was a loop with no end.
+  it('waits however long asking for no frames, and goes at once on another label', () => {
     const pitch = waiting()
     const frames = pitch.animate(60_000)
     expect(pitch.phase()).toBe('waiting')
-    expect(frames.every((output) => output.animating && output.paints.length === 1)).toBe(true)
+    expect(frames.slice(2).every((output) => output.paints.length === 0)).toBe(true)
+    expect(pitch.replay.outputs.at(-1)!.animating).toBe(false)
     pitch.play(30)
     expect(pitch.phase()).toBe('waiting')
-    pitch.record([human('Throw in', 'Team Home')])
+    expect(pitch.penalty()).toMatchObject({ scene: 1, still: true })
+    expect(pitch.record([human('Throw in', 'Team Home')]).animating).toBe(true)
     pitch.animate(1)
     // Gone without a fade.
     expect(pitch.phase()).toBeNull()
     expect(pitch.penalty()).toBeUndefined()
+  })
+
+  it('wakes from its still wait for its result', () => {
+    const pitch = waiting()
+    pitch.animate(5000)
+    expect(pitch.replay.outputs.at(-1)!.animating).toBe(false)
+    expect(pitch.record([SCORED]).animating).toBe(true)
+    pitch.animate(1)
+    expect(pitch.penalty()).toMatchObject({ result: 'scored', kick: 1, banner: 1 })
   })
 
   it('starts again on a new penalty, and moves again when reduced motion goes off', () => {

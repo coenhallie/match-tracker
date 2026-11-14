@@ -1,5 +1,5 @@
 import type { Frame } from '../model/types.js'
-import { actionName, frameHasAction, isHumanLabel } from './actionLabels.js'
+import { frameHasAction, humanLabelNames } from './actionLabels.js'
 import { labelTeam, type LabelTeam } from './cardLabels.js'
 
 /**
@@ -39,5 +39,5 @@ const PENALTY_NAMES = new Set([...PENALTY_LABELS, ...PENALTY_SCORED_LABELS, ...P
 
 /** The bare names (actionName) of the labels a human put on `frame` that are not the penalty's own. */
 export function otherHumanLabels(frame: Frame): string[] {
-  return (frame.state?.actions ?? []).filter(isHumanLabel).map((a) => actionName(a.action_type)).filter((name) => !PENALTY_NAMES.has(name))
+  return humanLabelNames(frame).filter((name) => !PENALTY_NAMES.has(name))
 }

@@ -12,10 +12,13 @@ follow [Semantic Versioning](https://semver.org/).
   the stream's clock (or 40 s on screen): a penalty can take minutes to be
   taken. Any other human label ends the wait instead, during the card or the
   scene, cards and substitutions included: the penalty fades out over 0.6 s while
-  that label's own moment comes in, where before it held them back. A label on
-  the `Penalty`'s own record, an AI label, or one that stays on from before it
-  does not count. Once the result is in, the kick and the hold play out as
-  before, holding the other moments back.
+  that label's own moment comes in, where before it held them back (a yellow or
+  red card or a substitution still waiting its turn goes first, as such cards
+  always go before a throw-in or a small card). A label on the `Penalty`'s own
+  record, an AI label, or one that stays on from before it does not count. Once
+  the result is in, the kick and the hold play out as before, holding the other
+  moments back; as the penalty fades out at the end, whatever is due now comes
+  in under it rather than after it.
 
 ## [0.23.0] - 2026-11-13
 

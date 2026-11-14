@@ -444,8 +444,9 @@ export class Director {
    * playback or not, except the corner and the free kick: with no label or
    * cutaway to wait on, they are on screen for CORNER_DEMO_MS, and a label
    * card, likewise for LABEL_CARD_DEMO_MS. The penalty waits
-   * LABEL_CARD_DEMO_MS for a kick, and a penalty scored or missed plays the
-   * scene and its kick, as with no penalty showing (penalty.ts). A seek or a
+   * LABEL_CARD_DEMO_MS for a kick, or less if another label ends it, and a
+   * penalty scored or missed plays the scene and its kick, as with no penalty
+   * showing (penalty.ts). A seek or a
    * step ends any of them, as it ends the others.
    *
    * `input` and `view` are the replay and the view as they are now, taken in
@@ -691,6 +692,8 @@ export class Director {
         this.stopLabelCards(true)
         if (this.goal.start(goal.frame, goal)) this.request(this.goal)
       }
+      // A penalty waiting still, asking for no frames, wakes once reduced motion has gone off.
+      if (this.penalty.notice()) this.request(this.penalty)
       // A penalty's labels start it, or move it on, and any other label ends its wait: one request for its
       // frames, however often they do. As a goal does, it takes over from every other moment, and does not
       // start over a goal. Fading out, it holds nothing back (`holdsBack`), so the label that ended it plays.
