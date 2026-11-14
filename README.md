@@ -462,7 +462,10 @@ widget's own: video-annotation has none.
   card. Each names `team`.
 - **With reduced motion** nothing fades, the ball does not turn and the keeper
   does not sway: the card shows whole, then the scene whole, and a result shows
-  the kick's end, the keeper diving and the banner in, for 3 s, then goes.
+  the kick's end, the keeper diving and the banner in, for 3 s, then goes. The
+  scene waiting asks for no animation frames: its labels, or the end of the 20 s
+  on the stream's clock, move it on. So it does not go 40 s after it started:
+  while the stream stalls it stays up, until the clock has run its 20 s.
 - The `moment` events are `penalty`, from its start to its end, and
   `penaltyScored` or `penaltyMissed`, from its result's label to the same end.
 

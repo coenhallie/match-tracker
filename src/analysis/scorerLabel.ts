@@ -5,10 +5,10 @@ import { plainNumber, plainUuid, teamOfLabel, type LabelTeam } from './cardLabel
 
 /**
  * The scorer's label, by its bare name (actionName). In the labelling tool a goal is two labels:
- * "Goal" (or "Penalty scored"), a game label that names the team, and then, a few seconds later,
- * the scorer, a player label the labeller gives from the player's row (seen on staging, 2026-11-13:
- * 2.4 and 4.8 s after the goal). "Player Own Goal" names a player of the team that conceded, so it
- * is not a scorer.
+ * "Goal" (or "Penalty scored", with the penalty's layer off), a game label that names the team, and
+ * then, a few seconds later, the scorer, a player label the labeller gives from the player's row
+ * (seen on staging, 2026-11-13: 2.4 and 4.8 s after the goal). "Player Own Goal" names a player of
+ * the team that conceded, so it is not a scorer.
  */
 export const SCORER_LABELS = ['player scored'] as const
 

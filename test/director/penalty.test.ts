@@ -398,6 +398,24 @@ describe('the penalty', () => {
     }
   })
 
+  it('starts while a goal only waits for its scorer, and gives way to the goal when the scorer comes', () => {
+    const pitch = new Pitch({ options: { scorerWaitS: SCORER_WAIT_S } })
+    pitch.start([human('Goal', 'Team Home')])
+    pitch.animate(200)
+    expect(pitch.replay.director.goalWaiting).toBe(true)
+    expect(pitch.replay.last()?.goal).toBeUndefined()
+    pitch.record()
+    pitch.start()
+    expect(pitch.phase()).toBe('card')
+    pitch.animate(500)
+    expect(pitch.phase()).toBe('card')
+    pitch.record([human('Player scored', 'Team Home')])
+    pitch.animate(200)
+    expect(pitch.replay.last()?.goal).toBeDefined()
+    expect(pitch.phase()).toBeNull()
+    expect(pitch.penalty()).toBeUndefined()
+  })
+
   it('ends on a pause or a seek', () => {
     const paused = new Pitch()
     paused.toWaiting()
@@ -457,6 +475,63 @@ describe('the penalty', () => {
       const p = output.layers?.penalty
       if (p) expect([p.card, p.scene].every((k) => k === 0 || k === 1)).toBe(true)
     }
+  })
+})
+
+describe('the penalty under reduced motion', () => {
+  /** Under reduced motion, from its first frame until its scene is up and waiting. */
+  const waiting = () => {
+    const pitch = new Pitch({ reducedMotion: true })
+    pitch.start()
+    pitch.animate(PENALTY_CARD_MS + 100)
+    expect(pitch.phase()).toBe('waiting')
+    return pitch
+  }
+  const quiet = (outputs: ReturnType<Pitch['animate']>) => outputs.every((output) => !output.animating && output.paints.length === 0)
+
+  // Final review: a still scene was painted again every animation frame for the whole wait.
+  it('asks for no frames while it waits, and wakes on its result', () => {
+    const pitch = waiting()
+    expect(quiet(pitch.animate(1000))).toBe(true)
+    // Each record draws its frame, the scene over it, as any does; the frames between paint nothing.
+    for (let i = 0; i < 100; i++) {
+      expect(pitch.record().animating).toBe(false)
+      expect(quiet(pitch.animate(40))).toBe(true)
+    }
+    expect(pitch.penalty()).toMatchObject({ card: 0, scene: 1, result: null, still: true })
+    expect(pitch.record([SCORED]).animating).toBe(true)
+    pitch.animate(1)
+    expect(pitch.phase()).toBe('holding')
+    expect(pitch.penalty()).toMatchObject({ result: 'scored', kick: 1, banner: 1 })
+    pitch.animate(PENALTY_HOLD_MS + 100)
+    expect(pitch.phase()).toBeNull()
+  })
+
+  it('leaves at the end of the clock\'s wait, checked on each record', () => {
+    const pitch = waiting()
+    pitch.play(PENALTY_WAIT_S - 3)
+    expect(pitch.phase()).toBe('waiting')
+    pitch.play(3.2)
+    expect(pitch.phase()).toBeNull()
+    expect(pitch.penalty()).toBeUndefined()
+  })
+
+  it('wakes on a new penalty, and when reduced motion goes off', () => {
+    const again = waiting()
+    again.record()
+    again.animate(500)
+    again.record([human('Penalty', 'Team Home')])
+    again.animate(1)
+    expect(again.phase()).toBe('card')
+    expect(again.penalty()).toMatchObject({ card: 1, team: 'Team Home' })
+
+    const moving = waiting()
+    moving.animate(500)
+    moving.replay.reducedMotion = false
+    expect(moving.record().animating).toBe(true)
+    const frames = moving.animate(200)
+    expect(frames.every((output) => output.paints.length === 1)).toBe(true)
+    expect(moving.penalty()).toMatchObject({ scene: 1, still: false })
   })
 })
 

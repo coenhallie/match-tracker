@@ -691,6 +691,8 @@ export class Director {
         this.stopLabelCards(true)
         if (this.goal.start(goal.frame, goal)) this.request(this.goal)
       }
+      // A penalty waiting still, asking for no frames, wakes at the end of its wait.
+      if (this.penalty.notice(time)) this.request(this.penalty)
       // A penalty's labels start it, or move it on: one request for its frames, however often they do.
       // As a goal does, it takes over from every other moment, and does not start over a goal.
       if (this.penalty.detect(frame, time, this.goal.active)) {
