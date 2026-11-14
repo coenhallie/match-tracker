@@ -32,12 +32,14 @@ The penalty, from the match-summary design.
   `Player scored` after it plays nothing. With the layer off it plays the goal,
   as before. A penalty missed, which played nothing, plays the kick over the
   bar.
-- A goal takes over from the penalty, and a `Penalty` does not start while a
-  goal shows. The penalty takes over from an attack, the attack over a player
-  loss, a corner, a free kick, a throw-in and the label cards, and none of them
-  starts while it shows; the yellow and red cards and the substitutions wait
-  their turn. Live, a replay playing ends, and none starts while it shows. The
-  zoom near goal eases out to the whole pitch for it, and back in after.
+- A goal takes over from the penalty, and none of the penalty's labels plays
+  while a goal shows: a `Penalty`, `Penalty scored` or `Penalty missed` then
+  plays nothing, then or after the goal. The penalty takes over from an attack,
+  the attack over a player loss, a corner, a free kick, a throw-in and the label
+  cards, and none of them starts while it shows; the yellow and red cards and
+  the substitutions wait their turn. Live, a replay playing ends, and none
+  starts while it shows. The zoom near goal eases out to the whole pitch for it,
+  and back in after.
 - **In a replay** in live mode none of the penalty's labels plays anything: the
   clip shows the kick as it was played. A penalty scored in a clip plays no goal
   either, unless the layer is off. A human's `Penalty missed` is now kept for a

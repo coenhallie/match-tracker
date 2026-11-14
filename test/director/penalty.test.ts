@@ -373,6 +373,31 @@ describe('the penalty', () => {
     }
   })
 
+  // Final review: not only a Penalty is held back while a goal shows, but its result too.
+  it('plays none of its labels while a goal shows, nor later as they carry on', () => {
+    for (const label of [PENALTY, SCORED, MISSED]) {
+      const pitch = new Pitch()
+      pitch.start([human('Goal', 'Team Home')])
+      pitch.animate(500)
+      expect(pitch.replay.last()?.goal).toBeDefined()
+      pitch.record([label])
+      pitch.animate(40)
+      expect(pitch.phase()).toBeNull()
+      // The label carrying on after the goal has gone is not a new one.
+      let records = 0
+      while (pitch.replay.last()?.goal !== undefined || pitch.replay.director.animating) {
+        pitch.record([label])
+        pitch.animate(40)
+        expect(++records).toBeLessThan(1000)
+      }
+      for (let i = 0; i < 25; i++) {
+        pitch.record([label])
+        pitch.animate(40)
+      }
+      expect(pitch.replay.outputs.some((output) => output.layers?.penalty !== undefined)).toBe(false)
+    }
+  })
+
   it('ends on a pause or a seek', () => {
     const paused = new Pitch()
     paused.toWaiting()

@@ -109,7 +109,8 @@ export class Penalty implements Moment {
   /**
    * On each new record, at `time` on the clock: true when its labels start it or move it on, so it
    * needs animation frames. Notes what is labelled either way. A Penalty and its result on one
-   * record play the card, then the kick. `blocked`: a goal is showing, and nothing starts over it.
+   * record play the card, then the kick. `blocked`: a goal is showing, and none of the three plays
+   * over it, nor later as it carries on: it was noted.
    */
   detect(frame: Frame, time: number, blocked = false): boolean {
     const { penalty, result } = penaltyLabels(frame)

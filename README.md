@@ -442,13 +442,14 @@ widget's own: video-annotation has none.
   the wait for the goal's scorer, and a `Player scored` after it plays nothing.
   With the layer off, it plays the goal, as on `Goal`. Switching the layer off
   while the penalty shows ends it at once.
-- A goal takes over from it, and a `Penalty` does not start while a goal is
-  showing (a goal waiting for its scorer does not hold it back). It takes over
-  from an attack, the attack over a player loss, a corner, a free kick, a
-  throw-in and any label card, and none of them starts while it shows; the
-  yellow and red cards and the substitutions wait their turn. Live, a replay
-  playing ends, and none starts while it shows. The zoom near goal eases out to
-  the whole pitch while it shows, and back in after.
+- A goal takes over from it, and none of its labels plays while a goal is
+  showing: a `Penalty`, `Penalty scored` or `Penalty missed` then plays nothing,
+  then or after the goal (a goal waiting for its scorer does not hold them
+  back). It takes over from an attack, the attack over a player loss, a corner,
+  a free kick, a throw-in and any label card, and none of them starts while it
+  shows; the yellow and red cards and the substitutions wait their turn. Live, a
+  replay playing ends, and none starts while it shows. The zoom near goal eases
+  out to the whole pitch while it shows, and back in after.
 - It plays the labels as they come, live and in replay alike. A pause, a seek,
   a step or a press on the pitch ends it, as it ends every moment.
 - **In a replay** (see [Flashbacks](#flashbacks)) none of its labels plays
