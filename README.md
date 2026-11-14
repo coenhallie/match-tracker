@@ -416,7 +416,7 @@ widget's own: video-annotation has none.
 - **Waiting.** Then a scene of its own fades in over the card, over 0.5 s, and
   covers the pitch in green, with the design's fine grain and no markings: the
   goal, the keeper swaying from side to side on his line, and the ball turning
-  on the spot, with "PENALTY.." and the team at the top right. It waits there for the kick. Viewers see no countdown.
+  on the spot, with "PENALTY.." and the team at the top right. It waits there for the kick, however long it takes.
 - **The kick.** On `Penalty scored`, the ball curls into the top corner past the
   keeper's late dive, and "SCORED!" rises in at the foot. On `Penalty missed`,
   the keeper dives as the ball curls over the bar and on, fading out, and
@@ -425,19 +425,21 @@ widget's own: video-annotation has none.
   for 3 s after the banner is in, then fades out over 0.6 s, and the live pitch
   is back.
 - A result that comes during the card waits for it, and the scene goes straight
-  into the kick. A result with no penalty showing (it came after the wait below,
+  into the kick. A result with no penalty showing (another label ended the wait,
   or the widget joined after the `Penalty`), or as one with no result fades out,
   brings the scene in with no card, kicks as soon as it is in, and names the
   result's team.
-- **It waits 20 s** of the stream's clock for the result (of replay time, in
-  replay), then fades out. The clock stands still while the stream stalls, so
-  it also goes 40 s after it started, whatever the clock. The labelling tool's
-  Cancel sends nothing, so a penalty given and taken back runs out its 20 s.
+- **Any other human label ends the wait**, during the card or the scene: the
+  penalty fades out over 0.6 s while that label's own moment comes in (a corner,
+  a throw-in, a label card, the yellow and red cards and the substitutions
+  alike). A label on the `Penalty`'s own record, an AI label, or one that stays
+  on from before the `Penalty` does not count. The labelling tool's Cancel sends
+  nothing, so a penalty given and taken back waits until the next label.
 - **The team** is the one the `Penalty` label gives (see [A label's
   team](#a-labels-team)), whatever team its result gives: production has given
   the two different teams. A label without one shows no team.
 - A second `Penalty` while one shows starts it again from the card, with its
-  team and a new 20 s. A second result is ignored.
+  team. A second result is ignored.
 - **A penalty scored plays no goal** while the layer is on: not the goal, nor
   the wait for the goal's scorer, and a `Player scored` after it plays nothing.
   With the layer off, it plays the goal, as on `Goal`. Switching the layer off
@@ -446,9 +448,10 @@ widget's own: video-annotation has none.
   showing: a `Penalty`, `Penalty scored` or `Penalty missed` then plays nothing,
   then or after the goal (a goal waiting for its scorer does not hold them
   back). It takes over from an attack, the attack over a player loss, a corner,
-  a free kick, a throw-in and any label card, and none of them starts while it
-  shows; the yellow and red cards and the substitutions wait their turn. Live, a
-  replay playing ends, and none starts while it shows. The zoom near goal eases
+  a free kick, a throw-in and any label card. Once its result is in, it plays
+  out its kick and hold whatever comes: none of them starts over it, and the
+  yellow and red cards and the substitutions wait their turn. Live, a replay
+  playing ends, and none starts while it shows. The zoom near goal eases
   out to the whole pitch while it shows, and back in after.
 - It plays the labels as they come, live and in replay alike. A pause, a seek,
   a step or a press on the pitch ends it, as it ends every moment.

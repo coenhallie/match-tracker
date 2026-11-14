@@ -7,7 +7,6 @@ import {
   PENALTY_OUT_MS,
   PENALTY_RESULT_IN_MS,
   PENALTY_SCENE_IN_MS,
-  PENALTY_WAIT_S,
   drawPenalty,
   penaltyPose,
   type PenaltyIndicator,
@@ -88,13 +87,12 @@ describe('the penalty timings', () => {
     expect([
       PENALTY_CARD_MS,
       PENALTY_SCENE_IN_MS,
-      PENALTY_WAIT_S,
       PENALTY_KICK_MS,
       PENALTY_MISS_ON_MS,
       PENALTY_RESULT_IN_MS,
       PENALTY_HOLD_MS,
       PENALTY_OUT_MS,
-    ]).toEqual([2400, 500, 20, 700, 500, 300, 3000, 600])
+    ]).toEqual([2400, 500, 700, 500, 300, 3000, 600])
   })
 })
 

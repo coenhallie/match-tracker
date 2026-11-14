@@ -12,7 +12,6 @@ import {
   PENALTY_OUT_MS,
   PENALTY_RESULT_IN_MS,
   PENALTY_SCENE_IN_MS,
-  PENALTY_WAIT_S,
 } from '../../src/render/penalty'
 import type { DirectorOptions } from '../../src/director/director'
 import type { ReplayLayers } from '../../src/model/replayLayers'
@@ -182,28 +181,93 @@ describe('the penalty', () => {
     expect(pitch.penalty()!.afterKickMs).toBeGreaterThan(0)
   })
 
-  it('leaves after 20 s on the clock with no result', () => {
+  it('waits in the scene however long the kick takes', () => {
     const pitch = new Pitch()
-    pitch.start()
-    pitch.play(PENALTY_WAIT_S - 0.5)
+    pitch.toWaiting()
+    pitch.play(120)
     expect(pitch.phase()).toBe('waiting')
-    pitch.play(0.8)
-    expect(pitch.phase()).toBe('leaving')
-    pitch.animate(PENALTY_OUT_MS)
-    expect(pitch.phase()).toBeNull()
-    expect(pitch.penalty()).toBeUndefined()
+    // Nor does a stalled stream end it: frames with no records.
+    pitch.animate(200_000)
+    expect(pitch.phase()).toBe('waiting')
+    pitch.record([SCORED])
+    pitch.animate(PENALTY_SCENE_IN_MS + PENALTY_KICK_MS)
+    expect(pitch.phase()).toBe('holding')
   })
 
-  // Review Focus 3: live, a stalled stream stands the clock still, so the clock's wait would never end.
-  it('leaves when the stream stalls', () => {
+  it('leaves on any other human label, a card included', () => {
+    for (const label of [human('Throw in', 'Team Home'), human('Player yellow card', 'Team Away'), human('Stop play')]) {
+      const pitch = new Pitch()
+      pitch.toWaiting()
+      pitch.record([label])
+      pitch.animate(1)
+      expect(pitch.phase()).toBe('leaving')
+      pitch.animate(PENALTY_OUT_MS)
+      expect(pitch.phase()).toBeNull()
+      expect(pitch.penalty()).toBeUndefined()
+    }
+  })
+
+  it('leaves on another label during its card', () => {
     const pitch = new Pitch()
     pitch.start()
-    pitch.animate(2 * PENALTY_WAIT_S * 1000 - 500)
-    expect(pitch.phase()).toBe('waiting')
-    pitch.animate(1000)
+    pitch.animate(500)
+    pitch.record([human('Kick off')])
+    pitch.animate(1)
     expect(pitch.phase()).toBe('leaving')
-    pitch.animate(PENALTY_OUT_MS)
-    expect(pitch.phase()).toBeNull()
+  })
+
+  it('stays for an AI label, and for a label on its own record', () => {
+    const pitch = new Pitch()
+    pitch.start([PENALTY, human('Player yellow card', 'Team Away')])
+    pitch.animate(PENALTY_CARD_MS + PENALTY_SCENE_IN_MS + 100)
+    expect(pitch.phase()).toBe('waiting')
+    pitch.record([{ action_type: 'Throw in', action_origin: 'ai' } as FrameAction])
+    pitch.animate(40)
+    expect(pitch.phase()).toBe('waiting')
+  })
+
+  it('stays for another label that stays on from before it', () => {
+    const pitch = new Pitch()
+    const foul = human('Foul', 'Team Home')
+    pitch.record([foul])
+    pitch.start([PENALTY, foul])
+    pitch.animate(PENALTY_CARD_MS + PENALTY_SCENE_IN_MS + 100)
+    pitch.record([foul])
+    pitch.animate(40)
+    expect(pitch.phase()).toBe('waiting')
+  })
+
+  it('lets the label that ends it play its own moment', () => {
+    const kick = new Pitch()
+    kick.toWaiting()
+    kick.record([human('Freekick', 'Team Home')])
+    kick.animate(1)
+    expect(kick.phase()).toBe('leaving')
+    kick.animate(200)
+    expect(kick.replay.last()?.freeKick).toBeDefined()
+
+    const card = new Pitch()
+    card.toWaiting()
+    card.record([human('Player yellow card', 'Team Away')])
+    card.animate(1)
+    for (let i = 0; i < 40; i++) {
+      card.record()
+      card.animate(40)
+    }
+    expect(card.phase()).toBeNull()
+    expect(card.replay.outputs.some((output) => output.layers?.labelCard?.key === 'yellowCard')).toBe(true)
+  })
+
+  it('plays out its kick over another label', () => {
+    const pitch = new Pitch()
+    pitch.toWaiting()
+    pitch.record([SCORED])
+    pitch.animate(1)
+    pitch.record([human('Throw in', 'Team Home')])
+    pitch.animate(PENALTY_KICK_MS / 2)
+    expect(pitch.phase()).toBe('kick')
+    pitch.animate(PENALTY_KICK_MS)
+    expect(pitch.phase()).toBe('holding')
   })
 
   it('finishes the card before a result that comes during it', () => {
@@ -256,10 +320,10 @@ describe('the penalty', () => {
   it('plays a result that comes as the penalty fades out, from the scene as it was', () => {
     const pitch = new Pitch()
     pitch.toWaiting()
-    while (pitch.phase() !== 'leaving') {
-      pitch.record()
-      pitch.animate(40)
-    }
+    pitch.record([human('Stop play')])
+    pitch.animate(1)
+    pitch.animate(PENALTY_OUT_MS / 3)
+    expect(pitch.phase()).toBe('leaving')
     const before = pitch.penalty()!.scene
     pitch.record([MISSED])
     const frames = pitch.animate(1)
@@ -308,11 +372,8 @@ describe('the penalty', () => {
     expect(pitch.phase()).toBe('card')
     // From the scene it covers, so nobody shows through.
     expect(pitch.penalty()).toMatchObject({ card: 1, scene: 0, team: 'Team Home' })
-    // A new 20 s, from the second penalty.
-    pitch.play(10)
+    pitch.play(30)
     expect(pitch.phase()).toBe('waiting')
-    pitch.play(PENALTY_WAIT_S - 10 + 0.3)
-    expect(pitch.phase()).toBe('leaving')
   })
 
   it('ignores a second result', () => {
@@ -488,24 +549,16 @@ describe('the penalty under reduced motion', () => {
     return pitch
   }
 
-  // Re-review: going idle while it waited still let a stalled stream hang the scene, as no frame came to count.
-  it('leaves when the stream stalls', () => {
+  it('waits however long, painting every frame, and goes at once on another label', () => {
     const pitch = waiting()
-    const frames = pitch.animate(2 * PENALTY_WAIT_S * 1000 - PENALTY_CARD_MS - 600)
+    const frames = pitch.animate(60_000)
     expect(pitch.phase()).toBe('waiting')
     expect(frames.every((output) => output.animating && output.paints.length === 1)).toBe(true)
-    pitch.animate(1000)
-    // Gone without a fade.
-    expect(pitch.phase()).toBeNull()
-    expect(pitch.penalty()).toBeUndefined()
-    expect(pitch.replay.outputs.at(-1)!.animating).toBe(false)
-  })
-
-  it('leaves at the end of the clock\'s wait', () => {
-    const pitch = waiting()
-    pitch.play(PENALTY_WAIT_S - 3)
+    pitch.play(30)
     expect(pitch.phase()).toBe('waiting')
-    pitch.play(3.2)
+    pitch.record([human('Throw in', 'Team Home')])
+    pitch.animate(1)
+    // Gone without a fade.
     expect(pitch.phase()).toBeNull()
     expect(pitch.penalty()).toBeUndefined()
   })
@@ -542,8 +595,8 @@ describe('the penalty in a flashback clip', () => {
 
   it('plays nothing in a director that never plays it', () => {
     const penalty = new Penalty(context(10), false)
-    expect(penalty.detect(frameAt(0, [PENALTY]), 10)).toBe(false)
-    expect(penalty.detect(frameAt(0, [SCORED]), 10.04)).toBe(false)
+    expect(penalty.detect(frameAt(0, [PENALTY]))).toBe(false)
+    expect(penalty.detect(frameAt(0, [SCORED]))).toBe(false)
     expect(penalty.active).toBe(false)
     expect(penalty.value()).toBeUndefined()
   })

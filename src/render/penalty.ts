@@ -75,14 +75,13 @@ export interface PenaltyPose {
 /**
  * How it plays (the director's penalty moment): the card is on screen for PENALTY_CARD_MS, fading in
  * and out included, as a label card fades (LABEL_CARD_IN_MS, LABEL_CARD_OUT_MS); the scene fades in
- * over PENALTY_SCENE_IN_MS as the card goes; a result is waited for PENALTY_WAIT_S on the clock. The
+ * over PENALTY_SCENE_IN_MS as the card goes, and waits for the result however long it takes. The
  * kick takes PENALTY_KICK_MS, a miss carries on PENALTY_MISS_ON_MS after it, the result's banner
  * comes in over PENALTY_RESULT_IN_MS from the kick's end, holds PENALTY_HOLD_MS, and the scene fades
  * out over PENALTY_OUT_MS.
  */
 export const PENALTY_CARD_MS = 2400
 export const PENALTY_SCENE_IN_MS = 500
-export const PENALTY_WAIT_S = 20
 export const PENALTY_KICK_MS = 700
 export const PENALTY_MISS_ON_MS = 500
 export const PENALTY_RESULT_IN_MS = 300

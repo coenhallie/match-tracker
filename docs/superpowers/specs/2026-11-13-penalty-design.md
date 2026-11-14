@@ -1,6 +1,6 @@
 # The penalty
 
-Status: designed, 2026-11-13. Not built.
+Status: built in 0.23.0, 2026-11-13. Changed after 0.23.0: see "After 0.23.0" at the end.
 
 ## Why
 
@@ -277,3 +277,14 @@ the keeper diving, the banner) for the hold, and goes without a fade (my call).
 - Tests: the phases and their timing, each edge case above, a "Penalty scored" not playing a
   goal with the layer on and playing one with it off, the team taken from the Penalty, and the
   20 s timeout; and pixel checks of each frame against the Figma frames, as the cards had.
+
+## After 0.23.0
+
+The user's decision, 2026-11-13: the scene waits for its result however long it takes, with no 20 s
+wait and no 40 s stall guard, as a penalty can take minutes to be taken. Any other human label ends
+the wait instead (the user chose any label, cards and substitutions included, over keeping those in
+their queue): the penalty fades out while that label's own moment comes in. A label on the
+`Penalty`'s own record, an AI label, or one staying on from before it does not count; once the result
+is in, the kick and hold play out and hold the other moments back as before. This replaces the
+anti-goal "A penalty that hangs" and "20 s with no result" above: with no label after it, the scene
+stays.

@@ -6,6 +6,17 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### What you see
+
+- **The penalty waits for its kick however long it takes**, no longer 20 s of
+  the stream's clock (or 40 s on screen): a penalty can take minutes to be
+  taken. Any other human label ends the wait instead, during the card or the
+  scene, cards and substitutions included: the penalty fades out over 0.6 s while
+  that label's own moment comes in, where before it held them back. A label on
+  the `Penalty`'s own record, an AI label, or one that stays on from before it
+  does not count. Once the result is in, the kick and the hold play out as
+  before, holding the other moments back.
+
 ## [0.23.0] - 2026-11-13
 
 The penalty, from the match-summary design.

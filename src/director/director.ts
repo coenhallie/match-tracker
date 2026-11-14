@@ -503,7 +503,7 @@ export class Director {
     } else if (moment === 'penalty' || moment === 'penaltyScored' || moment === 'penaltyMissed') {
       this.stopSequences()
       const kind = moment === 'penalty' ? 'penalty' : moment === 'penaltyScored' ? 'scored' : 'missed'
-      this.penalty.play(kind, teamWords(this.context, { team, teamName: null }), now)
+      this.penalty.play(kind, teamWords(this.context, { team, teamName: null }))
       this.request(this.penalty)
     } else {
       this.stopSequences()
@@ -691,9 +691,10 @@ export class Director {
         this.stopLabelCards(true)
         if (this.goal.start(goal.frame, goal)) this.request(this.goal)
       }
-      // A penalty's labels start it, or move it on: one request for its frames, however often they do.
-      // As a goal does, it takes over from every other moment, and does not start over a goal.
-      if (this.penalty.detect(frame, time, this.goal.active)) {
+      // A penalty's labels start it, or move it on, and any other label ends its wait: one request for its
+      // frames, however often they do. As a goal does, it takes over from every other moment, and does not
+      // start over a goal. Fading out, it holds nothing back (`holdsBack`), so the label that ended it plays.
+      if (this.penalty.detect(frame, this.goal.active)) {
         this.stopMoment(this.attack)
         this.stopMoment(this.playerLoss)
         this.stopMoment(this.corner)
@@ -705,12 +706,12 @@ export class Director {
       }
       // A set piece takes over from an attack, the attack over a player loss, a throw-in, a label
       // card and the other set piece: the latest of a corner and a free kick shows.
-      if (this.corner.detect(frame, before.record?.frame ?? null, time, this.goal.active || this.penalty.active)) {
+      if (this.corner.detect(frame, before.record?.frame ?? null, time, this.goal.active || this.penalty.holdsBack)) {
         this.stopForSetPiece(this.freeKick)
         this.corner.start(record)
         this.request(this.corner)
       }
-      if (this.freeKick.detect(record, time, this.goal.active || this.penalty.active)) {
+      if (this.freeKick.detect(record, time, this.goal.active || this.penalty.holdsBack)) {
         this.stopForSetPiece(this.corner)
         this.freeKick.start(record, time)
         this.request(this.freeKick)
@@ -719,7 +720,7 @@ export class Director {
         // The player cards and substitutions play from their queue, below.
         if (isPlayerCardKey(card.key) || isSubstitutionKey(card.key)) continue
         // A small card does not go over a centre one.
-        const blocked = this.goal.active || this.penalty.active || this.setPieceActive || (card.small && this.centreCardHoldsBack())
+        const blocked = this.goal.active || this.penalty.holdsBack || this.setPieceActive || (card.small && this.centreCardHoldsBack())
         if (card.detect(frame, time, blocked)) {
           // The latest card takes over from another of its size, as a goal disallowed answers the VAR check
           // before it, from the strength that one had, so the band does not blink.
@@ -739,7 +740,7 @@ export class Director {
         }
       }
       this.queueCards(frame, time)
-      const setPiece = this.goal.active || this.penalty.active || this.setPieceActive || this.centreCardHoldsBack()
+      const setPiece = this.goal.active || this.penalty.holdsBack || this.setPieceActive || this.centreCardHoldsBack()
       if (this.throwIn.detect(frame, time, setPiece)) {
         // In the same place as a small card, which it takes over from.
         this.stopSmallCards()
@@ -876,7 +877,7 @@ export class Director {
 
   /**
    * The player cards and substitutions on `frame`, into their queue, and the first waiting played
-   * if nothing holds it back: a goal, the penalty, a set piece, or a centre card on screen, fading out included,
+   * if nothing holds it back: a goal, the penalty (until it fades out), a set piece, or a centre card on screen, fading out included,
    * so one card goes before the next comes in. A label sits on one record, so it waits its turn
    * rather than being missed (cardQueue.ts). A substitution for the team of the substitution card
    * up joins its list instead, while there is room; one taken from the queue takes the team's
@@ -896,7 +897,7 @@ export class Director {
       else this.cardQueue.push(label)
     }
     const centreCardUp = this.labelCards.some((card) => !card.small && card.active)
-    if (!playing || this.goal.active || this.penalty.active || this.setPieceActive || centreCardUp) return
+    if (!playing || this.goal.active || this.penalty.holdsBack || this.setPieceActive || centreCardUp) return
     const label = this.cardQueue.take()
     if (!label) return
     const card = this.labelCards.find((c) => c.key === label.key)!

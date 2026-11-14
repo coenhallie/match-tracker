@@ -114,20 +114,32 @@ describe('the penalty among the moments', () => {
     ['a centre card', 'VAR check', 'labelCard'],
     ['a small card', 'Foul', 'smallLabelCard'],
   ] as const) {
-    it(`takes over from ${what}, and nothing starts while it shows`, () => {
+    it(`takes over from ${what}`, () => {
       const replay = playingAlong()
       quiet(replay, [human(label)], 600)
       expect(replay.last()?.[showing]).toBeDefined()
       quiet(replay, [PENALTY], 100)
       expect(replay.director.penaltyPhase).toBe('card')
       expect(replay.last()?.[showing]).toBeUndefined()
-      // Each of them labelled afresh while it shows: none comes up.
-      for (const other of ['Corner kick', 'Freekick', 'Throw in', 'VAR check', 'Foul']) {
-        quiet(replay, [], 1000)
-        quiet(replay, [human(other)], 100)
-      }
+    })
+
+    it(`gives way to ${what} labelled while it waits`, () => {
+      const replay = playingAlong()
+      quiet(replay, [PENALTY], 3000)
+      expect(replay.director.penaltyPhase).toBe('waiting')
+      // Any other label ends the wait, and its own moment comes up as the penalty fades out.
+      quiet(replay, [human(label)], 100)
+      expect(replay.director.penaltyPhase).toBe('leaving')
+      expect(replay.last()?.[showing]).toBeDefined()
+    })
+
+    it(`starts no ${what} over its kick`, () => {
+      const replay = playingAlong()
+      quiet(replay, [PENALTY], 3000)
+      quiet(replay, [human('Penalty scored', { team_name: 'Team Away' })], 800)
+      quiet(replay, [human(label)], 100)
       const shown = replay.last()!
-      expect(shown.penalty).toBeDefined()
+      expect(replay.director.penaltyPhase).toBe('holding')
       expect([shown.corner, shown.freeKick, shown.throwIn, shown.throwInCard, shown.labelCard, shown.smallLabelCard]).toEqual([
         undefined,
         undefined,
@@ -149,16 +161,24 @@ describe('the penalty among the moments', () => {
     expect(replay.last()?.attack).toBeUndefined()
   })
 
-  it('holds a yellow card back until it has gone', () => {
+  it('ends on a yellow card, which comes up as it fades', () => {
     const replay = playingAlong()
-    quiet(replay, [PENALTY])
+    quiet(replay, [PENALTY], 3000)
+    quiet(replay, [human('Player yellow card', { team_id: 0, player_number: 9, player_name: 'Lando' })])
+    expect(replay.director.penaltyPhase).toBe('leaving')
+    quiet(replay)
+    expect(replay.last()?.labelCard).toMatchObject({ key: 'yellowCard', player: { player: 'Lando' } })
+  })
+
+  it('holds a yellow card back over its kick, until it has gone', () => {
+    const replay = playingAlong()
+    quiet(replay, [PENALTY], 3000)
+    quiet(replay, [human('Penalty scored', { team_name: 'Team Away' })])
     quiet(replay, [human('Player yellow card', { team_id: 0, player_number: 9, player_name: 'Lando' })])
     expect(replay.last()?.labelCard).toBeUndefined()
-    quiet(replay, [human('Penalty scored', { team_name: 'Team Away' })])
-    for (let i = 0; i < 100 && replay.director.penaltyPhase !== null; i++) quiet(replay)
-    expect(replay.director.penaltyPhase).toBeNull()
-    expect(replay.last()?.labelCard).toBeUndefined()
-    // The queue plays on the next record.
+    for (let i = 0; i < 100 && replay.director.penaltyPhase !== 'leaving'; i++) quiet(replay)
+    expect(replay.director.penaltyPhase).toBe('leaving')
+    // The queue plays on the next record, as the penalty fades out.
     quiet(replay)
     expect(replay.last()?.labelCard).toMatchObject({ key: 'yellowCard', player: { player: 'Lando' } })
   })
