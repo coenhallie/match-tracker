@@ -6,6 +6,8 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.24.1] - 2026-11-14
+
 ### What you see
 
 - **The penalty waiting for its kick stays through a hidden tab**, or a widget
