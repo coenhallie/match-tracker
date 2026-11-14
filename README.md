@@ -433,8 +433,9 @@ widget's own: video-annotation has none.
   penalty fades out over 0.6 s while that label's own moment comes in (a corner,
   a throw-in, a label card, the yellow and red cards and the substitutions
   alike). A yellow or red card or a substitution still waiting its turn from
-  before goes first, as such cards go before a throw-in or a small card
-  everywhere. A label on the `Penalty`'s own record, an AI label, or one that
+  before takes the place of a throw-in or a small card that ended the wait,
+  which then does not show, as everywhere; a corner, a free kick or another
+  label card still comes first, and the waiting card after it. A label on the `Penalty`'s own record, an AI label, or one that
   stays on from before the `Penalty` does not count. The labelling tool's Cancel
   sends nothing, so a penalty given and taken back waits until the next label.
 - **The team** is the one the `Penalty` label gives (see [A label's

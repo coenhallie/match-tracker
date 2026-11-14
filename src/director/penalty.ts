@@ -71,13 +71,25 @@ interface Showing {
   leavingFromMs: number | null
   /** Played by hand: waiting lasts LABEL_CARD_DEMO_MS, as there is no result to wait for. */
   byHand: boolean
-  /** Waiting under reduced motion with nothing to animate, since its last step said 'hold'. */
+  /**
+   * Waiting under reduced motion with nothing to animate, since its last step said 'hold'. Its time
+   * stands still meanwhile: woken, it goes on from where it was (`resume`), so a fade it starts then
+   * runs its whole length.
+   */
   idle: boolean
+  resume: boolean
 }
 
 const clamp01 = (k: number) => Math.min(1, Math.max(0, k))
 const easeOutCubic = (k: number) => 1 - (1 - k) ** 3
 const easeInOutCubic = (k: number) => (k < 0.5 ? 4 * k ** 3 : 1 - (-2 * k + 2) ** 3 / 2)
+
+/** Wake it from a still wait: its time goes on from where it stood. */
+function wake(m: Showing): void {
+  if (!m.idle) return
+  m.idle = false
+  m.resume = true
+}
 
 /** When the scene starts to come in, in ms from the start: after the card, if it has one. */
 const sceneFrom = (m: Showing) => (m.card ? PENALTY_CARD_MS : 0)
@@ -150,6 +162,10 @@ export class Penalty implements Moment {
     const m = this.showing
     if (!m) return 'stop'
     if (m.startedMs === null) m.startedMs = ms
+    if (m.resume) {
+      m.startedMs = ms - m.elapsedMs
+      m.resume = false
+    }
     m.elapsedMs = ms - m.startedMs
     const still = this.ctx.reducedMotion()
     if (m.result !== null && m.kickFromMs === null) m.kickFromMs = this.kickFrom(m, still)
@@ -162,6 +178,8 @@ export class Penalty implements Moment {
     // Still, the scene waiting has nothing to animate: it asks for no frames until a label or `notice` wakes it.
     if (still && m.result === null && !m.byHand && this.phase === 'waiting') {
       m.idle = true
+      // Still, the scene is in whole: woken with motion back, it goes on from there, not fading in again.
+      m.elapsedMs = Math.max(m.elapsedMs, sceneFrom(m) + PENALTY_SCENE_IN_MS)
       return 'hold'
     }
     return 'paint'
@@ -175,7 +193,7 @@ export class Penalty implements Moment {
   notice(): boolean {
     const m = this.showing
     if (!m?.idle || this.ctx.reducedMotion()) return false
-    m.idle = false
+    wake(m)
     return true
   }
 
@@ -247,7 +265,7 @@ export class Penalty implements Moment {
     if (m && m.result !== null) return false
     if (m && m.leavingFromMs === null) {
       m.result = kind
-      m.idle = false
+      wake(m)
       return true
     }
     const shown = this.value()
@@ -261,7 +279,7 @@ export class Penalty implements Moment {
     const m = this.showing
     if (!m || m.result !== null || m.leavingFromMs !== null) return false
     m.leavingFromMs = m.elapsedMs
-    m.idle = false
+    wake(m)
     return true
   }
 
@@ -277,6 +295,7 @@ export class Penalty implements Moment {
       leavingFromMs: null,
       byHand: false,
       idle: false,
+      resume: false,
     }
   }
 

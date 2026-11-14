@@ -576,6 +576,20 @@ describe('the penalty under reduced motion', () => {
     expect(pitch.penalty()).toBeUndefined()
   })
 
+  // Re-review: woken and ended on one record, it faded out from its stale still time, and so cut out.
+  it('fades out on another label that comes as reduced motion goes off', () => {
+    const pitch = waiting()
+    pitch.animate(5000)
+    pitch.replay.reducedMotion = false
+    pitch.record([human('Throw in', 'Team Home')])
+    pitch.animate(PENALTY_OUT_MS / 2)
+    expect(pitch.phase()).toBe('leaving')
+    expect(pitch.penalty()!.scene).toBeGreaterThan(0)
+    expect(pitch.penalty()!.scene).toBeLessThan(1)
+    pitch.animate(PENALTY_OUT_MS)
+    expect(pitch.phase()).toBeNull()
+  })
+
   it('wakes from its still wait for its result', () => {
     const pitch = waiting()
     pitch.animate(5000)
