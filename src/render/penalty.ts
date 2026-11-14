@@ -184,8 +184,9 @@ const DESIGN_H = 1100
  * plain gradient, so 49% of it is black, and, finer than any pixel it is shown at, the grain varies
  * only a little from pixel to pixel. So each design pixel of the grain's tile is black at 25% times
  * its share of GRAIN_SAMPLES random draws that came out black: 49% on average, spread as Figma's
- * frame is from pixel to pixel. The tile is made once for each context, from a fixed seed, and repeated a tile pixel to a design
- * pixel, so the grain keeps its size against everything else at any zoom and pixel density.
+ * frame is from pixel to pixel. The tile's pixels are made once, from a fixed seed, put on a canvas
+ * once for each context, and repeated a tile pixel to a design pixel, so the grain keeps its size
+ * against everything else at any zoom and pixel density.
  */
 const GRAIN_SHARE = 0.49
 const GRAIN_SAMPLES = 16
@@ -407,10 +408,45 @@ function drawScene(ctx: CanvasRenderingContext2D, t: Transform2D, p: PenaltyIndi
 }
 
 /**
- * The green's grain for `ctx`, made the first time it is asked for: a tile of black, each pixel as
- * opaque as its share of GRAIN_SAMPLES draws below GRAIN_SHARE, from a small seeded generator
- * (mulberry32), so it is the same every time. Null where there is no OffscreenCanvas to make it in:
- * the green is then drawn plain.
+ * The grain tile's pixels, RGBA: black, each pixel as opaque as its share of GRAIN_SAMPLES draws
+ * below GRAIN_SHARE. Rather than make the draws, each pixel takes one draw from a small seeded
+ * generator (mulberry32) through the inverse of their count's distribution, Binomial(GRAIN_SAMPLES,
+ * GRAIN_SHARE), so the picture is the same every time and spread as the draws would spread it. Made
+ * the first time a context asks for the grain, and kept for every other.
+ */
+let grainPixels: Uint8ClampedArray | null = null
+
+function grainTile(): Uint8ClampedArray {
+  if (grainPixels) return grainPixels
+  // At k, how likely it is that k or fewer of the draws come out black; the last is 1, whatever rounding left.
+  const atMost: number[] = []
+  let chance = (1 - GRAIN_SHARE) ** GRAIN_SAMPLES
+  let sum = 0
+  for (let k = 0; k <= GRAIN_SAMPLES; k++) {
+    sum += chance
+    atMost.push(sum)
+    chance *= ((GRAIN_SAMPLES - k) / (k + 1)) * (GRAIN_SHARE / (1 - GRAIN_SHARE))
+  }
+  atMost[GRAIN_SAMPLES] = 1
+  const pixels = new Uint8ClampedArray(GRAIN_TILE_PX * GRAIN_TILE_PX * 4)
+  let seed = GRAIN_SEED
+  for (let i = 3; i < pixels.length; i += 4) {
+    seed = (seed + 0x6d2b79f5) | 0
+    let r = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+    r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r
+    const draw = ((r ^ (r >>> 14)) >>> 0) / 4294967296
+    let black = 0
+    while (draw >= atMost[black]!) black++
+    pixels[i] = Math.round((255 * black) / GRAIN_SAMPLES)
+  }
+  grainPixels = pixels
+  return pixels
+}
+
+/**
+ * The green's grain for `ctx`, made the first time it is asked for: the tile (grainTile) on a canvas
+ * of its own, repeated. Null where there is no OffscreenCanvas to make it in: the green is then
+ * drawn plain.
  */
 function grainOf(ctx: CanvasRenderingContext2D): CanvasPattern | null {
   const known = grains.get(ctx)
@@ -420,18 +456,7 @@ function grainOf(ctx: CanvasRenderingContext2D): CanvasPattern | null {
   const c = tile?.getContext('2d')
   if (tile && c) {
     const image = c.createImageData(GRAIN_TILE_PX, GRAIN_TILE_PX)
-    let seed = GRAIN_SEED
-    const draw = () => {
-      seed = (seed + 0x6d2b79f5) | 0
-      let r = Math.imul(seed ^ (seed >>> 15), 1 | seed)
-      r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r
-      return ((r ^ (r >>> 14)) >>> 0) / 4294967296
-    }
-    for (let i = 3; i < image.data.length; i += 4) {
-      let black = 0
-      for (let k = 0; k < GRAIN_SAMPLES; k++) if (draw() < GRAIN_SHARE) black++
-      image.data[i] = Math.round((255 * black) / GRAIN_SAMPLES)
-    }
+    image.data.set(grainTile())
     c.putImageData(image, 0, 0)
     pattern = ctx.createPattern(tile, 'repeat')
   }

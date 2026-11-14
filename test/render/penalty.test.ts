@@ -384,6 +384,12 @@ describe('drawing the penalty', () => {
       drawPenalty(ctx as unknown as CanvasRenderingContext2D, T, indicator(), THEME)
       expect(offscreen.sizes).toHaveLength(1)
       expect(ops.filter((o) => o.fillStyle === 'pattern(repeat)')).toHaveLength(2)
+      // Another widget's context has a canvas of its own, with the same grain on it.
+      drawPenalty(recordingCtx().ctx as unknown as CanvasRenderingContext2D, T, indicator(), THEME)
+      expect(offscreen.sizes).toHaveLength(2)
+      const again = offscreen.ops.filter((o) => o.op === 'putImageData')[1]!.args[0] as ImageData
+      expect(again).not.toBe(image)
+      expect(Array.from(again.data)).toEqual(Array.from(image.data))
     } finally {
       offscreen.restore()
     }
