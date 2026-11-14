@@ -812,6 +812,9 @@ class Tracker implements MatchTracker {
       // In the second half all of it is turned round, as the record shown is.
       const shown = this.history.shown()
       const turned = shown && this.halves.shown(shown)
+      // Back with a human's label taken while away, the record shown included: that was the next label
+      // for whatever stays until it, so it is a seek like any other, and nothing stays.
+      const rejoining = this.rejoining && this.labelled.length === 0
       const record = turned && this.carryLabels(turned)
       const { phase, trail } = this.derive([this.historyVersion, this.halves.from], () => {
         const valid = this.history.latestValid()
@@ -820,7 +823,6 @@ class Tracker implements MatchTracker {
         return valid && shown ? deriveAt(this.halves.window(this.history.window(), shown), valid) : null
       })
       const playback = !this.resumed
-      const rejoining = this.rejoining
       // The seek is for the first record shown: a frame with nothing held,
       // as one queued before a reset, leaves it for that record.
       if (record) {

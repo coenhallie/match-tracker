@@ -186,9 +186,10 @@ export interface DirectorInput {
   phase: TeamPhase | null
   trail: BallTrail | null
   /**
-   * Live, back after being hidden or scrolled away: `playback` is false, as for
-   * any seek, but nobody chose to go anywhere, so a card that stays until the
-   * next label stays.
+   * Live, back after being hidden or scrolled away with no human label while
+   * away: `playback` is false, as for any seek, but nobody chose to go
+   * anywhere, so a card that stays until the next label stays, and so does a
+   * penalty waiting for its result.
    */
   rejoining?: boolean
 }
@@ -654,7 +655,7 @@ export class Director {
   private clockMoved(playback: boolean, rejoining: boolean): void {
     this.lastStepWasPlayback = playback
     if (playback) return
-    this.stopSequences(rejoining)
+    this.stopSequences(rejoining, rejoining)
     // Wherever the clock went, nothing seen before counts from here: the
     // frame watcher notes the labels and the ball again from the new record.
     this.memory.cornerLabelAt = null
@@ -832,16 +833,17 @@ export class Director {
   /**
    * `stopSequences` (`:597-602`): every moment, in the reference's order. With
    * `keepStaying`, but for a card that stays until the next label, which has
-   * had none: the reference has no such moment.
+   * had none; with `keepPenalty` too, coming back to a hidden tab, a penalty
+   * waiting for its result. The reference has no such moment.
    */
-  private stopSequences(keepStaying = false): void {
+  private stopSequences(keepStaying = false, keepPenalty = false): void {
     this.stopMoment(this.goal)
     this.stopMoment(this.attack)
     this.stopMoment(this.playerLoss)
     this.stopMoment(this.corner)
     this.stopMoment(this.freeKick)
     this.stopMoment(this.throwIn)
-    this.stopMoment(this.penalty)
+    if (!keepPenalty || !this.penalty.staysOn) this.stopMoment(this.penalty)
     for (const card of this.labelCards) if (!keepStaying || !card.staysOn) this.stopMoment(card)
     // A pause, a press, a seek or a moment by hand: the cards waiting go with the one showing.
     this.cardQueue.clear()

@@ -438,6 +438,9 @@ widget's own: video-annotation has none.
   label card still comes first, and the waiting card after it. A label on the `Penalty`'s own record, an AI label, or one that
   stays on from before the `Penalty` does not count. The labelling tool's Cancel
   sends nothing, so a penalty given and taken back waits until the next label.
+- **Waiting, it stays through a hidden tab** or a widget scrolled away, as the
+  half time's card does. If its result or another human label came while it was
+  away, it ends on coming back instead, and plays no late kick.
 - **The team** is the one the `Penalty` label gives (see [A label's
   team](#a-labels-team)), whatever team its result gives: production has given
   the two different teams. A label without one shows no team.
@@ -544,8 +547,8 @@ out over 0.4 s, and that label's own moment, if it has one, plays as it goes:
 - A pause doesn't end it, nor does coming back to a hidden tab or a widget
   scrolled away. A seek does, and a press on the pitch, as for every moment, and
   so does switching off its layer. It doesn't come back after that.
-- A label that comes and goes while the tab is hidden isn't seen, as for every
-  moment, so it stays until the next one.
+- A human's label that comes while the tab is hidden or the widget scrolled
+  away ends it on coming back, as that was its next label.
 - It draws nothing while it rests, so a long break costs nothing.
 - Everyone on the pitch, the ball and its trail fade out as it fades in, as for
   a corner, and back as it goes. Zoomed in, it stays whole, on the frame where

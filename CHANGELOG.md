@@ -6,6 +6,16 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### What you see
+
+- **The penalty waiting for its kick stays through a hidden tab**, or a widget
+  scrolled away and back, as the half time's card does: coming back to it showed
+  the live pitch again. If its result or another human label came while the tab
+  was away, it ends on coming back instead, with no late kick.
+- **The half time and full time cards end on coming back** when a human's label
+  came while the tab was hidden or the widget scrolled away: that was their next
+  label, and they stayed on until another.
+
 ## [0.24.0] - 2026-11-13
 
 ### What you see

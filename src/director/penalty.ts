@@ -23,6 +23,8 @@
  * waiting, cards and substitutions included, and it fades out over PENALTY_OUT_MS while that label's
  * own moment comes in (`holdsBack`). A label on the Penalty's own record, or one staying on from
  * before it, does not count. Once its result is in, it plays out its kick and hold whatever comes.
+ * Waiting, it stays through a hidden tab (`staysOn`), as a label card that stays until the next label
+ * does.
  *
  * Each label counts on the record it first comes on, as the goal's does. They are noted on every
  * record, but play only during playback, with the layer on, with no goal showing, and in a director
@@ -114,6 +116,16 @@ export class Penalty implements Moment {
 
   get idle(): boolean {
     return this.showing?.idle ?? false
+  }
+
+  /**
+   * Waiting for its result, which stays until the next label, as a label card that stays until the
+   * next label does: what coming back to a hidden tab, with no label while it was away, leaves up. Not
+   * one played by hand, which ends on time.
+   */
+  get staysOn(): boolean {
+    const m = this.showing
+    return m !== null && m.result === null && m.leavingFromMs === null && !m.byHand
   }
 
   /** Whether it holds the other moments back: while it shows, until it starts to fade out. */

@@ -207,6 +207,20 @@ describe('a label card through the widget', () => {
     expect(log.at(-1)).toBe('varCheck:end')
   })
 
+  it('ends half time on coming back when a label came while the tab was hidden', () => {
+    const { tracker, log } = mount()
+    playing(tracker)
+    tracker.push(labelled(5, 'Half time'))
+    env.settle()
+    env.setVisibility('hidden')
+    tracker.push(labelled(6, 'Kick off'))
+    tracker.push(message(7, { withBall: true }))
+    env.setVisibility('visible')
+    env.settle()
+    expect(log).toEqual(['halfTime:start', 'halfTime:end'])
+    expect(control.outputs.at(-1)!.layers?.labelCard).toBeUndefined()
+  })
+
   it.each([
     ['Shot on goal', 'shotOnGoal'],
     ['HEADER_ON_GOAL', 'headerOnGoal'],
