@@ -6,6 +6,8 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-11-13
+
 The penalty, from the match-summary design.
 
 ### What you see
