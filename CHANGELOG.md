@@ -21,8 +21,8 @@ The penalty, from the match-summary design.
   keeper's late dive and "SCORED!" rises in at the foot
   (viewport/eventPenaltyScored); on `Penalty missed`, it curls over the bar and
   "MISSED!" rises in (viewport/eventPenaltyMissed). The scene holds for 3 s,
-  then fades back to the live pitch. A result that comes with no penalty showing
-  plays the scene and its kick with no card.
+  then fades back to the live pitch. A result that comes with no penalty showing,
+  or as one with no result fades out, plays the scene and its kick with no card.
 - **It waits 20 s** of the stream's clock for the result, then fades back to the
   live pitch. As the clock stands still while the stream stalls, it also goes
   40 s after it started, whatever the clock. Viewers see no countdown.

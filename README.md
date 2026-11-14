@@ -426,8 +426,9 @@ widget's own: video-annotation has none.
   is back.
 - A result that comes during the card waits for it, and the scene goes straight
   into the kick. A result with no penalty showing (it came after the wait below,
-  or the widget joined after the `Penalty`) brings the scene in with no card,
-  kicks as soon as it is in, and names the result's team.
+  or the widget joined after the `Penalty`), or as one with no result fades out,
+  brings the scene in with no card, kicks as soon as it is in, and names the
+  result's team.
 - **It waits 20 s** of the stream's clock for the result (of replay time, in
   replay), then fades out. The clock stands still while the stream stalls, so
   it also goes 40 s after it started, whatever the clock. The labelling tool's

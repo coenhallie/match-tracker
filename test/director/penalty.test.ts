@@ -252,6 +252,39 @@ describe('the penalty', () => {
     expect(pitch.phase()).toBe('holding')
   })
 
+  // Final review: a result that came during the fade-out was noted as seen and then dropped.
+  it('plays a result that comes as the penalty fades out, from the scene as it was', () => {
+    const pitch = new Pitch()
+    pitch.toWaiting()
+    while (pitch.phase() !== 'leaving') {
+      pitch.record()
+      pitch.animate(40)
+    }
+    const before = pitch.penalty()!.scene
+    pitch.record([MISSED])
+    const frames = pitch.animate(1)
+    for (let i = 0; i < 200; i++) {
+      pitch.record()
+      frames.push(...pitch.animate(40))
+    }
+    const shown = frames.map((output) => output.layers?.penalty)
+    // Kicked, for the result's team, as with nothing showing.
+    expect(shown.some((p) => p?.result === 'missed' && p.kick === 1)).toBe(true)
+    expect(shown.find((p) => p?.result === 'missed')!.team).toBe('Team Home')
+    // From the scene as it was, not snapping back to the pitch and fading in again.
+    const start = shown.findIndex((p) => p?.result === 'missed')
+    const kicked = shown.findIndex((p) => p?.kick === 1)
+    expect(before).toBeGreaterThan(0)
+    expect(before).toBeLessThan(1)
+    let scene = before
+    for (const p of shown.slice(start, kicked + 1)) {
+      expect(p!.scene).toBeGreaterThanOrEqual(scene - 1e-9)
+      scene = p!.scene
+    }
+    expect(scene).toBe(1)
+    expect(pitch.phase()).toBeNull()
+  })
+
   it("names the penalty's team, not its result's", () => {
     const pitch = new Pitch()
     pitch.toWaiting()

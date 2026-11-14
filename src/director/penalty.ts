@@ -14,8 +14,9 @@
  * comes in over PENALTY_RESULT_IN_MS, holds PENALTY_HOLD_MS, and everything fades out together over
  * PENALTY_OUT_MS. A result that comes during the card waits for it and the scene's fade, then
  * kicks. A result with nothing showing (it came after the wait, or the widget joined after the
- * Penalty) brings the scene in with no card, and kicks once it is in, for the result's own team. A
- * second result is ignored; a second Penalty starts it again from the card, with its team and wait.
+ * Penalty) brings the scene in with no card, and kicks once it is in, for the result's own team. So
+ * does one that comes as a penalty with no result fades out, the scene coming in again from as
+ * strongly as it was drawn. A second result is ignored; a second Penalty starts it again from the card, with its team and wait.
  * The team written is the Penalty's, whatever team its result gives.
  *
  * With no result PENALTY_WAIT_S of the clock after the Penalty's record, it leaves, from wherever
@@ -54,7 +55,10 @@ interface Showing {
   team: string | null
   /** Whether it opened on its card: false for a result that came with nothing showing. */
   card: boolean
-  /** How strongly the card starts: 0, or how strongly the penalty it starts again from covered the pitch. */
+  /**
+   * How strongly it starts: 0, or how strongly the penalty it starts again from covered the pitch. The
+   * card's, or with no card, the scene's.
+   */
   fromIntensity: number
   /** The clock's time on the Penalty's record: what the wait for its result counts from. */
   penaltyAt: number
@@ -197,17 +201,20 @@ export class Penalty implements Moment {
   }
 
   /**
-   * A result: the kick of the penalty showing, or, with none, the scene with that kick for `team`.
-   * False when it is ignored: a result already in, or the penalty on its way out.
+   * A result: the kick of the penalty showing, or, with none, the scene with that kick for `team`. A
+   * penalty fading out with no result is as good as none: the scene comes in again from as strongly
+   * as that was drawn, so it does not blink. False when it is ignored: a result already in.
    */
   private startResult(kind: PenaltyResult, team: string | null, time: number): boolean {
     const m = this.showing
-    if (!m) {
-      this.showing = { ...this.fresh(team, time), result: kind }
+    if (m && m.result !== null) return false
+    if (m && m.leavingFromMs === null) {
+      m.result = kind
       return true
     }
-    if (m.result !== null || m.leavingFromMs !== null) return false
-    m.result = kind
+    const shown = this.value()
+    const from = shown && !this.ctx.reducedMotion() ? Math.min(1, shown.card + shown.scene) : 0
+    this.showing = { ...this.fresh(team, time), result: kind, fromIntensity: from }
     return true
   }
 
@@ -244,10 +251,15 @@ export class Penalty implements Moment {
     return still ? 1 : Math.min(1, m.fromIntensity + ((1 - m.fromIntensity) * t) / LABEL_CARD_IN_MS)
   }
 
-  /** The scene at `t` ms from the start: in over PENALTY_SCENE_IN_MS once the card has had its time. */
+  /**
+   * The scene at `t` ms from the start: in over PENALTY_SCENE_IN_MS once the card has had its time.
+   * With no card, from `fromIntensity`: how strongly the penalty it took over from was drawn.
+   */
   private sceneAt(m: Showing, t: number, still: boolean): number {
     const from = sceneFrom(m)
     if (t < from) return 0
-    return still ? 1 : easeInOutCubic(clamp01((t - from) / PENALTY_SCENE_IN_MS))
+    if (still) return 1
+    const k = easeInOutCubic(clamp01((t - from) / PENALTY_SCENE_IN_MS))
+    return m.card ? k : m.fromIntensity + (1 - m.fromIntensity) * k
   }
 }
