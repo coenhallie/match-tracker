@@ -79,7 +79,6 @@ const PICTURES = {
   penaltyGoal: picture('goal'),
   penaltyKeeper: picture('keeper'),
   penaltyKeeperDive: picture('keeperDive'),
-  penaltyBallSpin: picture('ballSpin'),
   penaltyBall: picture('ball'),
 }
 const THEME: RenderTheme = { ...DEFAULT_THEME, icons: { ...DEFAULT_THEME.icons, ...PICTURES } }
@@ -470,25 +469,20 @@ describe('drawing the penalty', () => {
     expect(spinner.disc).toEqual([...D(402, 835), 64 * u, 0, Math.PI * 2].map((v) => expect.closeTo(v, 6)))
     expect(spinner.fill.globalAlpha).toBeCloseTo(0.7, 6)
     expect(conicSpinner(draw({ waitMs: 0 }).ops)!.start).toBeCloseTo(-Math.PI / 2, 6)
-    // Not the wedge picture, nor the kicked ball.
-    expect(images(ops, 'ballSpin')).toHaveLength(0)
+    // Not the kicked ball.
     expect(images(ops, 'ball')).toHaveLength(0)
   })
 
-  it('falls back on the wedge picture, turned on its centre, where there is no conic gradient', () => {
+  // createConicGradient is in every browser the README supports; where it is missing the spinner is
+  // not drawn, as a picture not yet loaded is not, and the rest of the scene is.
+  it('draws no spinner where there is no conic gradient', () => {
     const { ctx, ops } = recordingCtx()
     ;(ctx as { createConicGradient?: unknown }).createConicGradient = undefined
     drawPenalty(ctx as unknown as CanvasRenderingContext2D, T, indicator({ waitMs: 200 }), THEME)
     expect(conicSpinner(ops)).toBeNull()
-    expect(images(ops, 'keeperDive')).toHaveLength(0)
-    expect(images(ops, 'ball')).toHaveLength(0)
-    const spinner = images(ops, 'ballSpin')[0]!
-    const turn = ops[ops.indexOf(spinner) - 1]!
-    expect(turn.op).toBe('transform')
-    const [a, b, c, d, e, f] = turn.args as number[]
-    expect([a, b, c, d]).toEqual([0, 1, -1, 0].map((v) => expect.closeTo(v, 6)))
-    expect([e, f]).toEqual(D(402, 835).map((v) => expect.closeTo(v, 6)))
-    expect(spinner.args.slice(1)).toEqual([-64 * u, -64 * u, 128 * u, 128 * u].map((v) => expect.closeTo(v, 6)))
+    expect(ops.filter((o) => o.op === 'drawImage').map((o) => (o.args[0] as { name: string }).name)).toEqual(['goal', 'keeper'])
+    expect(ops.filter((o) => o.op === 'arc')).toHaveLength(0)
+    expect(ops.filter((o) => o.op === 'ellipse')).toHaveLength(2)
   })
 
   it('keeps the spinner, still turning, until the kick moves, then the kicked ball', () => {
@@ -542,7 +536,6 @@ describe('drawing the penalty', () => {
     expect(y! + 8 * u).toBeCloseTo(D(529, 343)[1], 6)
     expect(w).toBeCloseTo(106 * u, 6)
     expect(h).toBeCloseTo(106 * u, 6)
-    expect(images(ops, 'ballSpin')).toHaveLength(0)
     // Smaller as it carries on over the bar, and fading.
     const out = draw({ result: 'missed', kick: 1, afterKickMs: 250 }).ops
     const ball = images(out, 'ball')[0]!

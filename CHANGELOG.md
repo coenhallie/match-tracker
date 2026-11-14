@@ -59,9 +59,9 @@ The penalty, from the match-summary design.
   点球……), `penaltyScored` ("SCORED!", 罚进了！) and `penaltyMissed` ("MISSED!",
   罚丢了！), and a `penalty` layer entry. The Chinese is a draft, as the rest of
   it is.
-- The penalty's pictures (its card's icon, the goal, both keepers and both
-  balls) are bundled as SVG, drawn through `data:` URLs, so `img-src data:`
-  covers them.
+- The penalty's pictures (its card's icon, the goal, both keepers and the
+  kicked ball) are bundled as SVG, drawn through `data:` URLs, so `img-src
+  data:` covers them. The ball waiting on the spot is a canvas conic gradient.
 
 ### Size
 

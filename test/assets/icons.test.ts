@@ -52,7 +52,7 @@ describe('loadIcons', () => {
     expect(icons.substitutionIn).toBe(images[8])
     expect(icons.scorer).toBe(images[9])
     expect(icons.throwIn).toBe(images[10])
-    expect(images).toHaveLength(17)
+    expect(images).toHaveLength(16)
     for (const image of images) expect(image.src).toMatch(/^data:image\/svg\+xml,/)
     expect(svgOf(images[0]!.src)).toContain('<g id="corner">')
     expect(svgOf(images[1]!.src)).toContain('<g id="free_kick">')
@@ -63,7 +63,7 @@ describe('loadIcons', () => {
     expect(images.some((image) => svgOf(image.src).includes('shot_on_goal'))).toBe(false)
   })
 
-  it("loads the penalty's six pictures", async () => {
+  it("loads the penalty's five pictures", async () => {
     const { loadIcons } = await import('../../src/assets/icons')
     const icons = await loadIcons()
     const sizes = {
@@ -71,8 +71,7 @@ describe('loadIcons', () => {
       penaltyGoal: [12, 484, 242],
       penaltyKeeper: [13, 192, 194],
       penaltyKeeperDive: [14, 273, 273],
-      penaltyBallSpin: [15, 128, 128],
-      penaltyBall: [16, 106, 106],
+      penaltyBall: [15, 106, 106],
     } as const
     for (const [key, [index, width, height]] of Object.entries(sizes)) {
       expect(icons[key as keyof typeof sizes]).not.toBeNull()
@@ -89,7 +88,7 @@ describe('loadIcons', () => {
     await loadIcons()
     // The card's icon is drawn 3.25 times as large (208 px from 64), so it keeps two decimals; the scene's
     // pictures are drawn at their own size, where one decimal is within 0.1 px.
-    const decimals = { 11: 2, 12: 1, 13: 1, 14: 1, 16: 1 } as const
+    const decimals = { 11: 2, 12: 1, 13: 1, 14: 1, 15: 1 } as const
     for (const [index, places] of Object.entries(decimals)) {
       const svg = svgOf(images[Number(index)]!.src)
       const numbers = [...svg.matchAll(/ d="([^"]*)"/g)].flatMap((m) => m[1]!.match(/\d*\.\d+/g) ?? [])
@@ -103,7 +102,7 @@ describe('loadIcons', () => {
     await loadIcons()
     // The shapes' outlines wind both ways, so merged into one path (the default nonzero fill) they cancel where they
     // overlap: a goal's bars would notch its frame. The export's counts: 16 in the card's icon, 11 in the goal, 2 in each keeper, 1 in the ball.
-    const counts = { 11: 16, 12: 11, 13: 2, 14: 2, 16: 1 } as const
+    const counts = { 11: 16, 12: 11, 13: 2, 14: 2, 15: 1 } as const
     for (const [index, count] of Object.entries(counts)) {
       expect([...svgOf(images[Number(index)]!.src).matchAll(/<path /g)]).toHaveLength(count)
     }
@@ -111,25 +110,6 @@ describe('loadIcons', () => {
     for (const [, d] of svgOf(images[12]!.src).matchAll(/ d="([^"]*)"/g)) {
       expect(d!.match(/M/g)).toHaveLength(1)
     }
-  })
-
-  it('draws the spinner ball as 48 wedges, dark at 12 o\'clock to white round clockwise, the first on top', async () => {
-    const { loadIcons } = await import('../../src/assets/icons')
-    await loadIcons()
-    const svg = svgOf(images[15]!.src)
-    const wedges = [...svg.matchAll(/<use href="#w"(?: transform="rotate\(([\d.]+) 64 64\)")? fill="#([0-9A-F]{6})"\/>/g)].map((m) => ({
-      angle: Number(m[1] ?? 0),
-      rgb: [0, 2, 4].map((i) => parseInt(m[2]!.slice(i, i + 2), 16)),
-    }))
-    expect(wedges).toHaveLength(48)
-    // In paint order the first wedge (angle 0) is last, so it covers the overlap of the one before it.
-    expect(wedges.map((w) => w.angle)).toEqual(Array.from({ length: 48 }, (_, i) => (47 - i) * 7.5))
-    expect(wedges.at(-1)!.rgb).toEqual([0x0d, 0x35, 0x29])
-    expect(wedges[0]!.rgb).toEqual([0xfc, 0xfd, 0xfd])
-    // Lighter every step clockwise.
-    const clockwise = wedges.toReversed()
-    for (let i = 1; i < clockwise.length; i++) expect(clockwise[i]!.rgb[0]).toBeGreaterThan(clockwise[i - 1]!.rgb[0]!)
-    expect(svg).not.toContain('foreignObject')
   })
 
   it('loads one hand-and-card icon per card, filled in its colour', async () => {
@@ -193,18 +173,18 @@ describe('loadIcons', () => {
     const { loadIcons } = await import('../../src/assets/icons')
     const [a, b] = await Promise.all([loadIcons(), loadIcons()])
     expect(a).toBe(b)
-    expect(images).toHaveLength(17)
+    expect(images).toHaveLength(16)
   })
 
   it('gives null for an icon that fails to load', async () => {
     failing = true
     const { loadIcons } = await import('../../src/assets/icons')
-    expect(await loadIcons()).toEqual({ corner: null, freeKick: null, varCheck: null, goalDisallowed: null, yellowCard: null, redCard: null, substitution: null, substitutionOut: null, substitutionIn: null, scorer: null, throwIn: null, penalty: null, penaltyGoal: null, penaltyKeeper: null, penaltyKeeperDive: null, penaltyBallSpin: null, penaltyBall: null })
+    expect(await loadIcons()).toEqual({ corner: null, freeKick: null, varCheck: null, goalDisallowed: null, yellowCard: null, redCard: null, substitution: null, substitutionOut: null, substitutionIn: null, scorer: null, throwIn: null, penalty: null, penaltyGoal: null, penaltyKeeper: null, penaltyKeeperDive: null, penaltyBall: null })
   })
 
   it('gives null for every icon where there is no Image', async () => {
     vi.stubGlobal('Image', undefined)
     const { loadIcons } = await import('../../src/assets/icons')
-    expect(await loadIcons()).toEqual({ corner: null, freeKick: null, varCheck: null, goalDisallowed: null, yellowCard: null, redCard: null, substitution: null, substitutionOut: null, substitutionIn: null, scorer: null, throwIn: null, penalty: null, penaltyGoal: null, penaltyKeeper: null, penaltyKeeperDive: null, penaltyBallSpin: null, penaltyBall: null })
+    expect(await loadIcons()).toEqual({ corner: null, freeKick: null, varCheck: null, goalDisallowed: null, yellowCard: null, redCard: null, substitution: null, substitutionOut: null, substitutionIn: null, scorer: null, throwIn: null, penalty: null, penaltyGoal: null, penaltyKeeper: null, penaltyKeeperDive: null, penaltyBall: null })
   })
 })

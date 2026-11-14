@@ -331,7 +331,7 @@ class Tracker implements MatchTracker {
   private readonly mode: MatchTrackerOptions['mode']
   private options: MutableOptions
   private resolved: Resolved
-  private icons: RenderTheme['icons'] = { corner: null, freeKick: null, substitutionOut: null, substitutionIn: null, scorer: null, throwIn: null, penalty: null, penaltyGoal: null, penaltyKeeper: null, penaltyKeeperDive: null, penaltyBallSpin: null, penaltyBall: null, ...iconCardRecord(() => null) }
+  private icons: RenderTheme['icons'] = { corner: null, freeKick: null, substitutionOut: null, substitutionIn: null, scorer: null, throwIn: null, penalty: null, penaltyGoal: null, penaltyKeeper: null, penaltyKeeperDive: null, penaltyBall: null, ...iconCardRecord(() => null) }
   private layers: ReplayLayers
   private readonly doc: Document
   private readonly host: HTMLElement

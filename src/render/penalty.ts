@@ -387,7 +387,7 @@ function drawScene(ctx: CanvasRenderingContext2D, t: Transform2D, p: PenaltyIndi
     ctx.globalAlpha = alpha * ball.alpha
     fillEllipse(pose.ballShadow)
     if (p.result === null || p.kick <= 0) {
-      drawSpinner(ctx, icons.penaltyBallSpin, X(ball.x), Y(ball.y), ball.turnDeg, u)
+      drawSpinner(ctx, X(ball.x), Y(ball.y), ball.turnDeg, u)
     } else if (icons.penaltyBall) {
       // Not turned (PenaltyPose).
       const s = ball.size / KICKED_PX
@@ -466,22 +466,12 @@ function grainOf(ctx: CanvasRenderingContext2D): CanvasPattern | null {
 
 /**
  * The spinner ball (136:2913), centred on (`cx`, `cy`) and turned `turnDeg`: Figma's angular gradient,
- * dark green at 12 o'clock round clockwise to white, over the 128 px disc. Drawn as a conic gradient;
- * where the context has none, `wedges`, the same gradient as 48 wedges, once loaded.
+ * dark green at 12 o'clock round clockwise to white, over the 128 px disc, as a conic gradient. Every
+ * browser the README supports has createConicGradient; where a context has none, it is not drawn, as
+ * a picture not yet loaded is not.
  */
-function drawSpinner(
-  ctx: CanvasRenderingContext2D,
-  wedges: CanvasImageSource | null,
-  cx: number,
-  cy: number,
-  turnDeg: number,
-  u: number,
-): void {
-  if (typeof ctx.createConicGradient !== 'function') {
-    const half = -SPINNER_PX / 2
-    if (wedges) drawTurned(ctx, wedges, cx, cy, turnDeg, half, half, SPINNER_PX, SPINNER_PX, u)
-    return
-  }
+function drawSpinner(ctx: CanvasRenderingContext2D, cx: number, cy: number, turnDeg: number, u: number): void {
+  if (typeof ctx.createConicGradient !== 'function') return
   // A conic gradient's angle is from 3 o'clock, clockwise on the canvas: 12 o'clock is a quarter turn back.
   const spin = ctx.createConicGradient((turnDeg * Math.PI) / 180 - Math.PI / 2, cx, cy)
   spin.addColorStop(0, SPIN_DARK)

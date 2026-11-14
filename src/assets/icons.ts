@@ -166,13 +166,14 @@ const LABEL_CARD_ICONS: Record<IconCardKey, string> = {
 }
 
 /**
- * The penalty's six pictures, as Figma exports them (file a1DQtbTjxZYWYKecizCHkf), less the frame
+ * The penalty's five pictures, as Figma exports them (file a1DQtbTjxZYWYKecizCHkf), less the frame
  * Figma draws round each, and trimmed to the size they are drawn at: path numbers rounded to 0.1
  * (the card's icon, drawn 3.25 times as large, to 0.01) so that none is out by over 0.1 px when
  * drawn. Each shape stays its own path, as Figma exports them: their outlines wind both ways, so
  * merged into one they would cancel where they overlap. The card's icon (63:1004), then the scene's goal
- * (136:3140), keeper standing (136:2918) and diving (136:3192), the spinner ball (136:2913) and
- * the ball (136:3191). Where they go: (render/penalty.ts).
+ * (136:3140), keeper standing (136:2918) and diving (136:3192), and the kicked ball (136:3191). The
+ * spinner ball (136:2913) is no picture: its angular gradient is drawn as one. Where they go:
+ * (render/penalty.ts).
  */
 const PENALTY_SVG = `<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
 <path d="M10 31V10.25C10 9.56 10.56 9 11.25 9h41.5c.69 0 1.25.56 1.25 1.25V31h2V10.25C56 8.46 54.54 7 52.75 7H11.25C9.46 7 8 8.46 8 10.25V31h2z" fill="#E2E8F0"/>
@@ -221,68 +222,6 @@ const PENALTY_KEEPER_DIVE_SVG = `<svg width="273" height="273" viewBox="0 0 273 
 </svg>
 `
 
-/**
- * The spinner ball. Its angular gradient, which Figma exports as HTML in a foreignObject that an
- * image cannot be relied on to draw, is redrawn as 48 vector wedges of one shape turned about the
- * centre: dark green (#0A3327) at the top to white, round clockwise, inside the same 128 circle.
- * The first wedge is drawn last, so that the last one's overlap onto it leaves no sliver at the seam.
- */
-const PENALTY_BALL_SPIN_SVG = `<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
-<clipPath id="c"><circle cx="64" cy="64" r="64"/></clipPath>
-<defs><path id="w" d="M64 64V0A64 64 0 0 1 73.46.7Z"/></defs>
-<g clip-path="url(#c)">
-<use href="#w" transform="rotate(352.5 64 64)" fill="#FCFDFD"/>
-<use href="#w" transform="rotate(345 64 64)" fill="#F7F9F8"/>
-<use href="#w" transform="rotate(337.5 64 64)" fill="#F2F4F4"/>
-<use href="#w" transform="rotate(330 64 64)" fill="#EDF0EF"/>
-<use href="#w" transform="rotate(322.5 64 64)" fill="#E8ECEB"/>
-<use href="#w" transform="rotate(315 64 64)" fill="#E3E8E6"/>
-<use href="#w" transform="rotate(307.5 64 64)" fill="#DEE3E2"/>
-<use href="#w" transform="rotate(300 64 64)" fill="#D9DFDD"/>
-<use href="#w" transform="rotate(292.5 64 64)" fill="#D4DBD9"/>
-<use href="#w" transform="rotate(285 64 64)" fill="#CFD7D4"/>
-<use href="#w" transform="rotate(277.5 64 64)" fill="#C9D2D0"/>
-<use href="#w" transform="rotate(270 64 64)" fill="#C4CECB"/>
-<use href="#w" transform="rotate(262.5 64 64)" fill="#BFCAC7"/>
-<use href="#w" transform="rotate(255 64 64)" fill="#BAC6C2"/>
-<use href="#w" transform="rotate(247.5 64 64)" fill="#B5C1BE"/>
-<use href="#w" transform="rotate(240 64 64)" fill="#B0BDB9"/>
-<use href="#w" transform="rotate(232.5 64 64)" fill="#ABB9B5"/>
-<use href="#w" transform="rotate(225 64 64)" fill="#A6B5B0"/>
-<use href="#w" transform="rotate(217.5 64 64)" fill="#A1B0AC"/>
-<use href="#w" transform="rotate(210 64 64)" fill="#9BACA7"/>
-<use href="#w" transform="rotate(202.5 64 64)" fill="#96A8A3"/>
-<use href="#w" transform="rotate(195 64 64)" fill="#91A49E"/>
-<use href="#w" transform="rotate(187.5 64 64)" fill="#8C9F9A"/>
-<use href="#w" transform="rotate(180 64 64)" fill="#879B95"/>
-<use href="#w" transform="rotate(172.5 64 64)" fill="#829791"/>
-<use href="#w" transform="rotate(165 64 64)" fill="#7D938C"/>
-<use href="#w" transform="rotate(157.5 64 64)" fill="#788E88"/>
-<use href="#w" transform="rotate(150 64 64)" fill="#738A83"/>
-<use href="#w" transform="rotate(142.5 64 64)" fill="#6E867F"/>
-<use href="#w" transform="rotate(135 64 64)" fill="#68827A"/>
-<use href="#w" transform="rotate(127.5 64 64)" fill="#637D76"/>
-<use href="#w" transform="rotate(120 64 64)" fill="#5E7971"/>
-<use href="#w" transform="rotate(112.5 64 64)" fill="#59756D"/>
-<use href="#w" transform="rotate(105 64 64)" fill="#547168"/>
-<use href="#w" transform="rotate(97.5 64 64)" fill="#4F6C64"/>
-<use href="#w" transform="rotate(90 64 64)" fill="#4A685F"/>
-<use href="#w" transform="rotate(82.5 64 64)" fill="#45645B"/>
-<use href="#w" transform="rotate(75 64 64)" fill="#406056"/>
-<use href="#w" transform="rotate(67.5 64 64)" fill="#3A5B52"/>
-<use href="#w" transform="rotate(60 64 64)" fill="#35574D"/>
-<use href="#w" transform="rotate(52.5 64 64)" fill="#305349"/>
-<use href="#w" transform="rotate(45 64 64)" fill="#2B4F44"/>
-<use href="#w" transform="rotate(37.5 64 64)" fill="#264A40"/>
-<use href="#w" transform="rotate(30 64 64)" fill="#21463B"/>
-<use href="#w" transform="rotate(22.5 64 64)" fill="#1C4237"/>
-<use href="#w" transform="rotate(15 64 64)" fill="#173E32"/>
-<use href="#w" transform="rotate(7.5 64 64)" fill="#12392E"/>
-<use href="#w" fill="#0D3529"/>
-</g>
-</svg>
-`
-
 /** The ball, 74 px across in a 106 box that holds its shadow. */
 const PENALTY_BALL_SVG = `<svg width="106" height="106" viewBox="0 0 106 106" xmlns="http://www.w3.org/2000/svg">
 <g filter="url(#filter0_d_2_5)">
@@ -315,17 +254,16 @@ export type CardIcons = {
   scorer: HTMLImageElement | null
   /** On the throw-in's card, for a throw-in the camera cuts away from. */
   throwIn: HTMLImageElement | null
-  /** The penalty card's icon, and the scene's goal, keeper (standing, diving), spinner ball and ball. */
+  /** The penalty card's icon, and the scene's goal, keeper (standing, diving) and kicked ball. */
   penalty: HTMLImageElement | null
   penaltyGoal: HTMLImageElement | null
   penaltyKeeper: HTMLImageElement | null
   penaltyKeeperDive: HTMLImageElement | null
-  penaltyBallSpin: HTMLImageElement | null
   penaltyBall: HTMLImageElement | null
 } & Record<IconCardKey, HTMLImageElement | null>
 
 /** No icon loaded yet: every card is drawn without its own. */
-export const NO_ICONS: CardIcons = { corner: null, freeKick: null, substitutionOut: null, substitutionIn: null, scorer: null, throwIn: null, penalty: null, penaltyGoal: null, penaltyKeeper: null, penaltyKeeperDive: null, penaltyBallSpin: null, penaltyBall: null, ...iconCardRecord(() => null) }
+export const NO_ICONS: CardIcons = { corner: null, freeKick: null, substitutionOut: null, substitutionIn: null, scorer: null, throwIn: null, penalty: null, penaltyGoal: null, penaltyKeeper: null, penaltyKeeperDive: null, penaltyBall: null, ...iconCardRecord(() => null) }
 
 let loading: Promise<CardIcons> | null = null
 
@@ -357,7 +295,6 @@ export function loadIcons(): Promise<CardIcons> {
     load(PENALTY_GOAL_SVG),
     load(PENALTY_KEEPER_SVG),
     load(PENALTY_KEEPER_DIVE_SVG),
-    load(PENALTY_BALL_SPIN_SVG),
     load(PENALTY_BALL_SVG),
   ]).then(([corner, freeKick, ...rest]) => ({
     corner: corner ?? null,
@@ -371,8 +308,7 @@ export function loadIcons(): Promise<CardIcons> {
     penaltyGoal: rest[ICON_CARD_KEYS.length + 5] ?? null,
     penaltyKeeper: rest[ICON_CARD_KEYS.length + 6] ?? null,
     penaltyKeeperDive: rest[ICON_CARD_KEYS.length + 7] ?? null,
-    penaltyBallSpin: rest[ICON_CARD_KEYS.length + 8] ?? null,
-    penaltyBall: rest[ICON_CARD_KEYS.length + 9] ?? null,
+    penaltyBall: rest[ICON_CARD_KEYS.length + 8] ?? null,
   }))
   return loading
 }

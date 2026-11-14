@@ -105,7 +105,7 @@ describe('DEFAULT_THEME', () => {
       redCard: 'RED CARD',
       substitution: 'SUBSTITUTION',
     })
-    expect(DEFAULT_THEME.icons).toEqual({ corner: null, freeKick: null, varCheck: null, goalDisallowed: null, yellowCard: null, redCard: null, substitution: null, substitutionOut: null, substitutionIn: null, scorer: null, throwIn: null, penalty: null, penaltyGoal: null, penaltyKeeper: null, penaltyKeeperDive: null, penaltyBallSpin: null, penaltyBall: null })
+    expect(DEFAULT_THEME.icons).toEqual({ corner: null, freeKick: null, varCheck: null, goalDisallowed: null, yellowCard: null, redCard: null, substitution: null, substitutionOut: null, substitutionIn: null, scorer: null, throwIn: null, penalty: null, penaltyGoal: null, penaltyKeeper: null, penaltyKeeperDive: null, penaltyBall: null })
     expect(DEFAULT_THEME.formatAction('EventType.FREE_KICK')).toBe('EventType.FREE_KICK')
     expect(DEFAULT_THEME.aiLabels).toBe(false)
   })
@@ -218,7 +218,7 @@ describe('a custom theme', () => {
   it("draws the theme's icons on the cards, unless the layer brings its own", () => {
     const fromTheme = { from: 'theme' } as unknown as CanvasImageSource
     const fromLayer = { from: 'layer' } as unknown as CanvasImageSource
-    const theme = custom({ icons: { corner: fromTheme, freeKick: null, varCheck: null, goalDisallowed: null, yellowCard: null, redCard: null, substitution: null, substitutionOut: null, substitutionIn: null, scorer: null, throwIn: null, penalty: null, penaltyGoal: null, penaltyKeeper: null, penaltyKeeperDive: null, penaltyBallSpin: null, penaltyBall: null } })
+    const theme = custom({ icons: { corner: fromTheme, freeKick: null, varCheck: null, goalDisallowed: null, yellowCard: null, redCard: null, substitution: null, substitutionOut: null, substitutionIn: null, scorer: null, throwIn: null, penalty: null, penaltyGoal: null, penaltyKeeper: null, penaltyKeeperDive: null, penaltyBall: null } })
     const images = (ops: Op[]) => ops.filter((o) => o.op === 'drawImage').map((o) => o.args[0])
     const corner = { intensity: 1, playersFade: 0, ballFade: 0, corner: null, sections: [] }
     const themed = images(

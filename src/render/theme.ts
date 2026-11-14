@@ -30,12 +30,11 @@ export interface RenderTheme {
     scorer: CanvasImageSource | null
     /** On the throw-in's card (throwInCard.ts). */
     throwIn: CanvasImageSource | null
-    /** The penalty's card and scene (render/penalty.ts): its card icon, goal, keeper standing and diving, spinner ball and ball. */
+    /** The penalty's card and scene (render/penalty.ts): its card icon, goal, keeper standing and diving, and kicked ball (the spinner ball is a gradient). */
     penalty: CanvasImageSource | null
     penaltyGoal: CanvasImageSource | null
     penaltyKeeper: CanvasImageSource | null
     penaltyKeeperDive: CanvasImageSource | null
-    penaltyBallSpin: CanvasImageSource | null
     penaltyBall: CanvasImageSource | null
   } & Record<IconCardKey, CanvasImageSource | null>
   /** The bottom-left text for one of the frame's actions, from its `action_type`. */
@@ -98,7 +97,7 @@ export const DEFAULT_THEME: Readonly<RenderTheme> = Object.freeze({
     substitution: 'SUBSTITUTION',
   }),
   fonts: Object.freeze({ label: familyList(LABEL_FAMILY), title: familyList(TITLE_FAMILY) }),
-  icons: Object.freeze({ corner: null, freeKick: null, substitutionOut: null, substitutionIn: null, scorer: null, throwIn: null, penalty: null, penaltyGoal: null, penaltyKeeper: null, penaltyKeeperDive: null, penaltyBallSpin: null, penaltyBall: null, ...iconCardRecord(() => null) }),
+  icons: Object.freeze({ corner: null, freeKick: null, substitutionOut: null, substitutionIn: null, scorer: null, throwIn: null, penalty: null, penaltyGoal: null, penaltyKeeper: null, penaltyKeeperDive: null, penaltyBall: null, ...iconCardRecord(() => null) }),
   formatAction: (actionType: string) => actionType,
   aiLabels: false,
 })
