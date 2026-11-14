@@ -487,27 +487,21 @@ describe('the penalty under reduced motion', () => {
     expect(pitch.phase()).toBe('waiting')
     return pitch
   }
-  const quiet = (outputs: ReturnType<Pitch['animate']>) => outputs.every((output) => !output.animating && output.paints.length === 0)
 
-  // Final review: a still scene was painted again every animation frame for the whole wait.
-  it('asks for no frames while it waits, and wakes on its result', () => {
+  // Re-review: going idle while it waited still let a stalled stream hang the scene, as no frame came to count.
+  it('leaves when the stream stalls', () => {
     const pitch = waiting()
-    expect(quiet(pitch.animate(1000))).toBe(true)
-    // Each record draws its frame, the scene over it, as any does; the frames between paint nothing.
-    for (let i = 0; i < 100; i++) {
-      expect(pitch.record().animating).toBe(false)
-      expect(quiet(pitch.animate(40))).toBe(true)
-    }
-    expect(pitch.penalty()).toMatchObject({ card: 0, scene: 1, result: null, still: true })
-    expect(pitch.record([SCORED]).animating).toBe(true)
-    pitch.animate(1)
-    expect(pitch.phase()).toBe('holding')
-    expect(pitch.penalty()).toMatchObject({ result: 'scored', kick: 1, banner: 1 })
-    pitch.animate(PENALTY_HOLD_MS + 100)
+    const frames = pitch.animate(2 * PENALTY_WAIT_S * 1000 - PENALTY_CARD_MS - 600)
+    expect(pitch.phase()).toBe('waiting')
+    expect(frames.every((output) => output.animating && output.paints.length === 1)).toBe(true)
+    pitch.animate(1000)
+    // Gone without a fade.
     expect(pitch.phase()).toBeNull()
+    expect(pitch.penalty()).toBeUndefined()
+    expect(pitch.replay.outputs.at(-1)!.animating).toBe(false)
   })
 
-  it('leaves at the end of the clock\'s wait, checked on each record', () => {
+  it('leaves at the end of the clock\'s wait', () => {
     const pitch = waiting()
     pitch.play(PENALTY_WAIT_S - 3)
     expect(pitch.phase()).toBe('waiting')
@@ -516,7 +510,7 @@ describe('the penalty under reduced motion', () => {
     expect(pitch.penalty()).toBeUndefined()
   })
 
-  it('wakes on a new penalty, and when reduced motion goes off', () => {
+  it('starts again on a new penalty, and moves again when reduced motion goes off', () => {
     const again = waiting()
     again.record()
     again.animate(500)

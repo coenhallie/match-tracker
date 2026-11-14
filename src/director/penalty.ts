@@ -28,10 +28,7 @@
  * that plays it (`plays`: a flashback clip's never does). Anything that means someone wants the real
  * frame ends it at once, as it ends every moment. Under reduced motion nothing fades: the card whole,
  * then the scene whole, and a result shows the kick's last frame, the banner in, for PENALTY_HOLD_MS,
- * then goes. The scene waiting there asks for no animation frames: a label wakes it, and so does
- * a record that ends the clock's wait (`notice`). With no frames to count, the stall's guard (twice
- * the wait of animation frames) does not run while it waits still. The card and the hold, which end
- * on time, are painted every frame, as a label card that ends on time is.
+ * then goes.
  *
  * Played by hand (`play`), the penalty has no result to wait for: it leaves after LABEL_CARD_DEMO_MS
  * of waiting. A result by hand is one with nothing showing.
@@ -74,8 +71,6 @@ interface Showing {
   leavingFromMs: number | null
   /** Played by hand: waiting lasts LABEL_CARD_DEMO_MS, as there is no result to wait for. */
   byHand: boolean
-  /** Waiting under reduced motion with nothing to animate, since its last step said 'hold'. */
-  idle: boolean
 }
 
 const clamp01 = (k: number) => Math.min(1, Math.max(0, k))
@@ -99,10 +94,6 @@ export class Penalty implements Moment {
 
   get active(): boolean {
     return this.showing !== null
-  }
-
-  get idle(): boolean {
-    return this.showing?.idle ?? false
   }
 
   get phase(): PenaltyPhase | null {
@@ -150,24 +141,7 @@ export class Penalty implements Moment {
     }
     // Reduced motion coming on as it fades out: it goes at once, as it would have.
     if (m.leavingFromMs !== null && (still || m.elapsedMs - m.leavingFromMs >= PENALTY_OUT_MS)) return 'stop'
-    // Still, the scene waiting has nothing to animate: it asks for no frames until `notice` or a label wakes it.
-    if (still && m.result === null && !m.byHand && this.phase === 'waiting') {
-      m.idle = true
-      return 'hold'
-    }
     return 'paint'
-  }
-
-  /**
-   * On each new record, at `time` on the clock, before `detect`: true when the penalty, waiting with
-   * nothing to animate, needs an animation frame it was not going to get, as the clock's wait is
-   * over, or reduced motion has gone off. Its labels wake it through `detect`.
-   */
-  notice(time: number): boolean {
-    const m = this.showing
-    if (!m?.idle || (this.ctx.reducedMotion() && time - m.penaltyAt < PENALTY_WAIT_S)) return false
-    m.idle = false
-    return true
   }
 
   /**
@@ -237,7 +211,6 @@ export class Penalty implements Moment {
     if (m && m.result !== null) return false
     if (m && m.leavingFromMs === null) {
       m.result = kind
-      m.idle = false
       return true
     }
     const shown = this.value()
@@ -258,7 +231,6 @@ export class Penalty implements Moment {
       elapsedMs: 0,
       leavingFromMs: null,
       byHand: false,
-      idle: false,
     }
   }
 

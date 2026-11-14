@@ -45,9 +45,7 @@ The penalty, from the match-summary design.
   either, unless the layer is off. A human's `Penalty missed` is now kept for a
   replay as a shot on goal is.
 - With reduced motion nothing fades and nothing turns or sways: the card, then
-  the scene, then the kick's end with its banner, each whole. The scene waiting
-  is not drawn again until something changes, so it does not go after 40 s:
-  while the stream stalls it stays up, until the clock has run its 20 s.
+  the scene, then the kick's end with its banner, each whole.
 
 ### For pages that embed it
 
