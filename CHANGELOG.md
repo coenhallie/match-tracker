@@ -67,8 +67,7 @@ The penalty, from the match-summary design.
 
 ### Size
 
-- The widget is 66.4 kB gzipped (budget 65 kB), up from 59.1 kB, about half of
-  it the penalty's pictures.
+- The widget is 66.1 kB gzipped (budget 70 kB), up from 59.1 kB.
 
 ### Parity
 

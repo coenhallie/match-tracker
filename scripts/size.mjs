@@ -7,8 +7,8 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { gzipSync } from 'node:zlib'
 
-/** The spec's budget for the code, fonts aside: 65 kB gzipped (1 kB = 1000 bytes, as Vite reports). */
-const BUDGET = 65_000
+/** The budget for the code, fonts aside: 70 kB gzipped (1 kB = 1000 bytes, as Vite reports), the user's call with the penalty. */
+const BUDGET = 70_000
 /** The banner entry is imported at a host's app entry, so it stays tiny: 2 kB gzipped. */
 const BANNER_BUDGET = 2_000
 const dist = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist')

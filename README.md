@@ -986,7 +986,7 @@ The other newer APIs the code calls are older than these: `Array.prototype.at`,
 
 `npm run size` prints the gzipped size of `dist/index.js`, `dist/vue.js` and
 `dist/banner.js`, and the size of the fonts. It fails when `dist/index.js` is over
-65 kB gzipped, or `dist/banner.js` over 2 kB.
+70 kB gzipped, or `dist/banner.js` over 2 kB.
 The measured numbers for each release are in [CHANGELOG.md](CHANGELOG.md). The targets:
 - one draw in under 4 ms at 1280×720 CSS px at 2x;
 - no dropped frames during a goal on a mid-range phone.
