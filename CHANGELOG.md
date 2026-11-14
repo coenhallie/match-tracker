@@ -6,6 +6,8 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-11-13
+
 ### What you see
 
 - **The penalty waits for its kick however long it takes**, no longer 20 s of
